@@ -5,11 +5,13 @@ class GherkinLine(object):
         self.trimmed_text = text.lstrip()
         self.intend = len(self.text) - len(self.trimmed_text)
 
-    def starts_with_string(self, string):
-        return self.trimmed_text.startswith(string)
+    def get_text_after_keyword(self, string, has_column=False):
+        keyword = '{}:'.format(string) if has_column else string
+        return self.trimmed_text.split(keyword)[0]
 
-    def starts_with_column_keyword(self, keyword):
-        return self.starts_with_string('{}:'.format(keyword))
+    def starts_with_string(self, string, has_colon=False):
+        keyword = '{}:'.format(string) if has_colon else string
+        return self.trimmed_text.startswith(keyword)
 
     def is_empty(self):
         return bool(self)

@@ -1,5 +1,4 @@
 from gherkin.compiler import Compiler
-from gherkin.keywords_old import Feature
 
 feature_string = """@tag1 @tag2
 Feature: Ich bin etwas
@@ -7,10 +6,9 @@ Feature: Ich bin etwas
     # asdasd
     Hier folgt dann eine Beschreibung.
     
-    Scenario: asdasd
-        Given: asd
-        When: asd
-        Then: asd
+    Rule: testser
+        
+        Scenario
 """
 
 

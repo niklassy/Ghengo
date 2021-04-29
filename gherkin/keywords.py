@@ -1,49 +1,100 @@
+from typing import Optional
+
 from gherkin.config import GHERKIN_CONFIG
 from gherkin.line import GherkinLine
 from settings import Settings
 
 
-class GherkinKeyword(object):
-    children = []
-    comments = []
-    tags = []
+class GherkinText(object):
+    def __init__(self, lines: [GherkinLine]):
+        self.lines: [GherkinLine] = lines
 
+    @property
+    def text(self) -> str:
+        return ' '.join([line.trimmed_text for line in self.lines])
+
+
+class GherkinKeyword(object):
     parent = None
     keyword = None
-    keyword_with_column = False
+    keyword_with_colon = False
+    may_have_children = True
+    may_have_comments = True
 
-    def __init__(self, parent, comments=None):
+    def __init__(self, matched_keyword, name, parent, comments=None):
+        self.matched_keyword = matched_keyword
+        self.name = name
         self.parent = parent
-        self.children = []
-        self.tags = []
-        self.comments = comments if comments is not None else []
 
-    def set_tags(self, tags):
-        self.tags = tags
+        if self.may_have_children:
+            self.children = []
+            self.tags = []
 
-    def set_children(self, children):
-        self.children = children
+        if self.may_have_comments:
+            self.comments = comments if comments is not None else []
+
+    def set_tags(self, tags: ['Tag']):
+        if self.may_have_children:
+            self.tags = tags
+
+    def set_children(self, children: ['GherkinKeyword']):
+        if self.may_have_children:
+            self.children = children
+
+    def set_comments(self, comments: ['Comment']):
+        if self.may_have_comments:
+            self.comments = comments
 
     @classmethod
     def get_keywords(cls):
         return GHERKIN_CONFIG[Settings.language][cls.keyword]
 
     @classmethod
-    def line_matches_keyword(cls, line: GherkinLine):
-        if cls.keyword_with_column:
-            return any([line.starts_with_column_keyword(keyword) for keyword in cls.get_keywords()])
+    def get_keyword_match(cls, line: GherkinLine) -> Optional[str]:
+        for keyword in cls.get_keywords():
+            if line.starts_with_string(keyword, has_colon=cls.keyword_with_colon):
+                return keyword
+        return None
 
-        return any([line.starts_with_string(keyword) for keyword in cls.get_keywords()])
+    @classmethod
+    def line_matches_keyword(cls, line: GherkinLine) -> bool:
+        return bool(cls.get_keyword_match(line))
 
 
 class Feature(GherkinKeyword):
-    keyword_with_column = True
+    keyword_with_colon = True
     keyword = 'feature'
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.text: Optional[GherkinText] = None
+
+    def set_text(self, text: GherkinText):
+        self.text = text
+
+
+class Rule(GherkinKeyword):
+    keyword = 'rule'
+    keyword_with_colon = True
+
+
+class Scenario(GherkinKeyword):
+    keyword = 'scenario'
+    keyword_with_colon = True
+
+
+class Example(Scenario):
+    pass
+
+
+# Keywords for special characters
 
 class SpecialCharacterKeyword(GherkinKeyword):
-    def __init__(self, parent):
-        super().__init__(parent=parent)
+    may_have_children = False
+    may_have_comments = False
+
+    def __init__(self, matched_keyword, parent, name):
+        super().__init__(matched_keyword=matched_keyword, parent=parent, name=name)
 
     @classmethod
     def get_keywords(cls):
@@ -53,6 +104,10 @@ class SpecialCharacterKeyword(GherkinKeyword):
 class Tag(SpecialCharacterKeyword):
     keyword = '@'
 
-    def __init__(self, parent, name):
-        super().__init__(parent)
-        self.name = name
+
+class Comment(SpecialCharacterKeyword):
+    keyword = '#'
+
+    def __init__(self, matched_keyword, parent, text: str):
+        super().__init__(matched_keyword=matched_keyword, parent=parent, name='Comment from {}'.format(parent))
+        self.text = text.lstrip()

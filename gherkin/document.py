@@ -1,3 +1,5 @@
+from typing import Optional
+
 from gherkin.keywords import Feature
 from gherkin.line import GherkinLine
 
@@ -15,3 +17,9 @@ class GherkinDocument(object):
 
     def add_feature(self, feature: Feature):
         self.feature = feature
+
+    def get_lines_after(self, from_line: GherkinLine, to_line: Optional[GherkinLine] = None) -> [GherkinLine]:
+        if to_line is None:
+            return self.lines[from_line.line_index + 1:]
+
+        return self.lines[from_line.line_index + 1:to_line.line_index]
