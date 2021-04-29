@@ -7,8 +7,16 @@ Feature: Ich bin etwas
     Hier folgt dann eine Beschreibung.
     
     Rule: testser
-        
-    Scenario: asd
+    
+        Background: asdasd
+            Ich bin eine neue Information
+            Bla Blubb
+            
+        Scenario: asd
+            Given qwe
+            And qweqwe
+            When qwe
+            Then kjasd
 """
 
 

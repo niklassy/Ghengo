@@ -1,6 +1,9 @@
+from typing import Optional
+
 from gherkin.document import GherkinDocument
 from gherkin.exception import InvalidGherkin
-from gherkin.keywords import Feature, Tag, Rule, Scenario, GherkinText, GherkinKeyword, Comment
+from gherkin.keywords import Feature, Tag, Rule, Scenario, GherkinDescription, GherkinKeyword, Comment, \
+    Given, But, Background, Then, And, When
 from gherkin.line import GherkinLine
 from settings import Settings
 
@@ -10,6 +13,20 @@ class GherkinKeywordOutline(object):
 
 
 class Compiler(object):
+    _keywords = [
+        Tag,
+        Comment,
+        Feature,
+        Rule,
+        Background,
+        Scenario,
+        Given,
+        When,
+        Then,
+        And,
+        But,
+    ]
+
     def __init__(self, gherkin_doc_string):
         # TODO: support file parsing
         self.gherkin_doc_string: str = gherkin_doc_string
@@ -45,7 +62,7 @@ class Compiler(object):
                 tags = self._compile_tags(start_line=previous_line, parent=keyword)
                 keyword.set_tags(tags)
 
-        # TODO: handle text (e.g. for feature)
+        # TODO: handle description (e.g. for feature)
         # save how far the document has been compiled, since recursion calls will be ahead of this loop
         compiled_until_line_index = start_line.line_index
 
@@ -55,23 +72,25 @@ class Compiler(object):
                 continue
 
             # check if there are any matches with a valid child for current keyword
-            found_keyword = None
-            for valid_child_cls in keyword.valid_children:
-                if valid_child_cls.line_matches_keyword(line):
-                    found_keyword = valid_child_cls
+            # search for a keyword
+            found_keyword: Optional[GherkinKeyword] = None
+            for _existing_keyword_cls in self._keywords:
+                if _existing_keyword_cls.line_matches_keyword(line):
+                    found_keyword = _existing_keyword_cls
+                    continue
 
             # if no, skip
             if found_keyword is None:
                 continue
 
             # if another keyword of the same type was found, we are done with this keyword
-            if found_keyword == keyword.__class__:
-                keyword.end_line = line
+            # we are also done if there is another keyword that is a valid sibling of this keyword
+            if keyword.ends_at_keyword(found_keyword):
+                keyword.end_line = self.gherkin_doc.get_previous_line(line)
                 break
 
             # if another keyword is found, create it
-            compile_fn = getattr(self, '_create_{}'.format(found_keyword.__name__.lower()))
-            obj = compile_fn(keyword, line)
+            obj = self._create_keyword(found_keyword, keyword, line)
 
             # compile it afterwards via recursion and add it to this keyword
             child_keyword_obj = self._compile_keyword(obj, line)
@@ -84,6 +103,9 @@ class Compiler(object):
             keyword.end_line = self.gherkin_doc.lines[-1]
 
         return keyword
+
+    def _create_keyword(self, keyword_cls, parent, start_line):
+        return keyword_cls(parent=parent, start_line=start_line)
 
     def _create_feature(self, parent, start_line):
         return Feature(parent=parent, start_line=start_line)
@@ -138,7 +160,7 @@ class Compiler(object):
 
             # if any of the children is found, stop searching for comments
             if Rule.line_matches_keyword(current_line) or Scenario.line_matches_keyword(current_line):
-                feature.set_text(GherkinText(feature_text_lines))
+                feature.set_text(GherkinDescription(feature_text_lines))
                 feature.set_comments(comments)
                 break
 
