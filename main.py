@@ -8,7 +8,7 @@ Feature: Ich bin etwas
     
     Rule: testser
         
-        Scenario
+    Scenario: asd
 """
 
 

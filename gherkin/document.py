@@ -1,5 +1,6 @@
 from typing import Optional
 
+from gherkin.exception import InvalidGherkin
 from gherkin.keywords import Feature
 from gherkin.line import GherkinLine
 
@@ -16,7 +17,10 @@ class GherkinDocument(object):
         return self.lines[line.line_index - 1]
 
     def add_feature(self, feature: Feature):
-        self.feature = feature
+        if not self.feature:
+            self.feature = feature
+        else:
+            raise InvalidGherkin('There can only be one feature per gherkin document.')
 
     def get_lines_after(self, from_line: GherkinLine, to_line: Optional[GherkinLine] = None) -> [GherkinLine]:
         if to_line is None:

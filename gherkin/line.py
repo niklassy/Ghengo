@@ -7,7 +7,7 @@ class GherkinLine(object):
 
     def get_text_after_keyword(self, string, has_column=False):
         keyword = '{}:'.format(string) if has_column else string
-        return self.trimmed_text.split(keyword)[0]
+        return self.trimmed_text.split(keyword)[1].lstrip()
 
     def starts_with_string(self, string, has_colon=False):
         keyword = '{}:'.format(string) if has_colon else string
