@@ -92,7 +92,7 @@ class Rule(object):
         """
         Public function to validate a given sequence. May raise a RuleNotFulfilled
         """
-        assert all([isinstance(el, RuleToken) for el in sequence]), 'Every entry in the passed sequence must of ' \
+        assert all([isinstance(el, RuleToken) for el in sequence]), 'Every entry in the passed sequence must be of ' \
                                                                     'class "RuleToken"'
 
         self._validate_sequence(sequence, 0)
@@ -181,9 +181,6 @@ class Chain(Rule):
     supports_list_as_children = True
 
     def _validate_sequence(self, sequence, index):
-        if self.debug:
-            a = 1
-
         # validate each child and get the index
         for child in self.child_rule:
             index = self._get_valid_index_for_child(child, sequence, index)

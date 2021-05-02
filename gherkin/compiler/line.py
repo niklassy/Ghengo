@@ -20,6 +20,9 @@ class GherkinLine(object):
         return len(self.trimmed_text) > 0
 
     def __str__(self):
-        return 'GherkinLine (Line {}) - {}'.format(self.line_index, self.trimmed_text)
+        return '`{}` (Line {})'.format(self.trimmed_text, self.line_index)
+
+    def __repr__(self):
+        return str(self)
 
 
