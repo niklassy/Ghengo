@@ -130,8 +130,10 @@ class Parser(object):
         for index in sorted(to_remove, reverse=True):
             del tokens_trimmed[index]
 
+        # get the rule for the whole document and add wrapper around the objects
         head_rule = GherkinDocumentGrammar.rule
-        head_rule.validate_sequence([RuleToken(token=t) for t in tokens_trimmed])
+        wrapped_tokens = [RuleToken(token=t) for t in tokens_trimmed]
+        head_rule.validate_sequence(sequence=wrapped_tokens)
 
     def _create_ast(self):
         pass

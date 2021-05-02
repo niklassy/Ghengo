@@ -59,12 +59,16 @@ class DescriptionGrammar(object):
     ])
 
 
-class ScenarioGrammar(object):
+class TagGrammar(object):
     rule = Chain([
-        Optional(Chain([
             Repeatable(RuleClass(Tag), minimum=1),
             RuleClass(EndOfLine),
-        ])),
+        ])
+
+
+class ScenarioGrammar(object):
+    rule = Chain([
+        Optional(TagGrammar.rule),
         RuleClass(Scenario),
         OneOf([
             RuleClass(EndOfLine),
@@ -76,10 +80,7 @@ class ScenarioGrammar(object):
 
 class RuleTokenGrammar(object):
     rule = Chain([
-        Optional(Chain([
-            Repeatable(RuleClass(Tag), minimum=1),
-            RuleClass(EndOfLine),
-        ])),
+        Optional(TagGrammar.rule),
         RuleClass(Rule),
         OneOf([
             RuleClass(EndOfLine),
@@ -96,10 +97,7 @@ class RuleTokenGrammar(object):
 
 class FeatureGrammar(object):
     rule = Chain([
-        Optional(Chain([
-            Repeatable(RuleClass(Tag), minimum=1),
-            RuleClass(EndOfLine),
-        ])),
+        Optional(TagGrammar.rule),
         RuleClass(Feature),
         OneOf([
             RuleClass(EndOfLine),
