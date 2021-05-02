@@ -3,7 +3,7 @@ from gherkin.compiler.rule import RuleToken
 from gherkin.document import GherkinDocument
 from gherkin.compiler.line import GherkinLine
 from gherkin.compiler.token import Feature, Rule, Description, EOF, Background, Scenario, Comment, Given, Then, \
-    When, Empty, And, But, Tags, Language, EndOfLine, Token
+    When, Empty, And, But, Tags, Language, EndOfLine, Token, ScenarioOutline, DocString, DataTable, Examples
 from settings import Settings
 
 
@@ -14,6 +14,8 @@ class Lexer(object):
         Feature,
         Rule,
         Background,
+        Examples,           # <-- must stay before scenario
+        ScenarioOutline,    # <-- must stay before scenario
         Scenario,
         Given,
         Then,
@@ -21,6 +23,8 @@ class Lexer(object):
         And,
         But,
 
+        DataTable,
+        DocString,
         Language,   # <- must stay before comment
         Comment,
 
@@ -136,7 +140,8 @@ class Parser(object):
         head_rule.validate_sequence(sequence=wrapped_tokens)
 
     def _create_ast(self):
-        pass
+        # gherkin_doc = GherkinDocument(lines=None)
+        return None
 
 
 class CodeGenerator(object):

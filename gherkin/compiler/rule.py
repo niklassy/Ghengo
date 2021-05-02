@@ -1,4 +1,5 @@
-from typing import Union, Iterable
+from typing import Union
+from gherkin.compiler.token import Rule as _Rule
 
 
 class RuleNotFulfilled(Exception):
@@ -8,8 +9,9 @@ class RuleNotFulfilled(Exception):
 class Rule(object):
     supports_list_as_children = False
 
-    def __init__(self, child_rule):
+    def __init__(self, child_rule, debug=False):
         self.child_rule = child_rule
+        self.debug = debug
 
         if isinstance(child_rule, list) and not self.supports_list_as_children:
             raise ValueError('A {} does not support a list of objects as a child'.format(self.__class__.__name__))
@@ -39,6 +41,9 @@ class Rule(object):
         """
         assert isinstance(rule_token, RuleToken)
         assert isinstance(rule_alias, RuleAlias)
+
+        if isinstance(rule_token.token, _Rule):
+            a = 1
 
         if not rule_alias.rule_token_is_valid(rule_token):
             keywords = rule_alias.get_keywords()
@@ -92,6 +97,9 @@ class Rule(object):
 
         self._validate_sequence(sequence, 0)
 
+    def __str__(self):
+        return 'Rule {} - {}'.format(self.__class__.__name__, self.child_rule)
+
 
 class Optional(Rule):
     """
@@ -129,7 +137,7 @@ class OneOf(Rule):
 
         # if each child has thrown an error, this is invalid
         if len(errors) == len(self.child_rule):
-            raise RuleNotFulfilled(str(errors[-1]))
+            raise RuleNotFulfilled(str(errors[0]))
 
         return index
 
@@ -137,8 +145,8 @@ class OneOf(Rule):
 class Repeatable(Rule):
     """Allows any amount of repetition of the passed child. If it is optional, minimum=0 can be passed."""
 
-    def __init__(self, child, minimum=1):
-        super().__init__(child)
+    def __init__(self, child, minimum=1, debug=False):
+        super().__init__(child, debug)
         self.minimum = minimum
 
         assert not isinstance(child, list), 'You must not use a list as a child of Repeatable, use Chain ' \
@@ -173,6 +181,9 @@ class Chain(Rule):
     supports_list_as_children = True
 
     def _validate_sequence(self, sequence, index):
+        if self.debug:
+            a = 1
+
         # validate each child and get the index
         for child in self.child_rule:
             index = self._get_valid_index_for_child(child, sequence, index)
@@ -202,6 +213,9 @@ class RuleAlias(object):
         """
         return self.token_cls.get_keywords()
 
+    def __str__(self):
+        return str(self.token_cls)
+
 
 class RuleToken(object):
     """
@@ -219,3 +233,6 @@ class RuleToken(object):
     def get_text(self) -> str:
         """Defines how to represent a token in text. It is used by rules to display what the current value is."""
         return self.token.matched_keyword_full
+
+    def __str__(self):
+        return str(self.token)

@@ -8,7 +8,6 @@ Feature: Ich bin etwas
     # asdasd
     Hier folgt dann eine Beschreibung.
     
-    @tag987
     Rule: testser
     
         Background:
@@ -16,9 +15,22 @@ Feature: Ich bin etwas
             
         Scenario: asd
             Given qwe
+                ```
+                Hier ist ein DocString
+                ```
             And qweqwe
             When qwe
             Then kjasd
+            
+        Scenario Outline: mal was anderes
+            Given there are <start> cucumbers
+            When I eat <eat> cucumbers
+            Then I should have <left> cucumbers
+            
+            Examples:
+            | start | eat | left |
+            |    12 |   5 |    7 |
+            |    20 |   5 |   15 | 
 """
 
 

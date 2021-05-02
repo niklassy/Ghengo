@@ -4,6 +4,6 @@ Feature: a
 
   Rule: asd
     Scenario:
-      Given asd
+      Given {asd}
       When wer
       Then qws

@@ -15,7 +15,6 @@ class Token(object):
 
     def __init__(self, text: Optional[str], line: Optional[GherkinLine]):
         self.line: Optional[GherkinLine] = line
-        self._matched_keyword = None
 
         self.text: Optional[str] = text
         self.matched_keyword_full = self.get_full_matching_text(text)
@@ -57,6 +56,42 @@ class Rule(Token):
 class Scenario(Token):
     _json_id = 'scenario'
     keyword_with_colon = True
+
+
+class ScenarioOutline(Token):
+    _json_id = 'scenarioOutline'
+    keyword_with_colon = True
+
+
+class Examples(Token):
+    _json_id = 'examples'
+    keyword_with_colon = True
+
+
+class DataTable(Token):
+    @classmethod
+    def get_keywords(cls):
+        return ['|']
+
+    @classmethod
+    def get_full_matching_text(cls, string: str):
+        return string
+
+    @classmethod
+    def string_fits_token(cls, string: str):
+        keyword = cls.get_keywords()[0]
+        clean_string = string.rstrip().lstrip()
+        return clean_string and clean_string[0] == keyword and clean_string[-1] == keyword
+
+
+class DocString(Token):
+    @classmethod
+    def get_keywords(cls):
+        return ['"""', '```']
+
+    @classmethod
+    def get_full_matching_text(cls, string: str):
+        return string
 
 
 class Background(Token):
@@ -178,3 +213,19 @@ class EndOfLine(Token):
 class EOF(Token):
     def __init__(self, line, *args, **kwargs):
         super().__init__(text=None, line=line)
+
+    @classmethod
+    def get_matching_keyword(cls, string: str):
+        return ''
+
+    @classmethod
+    def get_full_matching_text(cls, string: str):
+        return ''
+
+    @classmethod
+    def get_keywords(cls):
+        return ['EOF']
+
+    @classmethod
+    def string_fits_token(cls, string: str):
+        return False
