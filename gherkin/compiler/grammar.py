@@ -1,4 +1,4 @@
-from gherkin.compiler.rule import Chain, OneOf, Repeatable, Optional, RuleClass
+from gherkin.compiler.rule import Chain, OneOf, Repeatable, Optional, RuleAlias
 from gherkin.compiler.token import Language, Feature, EOF, Description, Rule, Scenario, EndOfLine, Tag, \
     Given, And, But, When, Then, Background
 
@@ -6,41 +6,41 @@ from gherkin.compiler.token import Language, Feature, EOF, Description, Rule, Sc
 class AndButGrammar(object):
     rule = OneOf([
         Chain([
-            RuleClass(And),
-            RuleClass(Description),
-            RuleClass(EndOfLine),
+            RuleAlias(And),
+            RuleAlias(Description),
+            RuleAlias(EndOfLine),
         ]),
         Chain([
-            RuleClass(But),
-            RuleClass(Description),
-            RuleClass(EndOfLine),
+            RuleAlias(But),
+            RuleAlias(Description),
+            RuleAlias(EndOfLine),
         ]),
     ])
 
 
 class GivenGrammar(object):
     rule = Chain([
-        RuleClass(Given),
-        RuleClass(Description),
-        RuleClass(EndOfLine),
+        RuleAlias(Given),
+        RuleAlias(Description),
+        RuleAlias(EndOfLine),
         Repeatable(AndButGrammar.rule, minimum=0)
     ])
 
 
 class WhenGrammar(object):
     rule = Chain([
-        RuleClass(When),
-        RuleClass(Description),
-        RuleClass(EndOfLine),
+        RuleAlias(When),
+        RuleAlias(Description),
+        RuleAlias(EndOfLine),
         Repeatable(AndButGrammar.rule, minimum=0)
     ])
 
 
 class ThenGrammar(object):
     rule = Chain([
-        RuleClass(Then),
-        RuleClass(Description),
-        RuleClass(EndOfLine),
+        RuleAlias(Then),
+        RuleAlias(Description),
+        RuleAlias(EndOfLine),
         Repeatable(AndButGrammar.rule, minimum=0)
     ])
 
@@ -55,23 +55,23 @@ class StepsGrammar(object):
 
 class DescriptionGrammar(object):
     rule = Chain([
-        RuleClass(Description), RuleClass(EndOfLine),
+        RuleAlias(Description), RuleAlias(EndOfLine),
     ])
 
 
 class TagGrammar(object):
     rule = Chain([
-            Repeatable(RuleClass(Tag), minimum=1),
-            RuleClass(EndOfLine),
+            Repeatable(RuleAlias(Tag), minimum=1),
+            RuleAlias(EndOfLine),
         ])
 
 
 class ScenarioGrammar(object):
     rule = Chain([
         Optional(TagGrammar.rule),
-        RuleClass(Scenario),
+        RuleAlias(Scenario),
         OneOf([
-            RuleClass(EndOfLine),
+            RuleAlias(EndOfLine),
             Repeatable(DescriptionGrammar.rule, minimum=0),
         ]),
         StepsGrammar.rule,
@@ -81,14 +81,14 @@ class ScenarioGrammar(object):
 class RuleTokenGrammar(object):
     rule = Chain([
         Optional(TagGrammar.rule),
-        RuleClass(Rule),
+        RuleAlias(Rule),
         OneOf([
-            RuleClass(EndOfLine),
+            RuleAlias(EndOfLine),
             Repeatable(DescriptionGrammar.rule, minimum=0),
         ]),
         Optional(Chain([
-            RuleClass(Background),
-            RuleClass(EndOfLine),
+            RuleAlias(Background),
+            RuleAlias(EndOfLine),
             StepsGrammar.rule,
         ])),
         Repeatable(ScenarioGrammar.rule, minimum=1)
@@ -98,14 +98,14 @@ class RuleTokenGrammar(object):
 class FeatureGrammar(object):
     rule = Chain([
         Optional(TagGrammar.rule),
-        RuleClass(Feature),
+        RuleAlias(Feature),
         OneOf([
-            RuleClass(EndOfLine),
+            RuleAlias(EndOfLine),
             Repeatable(DescriptionGrammar.rule, minimum=0),
         ]),
         Optional(Chain([
-            RuleClass(Background),
-            RuleClass(EndOfLine),
+            RuleAlias(Background),
+            RuleAlias(EndOfLine),
             StepsGrammar.rule,
         ])),
         OneOf([
@@ -118,9 +118,9 @@ class FeatureGrammar(object):
 class GherkinDocumentGrammar(object):
     rule = Chain([
         Optional(Chain([
-            RuleClass(Language),
-            RuleClass(EndOfLine),
+            RuleAlias(Language),
+            RuleAlias(EndOfLine),
         ])),
         FeatureGrammar.rule,
-        RuleClass(EOF),
+        RuleAlias(EOF),
     ])
