@@ -11,9 +11,6 @@ Feature: Ich bin etwas
     @tag987
     Rule: testser
     
-        Scenario: qwe
-            Given asd
-    
         Background:
             Given wer
             
