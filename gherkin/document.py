@@ -2,7 +2,7 @@ from typing import Optional
 
 from gherkin.exception import InvalidGherkin
 from gherkin.keywords import Feature
-from gherkin.line import GherkinLine
+from gherkin.compiler.line import GherkinLine
 
 
 class GherkinDocument(object):

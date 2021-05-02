@@ -1,4 +1,4 @@
-from gherkin.parser import GherkinCompiler
+from gherkin.compiler.compiler import GherkinCompiler
 
 feature_string = """# language en
 
@@ -8,11 +8,11 @@ Feature: Ich bin etwas
     # asdasd
     Hier folgt dann eine Beschreibung.
     
+    @tag987
     Rule: testser
     
-        Background: asdasd
-            Ich bin eine neue Information
-            Bla Blubb
+        Background:
+            Given wer
             
         Scenario: asd
             Given qwe

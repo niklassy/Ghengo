@@ -1,9 +1,9 @@
-from gherkin.token import Token
-
+from gherkin.compiler.grammar import GherkinDocumentGrammar
+from gherkin.compiler.rule import RuleToken
 from gherkin.document import GherkinDocument
-from gherkin.line import GherkinLine
-from gherkin.token import Feature, Rule, Description, EOF, Background, Scenario, Comment, Given, Then, When, Empty, \
-    And, But, Tags, Language, EndOfLine
+from gherkin.compiler.line import GherkinLine
+from gherkin.compiler.token import Feature, Rule, Description, EOF, Background, Scenario, Comment, Given, Then, \
+    When, Empty, And, But, Tags, Language, EndOfLine, Token
 from settings import Settings
 
 
@@ -93,7 +93,7 @@ class Lexer(object):
             self._init_and_add_token(EndOfLine, line=line, text=None)
 
         # add EOF at the very end
-        self._init_and_add_token(EOF, line=None, text=None)
+        self._init_and_add_token(EOF, line=self.tokens[-1].line, text=None)
 
         return self._tokens
 
@@ -102,7 +102,39 @@ class Parser(object):
     """
     Checks that the tokens are valid aka if the syntax of the input is valid. It also generates an AST with the tokens.
     """
-    pass
+    def __init__(self, compiler):
+        self.compiler = compiler
+        self._tokens = []
+
+    @property
+    def tokens(self):
+        return self._tokens
+
+    def parse(self, tokens: [Token]):
+        self._tokens = tokens
+        self._validate()
+
+        return self._create_ast()
+
+    def _validate(self):
+        tokens = self.tokens
+
+        # remove any empty or comment lines
+        to_remove = []
+        for index, token in enumerate(tokens):
+            if isinstance(token, Empty) or isinstance(token, Comment):
+                to_remove.append(index)
+                to_remove.append(index + 1)
+
+        tokens_trimmed = tokens.copy()
+        for index in sorted(to_remove, reverse=True):
+            del tokens_trimmed[index]
+
+        head_rule = GherkinDocumentGrammar.rule
+        head_rule.validate_sequence([RuleToken(token=t) for t in tokens_trimmed])
+
+    def _create_ast(self):
+        pass
 
 
 class CodeGenerator(object):
@@ -121,6 +153,10 @@ class GherkinCompiler(object):
     def compile(self):
         lexer = Lexer(compiler=self)
         tokens = lexer.tokenize()
+
+        parser = Parser(self)
+        parser.parse(tokens)
+
 
         lines = [GherkinLine(text, index) for index, text in enumerate(self.gherkin_text.splitlines())]
         self.gherkin_doc = GherkinDocument(lines)

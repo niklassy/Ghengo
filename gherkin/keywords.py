@@ -2,7 +2,7 @@ from typing import Optional
 
 from gherkin.config import GHERKIN_CONFIG
 from gherkin.exception import InvalidGherkin
-from gherkin.line import GherkinLine
+from gherkin.compiler.line import GherkinLine
 from settings import Settings
 
 

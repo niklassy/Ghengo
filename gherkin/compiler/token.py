@@ -1,7 +1,7 @@
 from typing import Optional, Union, Tuple
 
 from gherkin.config import GHERKIN_CONFIG
-from gherkin.line import GherkinLine
+from gherkin.compiler.line import GherkinLine
 from settings import Settings
 
 
@@ -93,7 +93,8 @@ class Tag(Token):
     def get_full_matching_text(self, string: str):
         return '@{}'.format(self.text)
 
-    def get_keywords(self):
+    @classmethod
+    def get_keywords(cls):
         return ['@']
 
     def get_matching_keyword(self, string: str):
@@ -175,5 +176,5 @@ class EndOfLine(Token):
 
 
 class EOF(Token):
-    def __init__(self, *args, **kwargs):
-        super().__init__(text=None, line=None)
+    def __init__(self, line, *args, **kwargs):
+        super().__init__(text=None, line=line)
