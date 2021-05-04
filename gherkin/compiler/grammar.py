@@ -1,191 +1,213 @@
-from gherkin.compiler.rule import Chain, OneOf, Repeatable, Optional, RuleAlias
+from gherkin.compiler.rule import Chain, OneOf, Repeatable, Optional, RuleAlias, Grammar
 from gherkin.compiler.token import Language, Feature, EOF, Description, Rule, Scenario, EndOfLine, Tag, \
     Given, And, But, When, Then, Background, DocString, DataTable, Examples, ScenarioOutline
 
 
-class DescriptionGrammar(object):
+class DescriptionGrammar(Grammar):
+    criterion_rule_alias = RuleAlias(Description)
     rule = Chain([
-        RuleAlias(Description), RuleAlias(EndOfLine),
-    ])
-
-
-class DocStringGrammar(object):
-    rule = Chain([
-        RuleAlias(DocString),
-        RuleAlias(EndOfLine),
-        Repeatable(DescriptionGrammar.rule, minimum=0),
-        RuleAlias(DocString),
+        criterion_rule_alias,
         RuleAlias(EndOfLine),
     ])
 
 
-class DataTableGrammar(object):
+class DocStringGrammar(Grammar):
+    criterion_rule_alias = RuleAlias(DocString)
+    rule = Chain([
+        criterion_rule_alias,
+        RuleAlias(EndOfLine),
+        Repeatable(DescriptionGrammar(), minimum=0),
+        RuleAlias(DocString),
+        RuleAlias(EndOfLine),
+    ])
+
+
+class DataTableGrammar(Grammar):
+    criterion_rule_alias = RuleAlias(DataTable)
     rule = Chain([
         Repeatable(Chain([
-            RuleAlias(DataTable),
+            criterion_rule_alias,
             RuleAlias(EndOfLine),
         ]), minimum=2),
     ])
 
 
-class AndButGrammar(object):
-    rule = OneOf([
-        Chain([
-            RuleAlias(And),
-            RuleAlias(Description),
-            RuleAlias(EndOfLine),
-            Optional(OneOf([
-                DocStringGrammar.rule,
-                DataTableGrammar.rule,
-            ])),
-        ]),
-        Chain([
-            RuleAlias(But),
-            RuleAlias(Description),
-            RuleAlias(EndOfLine),
-            Optional(OneOf([
-                DocStringGrammar.rule,
-                DataTableGrammar.rule,
-            ])),
-        ]),
-    ])
-
-
-class ExamplesGrammar(object):
+class AndGrammar(Grammar):
+    criterion_rule_alias = RuleAlias(And)
     rule = Chain([
-        RuleAlias(Examples),
-        RuleAlias(EndOfLine),
-        DataTableGrammar.rule,
-    ])
-
-
-class GivenGrammar(object):
-    rule = Chain([
-        RuleAlias(Given),
+        criterion_rule_alias,
         RuleAlias(Description),
         RuleAlias(EndOfLine),
         Optional(OneOf([
-            DocStringGrammar.rule,
-            DataTableGrammar.rule,
+            DocStringGrammar(),
+            DataTableGrammar(),
         ])),
-        Repeatable(AndButGrammar.rule, minimum=0),
     ])
 
 
-class WhenGrammar(object):
+class ButGrammar(Grammar):
+    criterion_rule_alias = RuleAlias(But)
     rule = Chain([
-        RuleAlias(When),
+        criterion_rule_alias,
         RuleAlias(Description),
         RuleAlias(EndOfLine),
         Optional(OneOf([
-            DocStringGrammar.rule,
-            DataTableGrammar.rule,
+            DocStringGrammar(),
+            DataTableGrammar(),
         ])),
-        Repeatable(AndButGrammar.rule, minimum=0),
     ])
 
 
-class ThenGrammar(object):
+class ExamplesGrammar(Grammar):
+    criterion_rule_alias = RuleAlias(Examples)
     rule = Chain([
-        RuleAlias(Then),
+        criterion_rule_alias,
+        RuleAlias(EndOfLine),
+        DataTableGrammar(),
+    ])
+
+
+class GivenGrammar(Grammar):
+    criterion_rule_alias = RuleAlias(Given)
+    rule = Chain([
+        criterion_rule_alias,
         RuleAlias(Description),
         RuleAlias(EndOfLine),
         Optional(OneOf([
-            DocStringGrammar.rule,
-            DataTableGrammar.rule,
+            DocStringGrammar(),
+            DataTableGrammar(),
         ])),
-        Repeatable(AndButGrammar.rule, minimum=0),
+        Repeatable(OneOf([AndGrammar(), ButGrammar()]), minimum=0),
     ])
 
 
-class StepsGrammar(object):
+class WhenGrammar(Grammar):
+    criterion_rule_alias = RuleAlias(When)
     rule = Chain([
-        Repeatable(GivenGrammar.rule, minimum=0),
-        Repeatable(WhenGrammar.rule, minimum=0),
-        Repeatable(ThenGrammar.rule, minimum=0),
+        criterion_rule_alias,
+        RuleAlias(Description),
+        RuleAlias(EndOfLine),
+        Optional(OneOf([
+            DocStringGrammar(),
+            DataTableGrammar(),
+        ])),
+        Repeatable(OneOf([AndGrammar(), ButGrammar()]), minimum=0),
     ])
 
 
-class TagGrammar(object):
+class ThenGrammar(Grammar):
+    criterion_rule_alias = RuleAlias(Then)
     rule = Chain([
-        Repeatable(RuleAlias(Tag)),
+        criterion_rule_alias,
+        RuleAlias(Description),
+        RuleAlias(EndOfLine),
+        Optional(OneOf([
+            DocStringGrammar(),
+            DataTableGrammar(),
+        ])),
+        Repeatable(OneOf([AndGrammar(), ButGrammar()]), minimum=0),
+    ])
+
+
+StepsGrammar = Chain([
+    Repeatable(GivenGrammar(), minimum=0),
+    Repeatable(WhenGrammar(), minimum=0),
+    Repeatable(ThenGrammar(), minimum=0),
+])
+
+
+class TagGrammar(Grammar):
+    criterion_rule_alias = RuleAlias(Tag)
+    rule = Chain([
+        Repeatable(criterion_rule_alias),
         RuleAlias(EndOfLine),
     ])
 
 
-class ScenarioOutlineGrammar(object):
+class ScenarioOutlineGrammar(Grammar):
+    criterion_rule_alias = RuleAlias(ScenarioOutline)
     rule = Chain([
-        Optional(TagGrammar.rule),
-        RuleAlias(ScenarioOutline),
+        TagGrammar(optional=True),
+        criterion_rule_alias,
         OneOf([
             RuleAlias(EndOfLine),
-            Repeatable(DescriptionGrammar.rule, minimum=0),
+            Repeatable(DescriptionGrammar(), minimum=0),
         ]),
-        StepsGrammar.rule,
-        ExamplesGrammar.rule,
+        StepsGrammar,
+        ExamplesGrammar(),
     ], debug=True)
 
 
-class ScenarioGrammar(object):
+class ScenarioGrammar(Grammar):
+    criterion_rule_alias = RuleAlias(Scenario)
     rule = Chain([
-        Optional(TagGrammar.rule),
-        RuleAlias(Scenario),
+        TagGrammar(optional=True),
+        criterion_rule_alias,
         OneOf([
             RuleAlias(EndOfLine),
-            Repeatable(DescriptionGrammar.rule, minimum=0),
+            Repeatable(DescriptionGrammar(), minimum=0),
         ]),
-        StepsGrammar.rule,
+        StepsGrammar,
     ])
 
 
-class RuleTokenGrammar(object):
+class RuleTokenGrammar(Grammar):
+    criterion_rule_alias = RuleAlias(Rule)
     rule = Chain([
-        RuleAlias(Rule),
+        criterion_rule_alias,
         OneOf([
             RuleAlias(EndOfLine),
-            Repeatable(DescriptionGrammar.rule, minimum=0),
+            Repeatable(DescriptionGrammar(), minimum=0),
         ]),
         Optional(Chain([
             RuleAlias(Background),
             RuleAlias(EndOfLine),
-            StepsGrammar.rule,
+            StepsGrammar,
         ])),
         Repeatable(OneOf([
-            ScenarioGrammar.rule,
-            ScenarioOutlineGrammar.rule,
+            ScenarioGrammar(),
+            ScenarioOutlineGrammar(),
         ]))
     ])
 
 
-class FeatureGrammar(object):
+class FeatureGrammar(Grammar):
+    criterion_rule_alias = RuleAlias(Feature)
     rule = Chain([
-        Optional(TagGrammar.rule),
-        RuleAlias(Feature),
+        TagGrammar(optional=True),
+        criterion_rule_alias,
         OneOf([
             RuleAlias(EndOfLine),
-            Repeatable(DescriptionGrammar.rule, minimum=0),
+            Repeatable(DescriptionGrammar(), minimum=0),
         ]),
         Optional(Chain([
             RuleAlias(Background),
             RuleAlias(EndOfLine),
-            StepsGrammar.rule,
+            StepsGrammar,
         ])),
         OneOf([
-            Repeatable(RuleTokenGrammar.rule, minimum=1),
+            Repeatable(RuleTokenGrammar(), minimum=1),
             Repeatable(OneOf([
-                ScenarioGrammar.rule,
-                ScenarioOutlineGrammar.rule,
+                ScenarioGrammar(),
+                ScenarioOutlineGrammar(),
             ]), minimum=1),
         ]),
     ])
 
 
-class GherkinDocumentGrammar(object):
+class LanguageGrammar(Grammar):
+    criterion_rule_alias = RuleAlias(Language)
     rule = Chain([
-        Optional(Chain([
-            RuleAlias(Language),
-            RuleAlias(EndOfLine),
-        ])),
-        FeatureGrammar.rule,
+        criterion_rule_alias,
+        RuleAlias(EndOfLine),
+    ])
+
+
+class GherkinDocumentGrammar(Grammar):
+    rule = Chain([
+        LanguageGrammar(optional=True),
+        FeatureGrammar(optional=True),
         RuleAlias(EOF),
     ])
+    criterion_rule_alias = None
+    name = 'Gherkin document'

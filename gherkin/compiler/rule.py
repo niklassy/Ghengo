@@ -1,8 +1,15 @@
-from typing import Union
+from typing import Union, Iterable
 from gherkin.compiler.token import Rule as _Rule
 
 
 class RuleNotFulfilled(Exception):
+    def __init__(self, msg, rule_alias, sequence_index):
+        super().__init__(msg)
+        self.rule_alias = rule_alias
+        self.sequence_index = sequence_index
+
+
+class GrammarInvalid(Exception):
     pass
 
 
@@ -25,7 +32,7 @@ class Rule(object):
 
     def _validate_init_child(self, child):
         """Validation on __init__"""
-        if not isinstance(child, Rule) and not isinstance(child, RuleAlias):
+        if not isinstance(child, Rule) and not isinstance(child, RuleAlias) and not isinstance(child, Grammar):
             raise ValueError('You cannot use other children than Rule objects or RuleObjects around your own objects.')
 
     def _validate_sequence(self, sequence, index) -> int:
@@ -35,15 +42,12 @@ class Rule(object):
         """
         raise NotImplementedError()
 
-    def _validate_rule_token(self, rule_token: 'RuleToken', rule_alias: 'RuleAlias'):
+    def _validate_rule_token(self, rule_token: 'RuleToken', rule_alias: 'RuleAlias', index: int):
         """
         Validates if a given rule token belongs to a rule class. If not a RuleNotFulfilled is risen.
         """
         assert isinstance(rule_token, RuleToken)
         assert isinstance(rule_alias, RuleAlias)
-
-        if isinstance(rule_token.token, _Rule):
-            a = 1
 
         if not rule_alias.rule_token_is_valid(rule_token):
             keywords = rule_alias.get_keywords()
@@ -59,7 +63,7 @@ class Rule(object):
                     rule_token.get_place_to_search()
                 )
 
-            raise RuleNotFulfilled(message)
+            raise RuleNotFulfilled(message, rule_alias=rule_alias, sequence_index=index)
 
     def _get_valid_index_for_child(self, child: Union['Rule', 'RuleAlias'], sequence: ['RuleToken'], index: int) -> int:
         """
@@ -79,9 +83,12 @@ class Rule(object):
         if isinstance(child, Rule):
             return child._validate_sequence(sequence, index)
 
+        if isinstance(child, Grammar):
+            return child.validate_sequence(sequence, index)
+
         # if a RuleClass is given, validate the rule token against that class
         if isinstance(child, RuleAlias):
-            self._validate_rule_token(rule_token, child)
+            self._validate_rule_token(rule_token, child, index)
 
             # if it is valid, go to the next token in the sequence
             return index + 1
@@ -105,6 +112,13 @@ class Optional(Rule):
     """
     Can be used to mark something a token as optional.
     """
+    def _validate_init_child(self, child):
+        super()._validate_init_child(child)
+
+        if isinstance(child, Grammar):
+            raise ValueError('Dont use Optional to indicate that a grammar is optional. Use the optional kwarg on'
+                             ' the grammar instead.')
+
     def _validate_sequence(self, sequence, index) -> int:
         # try to get the next index. If that fails, just ignore, since it is optional
         try:
@@ -137,7 +151,7 @@ class OneOf(Rule):
 
         # if each child has thrown an error, this is invalid
         if len(errors) == len(self.child_rule):
-            raise RuleNotFulfilled(str(errors[0]))
+            raise errors[0]
 
         return index
 
@@ -161,7 +175,7 @@ class Repeatable(Rule):
         while True:
             try:
                 index = self._get_valid_index_for_child(self.child_rule, sequence, index)
-            except RuleNotFulfilled as e:
+            except (RuleNotFulfilled, GrammarInvalid) as e:
                 break_error = e
                 break
             else:
@@ -213,6 +227,11 @@ class RuleAlias(object):
     def __str__(self):
         return str(self.token_cls)
 
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.token_cls == other.token_cls
+
 
 class RuleToken(object):
     """
@@ -221,7 +240,7 @@ class RuleToken(object):
     """
     def __init__(self, token):
         self.token = token
-        self.rule_class = RuleAlias(token.__class__)
+        self.rule_alias = RuleAlias(token.__class__)
 
     def get_place_to_search(self) -> str:
         """Is used by rules to add information where a token can be found."""
@@ -233,3 +252,84 @@ class RuleToken(object):
 
     def __str__(self):
         return str(self.token)
+
+
+class Grammar(object):
+    """
+    A grammar represents a combination of rules that has a special criterion to recognize it with.
+    This criterion is a RuleAlias. If there is an error while validating a grammar object,
+    it will check:
+        - am i optional? - if yes, continue normally
+
+        - did the error occur AFTER the defined RuleAlias was validated?
+            -> if yes, it means that the input `tries` to create this Grammar
+        - was the error raised by that exact RuleAlias?
+            -> if yes, it means again that the input `tried` to create this Grammar
+
+        => if either of those cases are true, this will raise a GrammarInvalid exception.
+
+    This is useful to differentiate between:
+        - is the grammar optional?
+        - did the input actually try to create this Grammar?
+        - should the validation continue?
+
+    Grammar objects seperate Rules from each other and isolate each "Area" of grammar. If
+    a rule raises an error, the grammar catches and handles it.
+    """
+    name = None
+    rule = None
+    criterion_rule_alias: RuleAlias = None
+
+    def __init__(self, optional=False):
+        self.optional = optional
+
+        assert self.rule is not None and isinstance(self.rule, Rule)
+        assert self.criterion_rule_alias is None or isinstance(self.criterion_rule_alias, RuleAlias)
+
+    def get_name(self):
+        """
+        Returns the name of the grammar. By default it uses the name of the token class in the criterion_rule_alias
+        """
+        return self.criterion_rule_alias.token_cls.__name__ if not self.name else self.name
+
+    def get_grammar_criterion(self) -> RuleAlias:
+        """
+        Returns the criterion that defines this grammar/ that makes this grammar recognizable.
+        """
+        return self.criterion_rule_alias
+
+    def validate_sequence(self, sequence: [RuleToken], index=0):
+        """
+        Validates the given sequence. If this is called by a parent, no index should be passed.
+        It will call Rules that will call this method recursively.
+
+        :raises GrammarInvalid
+
+        :arg sequence - list of RuleTokens - they represent all tokens from an input text
+        :arg index (default 0) - the current index of validation in the sequence
+
+        :return: current index in sequence
+        """
+        try:
+            # noinspection PyProtectedMember
+            return self.rule._validate_sequence(sequence, index)
+        except RuleNotFulfilled as e:
+            # get the criterion of this grammar - it is a RuleAlias
+            criterion = self.get_grammar_criterion()
+            if not criterion or self.optional:
+                return index
+
+            # get list of elements between entrypoint and error
+            error_index = e.sequence_index
+            validated_tokens = sequence[index:error_index]
+            validated_rule_alias = [t.rule_alias for t in validated_tokens]
+
+            # the rule_alias that is responsible for the error
+            error_src = e.rule_alias
+
+            # raise an error if either the criterion for this grammar was already validated or
+            # if that exact criterion threw the error
+            if criterion in validated_rule_alias or criterion == error_src:
+                raise GrammarInvalid('Invalid syntax for {} - {}'.format(self.get_name(), str(e)))
+
+            return index

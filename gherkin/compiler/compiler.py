@@ -135,9 +135,10 @@ class Parser(object):
             del tokens_trimmed[index]
 
         # get the rule for the whole document and add wrapper around the objects
-        head_rule = GherkinDocumentGrammar.rule
+        # head_rule = GherkinDocumentGrammar.rule
         wrapped_tokens = [RuleToken(token=t) for t in tokens_trimmed]
-        head_rule.validate_sequence(sequence=wrapped_tokens)
+        GherkinDocumentGrammar().validate_sequence(wrapped_tokens)
+        # head_rule.validate_sequence(sequence=wrapped_tokens)
 
     def _create_ast(self):
         # gherkin_doc = GherkinDocument(lines=None)

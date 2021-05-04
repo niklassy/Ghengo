@@ -38,7 +38,10 @@ class Token(object):
     @classmethod
     def get_keywords(cls):
         try:
-            return GHERKIN_CONFIG[Settings.language][cls._json_id]
+            keywords = GHERKIN_CONFIG[Settings.language][cls._json_id]
+            if cls.keyword_with_colon:
+                return ['{}:'.format(k) for k in keywords]
+            return keywords
         except KeyError:
             return []
 

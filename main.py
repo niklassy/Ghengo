@@ -33,13 +33,24 @@ Feature: Ich bin etwas
             |    20 |   5 |   15 | 
 """
 
+invalid_doc = """
+Feature: 123
+
+    Rule: 123
+    
+        @tag1
+        Scenario: qwe
+            Given asd
+
+"""
+
 
 if __name__ == '__main__':
     """
     Können leider nicht die Library verwenden, weil sie scheinbar Probleme hat und weil wir sämtliche Informationen
     wie Kommentare behalten wollen, für weitere Informationen in der Zukunft.
     """
-    c = GherkinCompiler(feature_string)
+    c = GherkinCompiler(invalid_doc)
     a = c.compile()
     # a = Feature(feature_string)
     b = 1
