@@ -28,7 +28,7 @@ class Token(object):
 
     @classmethod
     def get_full_matching_text(cls, string: str):
-        return '{}{}'.format(cls.get_matching_keyword(string) or '', ':' if cls.keyword_with_colon else '')
+        return cls.get_matching_keyword(string)
 
     @classmethod
     def string_fits_token(cls, string: str):
@@ -196,9 +196,13 @@ class Description(Token):
         return string
 
     @classmethod
+    def get_keywords(cls):
+        return ['Any string with no keywords']
+
+    @classmethod
     def string_fits_token(cls, string: str) -> bool:
         # TODO: check that no other token matched
-        return super().string_fits_token(string)
+        return True
 
 
 class EndOfBase(Token):
@@ -215,6 +219,22 @@ class EndOfLine(Token):
     def __init__(self, line: GherkinLine, *args, **kwargs):
         super().__init__(text=None, line=line)
 
+    @classmethod
+    def string_fits_token(cls, string: str):
+        return False
+
+    @classmethod
+    def get_keywords(cls):
+        return ['End of line']
+
+    @classmethod
+    def get_matching_keyword(cls, string: str):
+        return ''
+
+    @classmethod
+    def get_full_matching_text(cls, string: str):
+        return 'End of line'
+
 
 class EOF(Token):
     def __init__(self, line, *args, **kwargs):
@@ -226,11 +246,11 @@ class EOF(Token):
 
     @classmethod
     def get_full_matching_text(cls, string: str):
-        return ''
+        return 'End of file'
 
     @classmethod
     def get_keywords(cls):
-        return ['EOF']
+        return ['End of file']
 
     @classmethod
     def string_fits_token(cls, string: str):

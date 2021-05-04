@@ -13,6 +13,10 @@ class GrammarInvalid(Exception):
     pass
 
 
+class GrammarNotUsed(Exception):
+    pass
+
+
 class Rule(object):
     supports_list_as_children = False
 
@@ -112,18 +116,11 @@ class Optional(Rule):
     """
     Can be used to mark something a token as optional.
     """
-    def _validate_init_child(self, child):
-        super()._validate_init_child(child)
-
-        if isinstance(child, Grammar):
-            raise ValueError('Dont use Optional to indicate that a grammar is optional. Use the optional kwarg on'
-                             ' the grammar instead.')
-
     def _validate_sequence(self, sequence, index) -> int:
         # try to get the next index. If that fails, just ignore, since it is optional
         try:
             return self._get_valid_index_for_child(self.child_rule, sequence, index)
-        except RuleNotFulfilled:
+        except (RuleNotFulfilled, GrammarNotUsed):
             # if not valid, continue at current index
             return index
 
@@ -144,16 +141,12 @@ class OneOf(Rule):
         # go through each child and validate it for the child; collect all errors
         for child in self.child_rule:
             try:
-                index = self._get_valid_index_for_child(child, sequence, index)
-                break
-            except RuleNotFulfilled as e:
-                errors.append(e)
+                return self._get_valid_index_for_child(child, sequence, index)
+            except (RuleNotFulfilled, GrammarNotUsed) as e:
+                errors.append((e, child))
 
         # if each child has thrown an error, this is invalid
-        if len(errors) == len(self.child_rule):
-            raise errors[0]
-
-        return index
+        raise RuleNotFulfilled(str(errors[0][0]), sequence_index=index, rule_alias=errors[0][1])
 
 
 class Repeatable(Rule):
@@ -175,7 +168,7 @@ class Repeatable(Rule):
         while True:
             try:
                 index = self._get_valid_index_for_child(self.child_rule, sequence, index)
-            except (RuleNotFulfilled, GrammarInvalid) as e:
+            except (RuleNotFulfilled, GrammarNotUsed) as e:
                 break_error = e
                 break
             else:
@@ -280,9 +273,7 @@ class Grammar(object):
     rule = None
     criterion_rule_alias: RuleAlias = None
 
-    def __init__(self, optional=False):
-        self.optional = optional
-
+    def __init__(self):
         assert self.rule is not None and isinstance(self.rule, Rule)
         assert self.criterion_rule_alias is None or isinstance(self.criterion_rule_alias, RuleAlias)
 
@@ -297,6 +288,16 @@ class Grammar(object):
         Returns the criterion that defines this grammar/ that makes this grammar recognizable.
         """
         return self.criterion_rule_alias
+
+    def used_by_sequence_area(self, sequence, start_index, end_index):
+        criterion = self.get_grammar_criterion()
+
+        if not criterion:
+            return False
+
+        non_committed = sequence[start_index:end_index]
+
+        return self.get_grammar_criterion() in [t.rule_alias for t in non_committed]
 
     def validate_sequence(self, sequence: [RuleToken], index=0):
         """
@@ -314,22 +315,8 @@ class Grammar(object):
             # noinspection PyProtectedMember
             return self.rule._validate_sequence(sequence, index)
         except RuleNotFulfilled as e:
-            # get the criterion of this grammar - it is a RuleAlias
-            criterion = self.get_grammar_criterion()
-            if not criterion or self.optional:
-                return index
+            if not self.used_by_sequence_area(sequence, index, e.sequence_index):
+                # TODO: raise original error instead??
+                raise GrammarNotUsed(str(e))
 
-            # get list of elements between entrypoint and error
-            error_index = e.sequence_index
-            validated_tokens = sequence[index:error_index]
-            validated_rule_alias = [t.rule_alias for t in validated_tokens]
-
-            # the rule_alias that is responsible for the error
-            error_src = e.rule_alias
-
-            # raise an error if either the criterion for this grammar was already validated or
-            # if that exact criterion threw the error
-            if criterion in validated_rule_alias or criterion == error_src:
-                raise GrammarInvalid('Invalid syntax for {} - {}'.format(self.get_name(), str(e)))
-
-            return index
+            raise GrammarInvalid('Invalid syntax for {} - {}'.format(self.get_name(), str(e)))

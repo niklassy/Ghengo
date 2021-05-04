@@ -127,7 +127,7 @@ class TagGrammar(Grammar):
 class ScenarioOutlineGrammar(Grammar):
     criterion_rule_alias = RuleAlias(ScenarioOutline)
     rule = Chain([
-        TagGrammar(optional=True),
+        Optional(TagGrammar()),
         criterion_rule_alias,
         OneOf([
             RuleAlias(EndOfLine),
@@ -141,7 +141,7 @@ class ScenarioOutlineGrammar(Grammar):
 class ScenarioGrammar(Grammar):
     criterion_rule_alias = RuleAlias(Scenario)
     rule = Chain([
-        TagGrammar(optional=True),
+        Optional(TagGrammar()),
         criterion_rule_alias,
         OneOf([
             RuleAlias(EndOfLine),
@@ -174,7 +174,7 @@ class RuleTokenGrammar(Grammar):
 class FeatureGrammar(Grammar):
     criterion_rule_alias = RuleAlias(Feature)
     rule = Chain([
-        TagGrammar(optional=True),
+        Optional(TagGrammar()),
         criterion_rule_alias,
         OneOf([
             RuleAlias(EndOfLine),
@@ -205,9 +205,27 @@ class LanguageGrammar(Grammar):
 
 class GherkinDocumentGrammar(Grammar):
     rule = Chain([
-        LanguageGrammar(optional=True),
-        FeatureGrammar(optional=True),
+        Optional(LanguageGrammar()),
+        Optional(FeatureGrammar()),
         RuleAlias(EOF),
     ])
     criterion_rule_alias = None
     name = 'Gherkin document'
+
+
+# class LanguageGrammar(Grammar):
+#     criterion_rule_alias = RuleAlias(Feature)
+#     rule = Chain([
+#         criterion_rule_alias,
+#         RuleAlias(Description),
+#         RuleAlias(EndOfLine),
+#     ])
+#
+#
+# class GherkinDocumentGrammar(Grammar):
+#     rule = Chain([
+#         Optional(LanguageGrammar()),
+#         Optional(LanguageGrammar()),
+#         RuleAlias(EOF),
+#     ])
+#     name = 'Gherkin document'
