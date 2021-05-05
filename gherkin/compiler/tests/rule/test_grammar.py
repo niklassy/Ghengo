@@ -15,6 +15,8 @@ def token_sequence(sequence):
 
 def test_grammar_invalid_input():
     """Check if invalid input to grammar is handled."""
+    assert False
+
     class Grammar1(Grammar):
         rule = None
 
