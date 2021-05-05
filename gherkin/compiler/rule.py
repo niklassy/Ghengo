@@ -3,17 +3,39 @@ from gherkin.compiler.token import Rule as _Rule
 
 
 class RuleNotFulfilled(Exception):
-    def __init__(self, msg, rule_alias, sequence_index):
+    """
+    This exception is raised when a a given sequence does not fulfill a rule.
+
+    `rule_alias` -> The rule alias that is not fulfilled and resulted in an error.
+    `sequence_index` -> the index in the sequence where the rule was broken
+    `rule` -> the rule that was broken
+    """
+    def __init__(self, msg, rule_alias, sequence_index, rule):
         super().__init__(msg)
         self.rule_alias = rule_alias
         self.sequence_index = sequence_index
+        self.rule = rule
 
 
 class GrammarInvalid(Exception):
+    """
+    An exception that is raised when a Grammar was detected but is not valid.
+    """
     pass
 
 
 class GrammarNotUsed(Exception):
+    """
+    An exception that is raised when a Grammar is not used in a given sequence.
+    """
+    pass
+
+
+class SequenceNotFinished(Exception):
+    """
+    An exception that is raised when a given sequence was not fully checked at the end of validation.
+    That usually means that there should be an item to indicate the end of a grammar/ rule (like EOF or EndOfLine).
+    """
     pass
 
 
@@ -67,7 +89,7 @@ class Rule(object):
                     rule_token.get_place_to_search()
                 )
 
-            raise RuleNotFulfilled(message, rule_alias=rule_alias, sequence_index=index)
+            raise RuleNotFulfilled(message, rule_alias=rule_alias, sequence_index=index, rule=self)
 
     def _get_valid_index_for_child(self, child: Union['Rule', 'RuleAlias'], sequence: ['RuleToken'], index: int) -> int:
         """
@@ -88,7 +110,8 @@ class Rule(object):
             return child._validate_sequence(sequence, index)
 
         if isinstance(child, Grammar):
-            return child.validate_sequence(sequence, index)
+            # noinspection PyProtectedMember
+            return child._validate_sequence(sequence, index)
 
         # if a RuleClass is given, validate the rule token against that class
         if isinstance(child, RuleAlias):
@@ -106,7 +129,9 @@ class Rule(object):
         assert all([isinstance(el, RuleToken) for el in sequence]), 'Every entry in the passed sequence must be of ' \
                                                                     'class "RuleToken"'
 
-        self._validate_sequence(sequence, 0)
+        result_index = self._validate_sequence(sequence, 0)
+        if result_index < len(sequence):
+            raise SequenceNotFinished()
 
     def __str__(self):
         return 'Rule {} - {}'.format(self.__class__.__name__, self.child_rule)
@@ -116,11 +141,17 @@ class Optional(Rule):
     """
     Can be used to mark something a token as optional.
     """
+    def _validate_init_child(self, child):
+        super()._validate_init_child(child)
+
+        if isinstance(child, Repeatable):
+            raise ValueError('Do not use Repeatable as a child of Optional. Use Repeatable(minimum=0) instead.')
+
     def _validate_sequence(self, sequence, index) -> int:
         # try to get the next index. If that fails, just ignore, since it is optional
         try:
             return self._get_valid_index_for_child(self.child_rule, sequence, index)
-        except (RuleNotFulfilled, GrammarNotUsed):
+        except (RuleNotFulfilled, GrammarNotUsed, IndexError):
             # if not valid, continue at current index
             return index
 
@@ -133,7 +164,18 @@ class OneOf(Rule):
 
     def __init__(self, child):
         super().__init__(child)
-        assert isinstance(child, list), 'You must use a list for OneOf'
+
+        if not isinstance(child, list):
+            raise ValueError('You must use a list for OneOf')
+
+    def _validate_init_child(self, child):
+        super()._validate_init_child(child)
+
+        if isinstance(child, Optional):
+            raise ValueError('You should not use Optional as a Child of OneOf.')
+
+        if isinstance(child, Repeatable) and child.minimum == 0:
+            raise ValueError('You should not use minimum=0 on Repeatable while using OneOf as a parent.')
 
     def _validate_sequence(self, sequence, index):
         errors = []
@@ -142,11 +184,11 @@ class OneOf(Rule):
         for child in self.child_rule:
             try:
                 return self._get_valid_index_for_child(child, sequence, index)
-            except (RuleNotFulfilled, GrammarNotUsed) as e:
+            except (RuleNotFulfilled, GrammarNotUsed, IndexError) as e:
                 errors.append((e, child))
 
         # if each child has thrown an error, this is invalid
-        raise RuleNotFulfilled(str(errors[0][0]), sequence_index=index, rule_alias=errors[0][1])
+        raise RuleNotFulfilled(str(errors[0][0]), sequence_index=index, rule_alias=errors[0][1], rule=self)
 
 
 class Repeatable(Rule):
@@ -168,7 +210,7 @@ class Repeatable(Rule):
         while True:
             try:
                 index = self._get_valid_index_for_child(self.child_rule, sequence, index)
-            except (RuleNotFulfilled, GrammarNotUsed) as e:
+            except (RuleNotFulfilled, GrammarNotUsed, IndexError) as e:
                 break_error = e
                 break
             else:
@@ -274,7 +316,7 @@ class Grammar(object):
     criterion_rule_alias: RuleAlias = None
 
     def __init__(self):
-        assert self.rule is not None and isinstance(self.rule, Rule)
+        assert self.rule is not None and (isinstance(self.rule, Chain) or isinstance(self.rule, OneOf))
         assert self.criterion_rule_alias is None or isinstance(self.criterion_rule_alias, RuleAlias)
 
     def get_name(self):
@@ -299,7 +341,17 @@ class Grammar(object):
 
         return self.get_grammar_criterion() in [t.rule_alias for t in non_committed]
 
-    def validate_sequence(self, sequence: [RuleToken], index=0):
+    def _validate_sequence(self, sequence, index):
+        try:
+            # noinspection PyProtectedMember
+            return self.rule._validate_sequence(sequence, index)
+        except RuleNotFulfilled as e:
+            if not self.used_by_sequence_area(sequence, index, e.sequence_index):
+                raise GrammarNotUsed(str(e))
+
+            raise GrammarInvalid('Invalid syntax for {} - {}'.format(self.get_name(), str(e)))
+
+    def validate_sequence(self, sequence: [RuleToken]):
         """
         Validates the given sequence. If this is called by a parent, no index should be passed.
         It will call Rules that will call this method recursively.
@@ -311,12 +363,12 @@ class Grammar(object):
 
         :return: current index in sequence
         """
-        try:
-            # noinspection PyProtectedMember
-            return self.rule._validate_sequence(sequence, index)
-        except RuleNotFulfilled as e:
-            if not self.used_by_sequence_area(sequence, index, e.sequence_index):
-                # TODO: raise original error instead??
-                raise GrammarNotUsed(str(e))
+        assert all([isinstance(el, RuleToken) for el in sequence]), 'Every entry in the passed sequence must be of ' \
+                                                                    'class "RuleToken"'
 
-            raise GrammarInvalid('Invalid syntax for {} - {}'.format(self.get_name(), str(e)))
+        if len(sequence) == 0:
+            return
+
+        result_index = self._validate_sequence(sequence, 0)
+        if result_index != len(sequence):
+            raise SequenceNotFinished()

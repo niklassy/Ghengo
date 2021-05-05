@@ -131,7 +131,7 @@ class ScenarioOutlineGrammar(Grammar):
         criterion_rule_alias,
         OneOf([
             RuleAlias(EndOfLine),
-            Repeatable(DescriptionGrammar(), minimum=0),
+            Repeatable(DescriptionGrammar()),
         ]),
         StepsGrammar,
         ExamplesGrammar(),
@@ -145,7 +145,7 @@ class ScenarioGrammar(Grammar):
         criterion_rule_alias,
         OneOf([
             RuleAlias(EndOfLine),
-            Repeatable(DescriptionGrammar(), minimum=0),
+            Repeatable(DescriptionGrammar()),
         ]),
         StepsGrammar,
     ])
@@ -157,7 +157,7 @@ class RuleTokenGrammar(Grammar):
         criterion_rule_alias,
         OneOf([
             RuleAlias(EndOfLine),
-            Repeatable(DescriptionGrammar(), minimum=0),
+            Repeatable(DescriptionGrammar()),
         ]),
         Optional(Chain([
             RuleAlias(Background),
@@ -178,7 +178,7 @@ class FeatureGrammar(Grammar):
         criterion_rule_alias,
         OneOf([
             RuleAlias(EndOfLine),
-            Repeatable(DescriptionGrammar(), minimum=0),
+            Repeatable(DescriptionGrammar()),
         ]),
         Optional(Chain([
             RuleAlias(Background),
@@ -186,11 +186,11 @@ class FeatureGrammar(Grammar):
             StepsGrammar,
         ])),
         OneOf([
-            Repeatable(RuleTokenGrammar(), minimum=1),
+            Repeatable(RuleTokenGrammar()),
             Repeatable(OneOf([
                 ScenarioGrammar(),
                 ScenarioOutlineGrammar(),
-            ]), minimum=1),
+            ])),
         ]),
     ])
 

@@ -216,7 +216,7 @@ class EndOfBase(Token):
 
 
 class EndOfLine(Token):
-    def __init__(self, line: GherkinLine, *args, **kwargs):
+    def __init__(self, line: Optional[GherkinLine], *args, **kwargs):
         super().__init__(text=None, line=line)
 
     @classmethod
