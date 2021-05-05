@@ -4,13 +4,13 @@ from gherkin.compiler.token import Description, EndOfLine, EOF, Feature
 from test_utils import assert_callable_raises
 
 
-class TestRuleToken(RuleToken):
+class RuleTestToken(RuleToken):
     def get_place_to_search(self) -> str:
         return ''
 
 
 def token_sequence(sequence):
-    return [TestRuleToken(t) for t in sequence]
+    return [RuleTestToken(t) for t in sequence]
 
 
 def test_optional_invalid_input():

@@ -24,11 +24,30 @@ class GrammarInvalid(Exception):
     pass
 
 
+class SequenceEnded(Exception):
+    """
+    An exception that rules use to indicate that the given sequence has ended/ that the index has gone over
+    the size of the sequence. This exception is only used internally.
+    """
+
+    def __init__(self, msg, rule_alias, sequence_index, rule):
+        super().__init__(msg)
+        self.rule_alias = rule_alias
+        self.sequence_index = sequence_index
+        self.rule = rule
+
+
 class GrammarNotUsed(Exception):
     """
     An exception that is raised when a Grammar is not used in a given sequence.
     """
-    pass
+
+    def __init__(self, msg, rule_alias, sequence_index, rule, grammar):
+        super().__init__(msg)
+        self.rule_alias = rule_alias
+        self.sequence_index = sequence_index
+        self.rule = rule
+        self.grammar = grammar
 
 
 class SequenceNotFinished(Exception):
@@ -68,26 +87,41 @@ class Rule(object):
         """
         raise NotImplementedError()
 
-    def _validate_rule_token(self, rule_token: 'RuleToken', rule_alias: 'RuleAlias', index: int):
+    def _build_error_message(self, keywords, rule_token=None, message=''):
+        """Builds the message for RuleNotFulfilled and SequenceEnded exceptions."""
+        if len(keywords) == 1:
+            message += 'Expected {}.'.format(keywords[0])
+        elif len(keywords) > 1:
+            message += 'Expected one of: {}.'.format(', '.join(['"{}"'.format(k) for k in keywords]))
+
+        if rule_token:
+            if not keywords:
+                message += '{} is invalid. {}'.format(rule_token.get_text(), rule_token.get_place_to_search())
+            else:
+                message += 'Got {} instead. {}'.format(rule_token.get_text(), rule_token.get_place_to_search())
+
+        return message
+
+    def _validate_rule_token(self, sequence: ['RuleToken'], rule_alias: 'RuleAlias', index: int):
         """
-        Validates if a given rule token belongs to a rule class. If not a RuleNotFulfilled is risen.
+        Validates if a given rule token belongs to a rule class.
+
+        :raises SequenceEnded: if the sequence ends abruptly this error is risen
+        :raises RuleNotFulfilled: if the rule_token in the sequence does not match the rule_alias
         """
+        keywords = rule_alias.get_keywords()
+
+        try:
+            rule_token = sequence[index]
+        except IndexError:
+            message = self._build_error_message(keywords, message='Input ended abruptely. ')
+            raise SequenceEnded(message, rule_alias=rule_alias, sequence_index=index, rule=self)
+
         assert isinstance(rule_token, RuleToken)
         assert isinstance(rule_alias, RuleAlias)
 
         if not rule_alias.rule_token_is_valid(rule_token):
-            keywords = rule_alias.get_keywords()
-
-            if len(keywords) == 1:
-                message = 'Expected "{}". Got "{}" instead. {}.'.format(
-                    keywords[0], rule_token.get_text(), rule_token.get_place_to_search())
-            elif len(keywords) == 0:
-                message = '{} is invalid. {}'.format(rule_token.get_text(), rule_token.get_place_to_search())
-            else:
-                message = 'Expected one of {}. Got "{}" instead. {}.'.format(
-                    ', '.join(['"{}"'.format(k) for k in keywords]), rule_token.get_text(),
-                    rule_token.get_place_to_search()
-                )
+            message = self._build_error_message(keywords, rule_token)
 
             raise RuleNotFulfilled(message, rule_alias=rule_alias, sequence_index=index, rule=self)
 
@@ -96,15 +130,14 @@ class Rule(object):
         This function is used in the validation. It will return the next valid index in the sequence for the
         current rule (this instance) for a given child.
 
-        :raises RuleNotFulfilled
+        :raises RuleNotFulfilled (see _validate_rule_token)
+        :raises SequenceEnded (see _validate_rule_token)
 
         :param child: a child of a rule - can be a Rule or a RuleClass
         :param sequence: the sequence that is validated
         :param index: the index in the sequence right now
         :return:
         """
-        rule_token: 'RuleToken' = sequence[index]
-
         # if a Rule is given, let is handle the sequence instead
         if isinstance(child, Rule):
             return child._validate_sequence(sequence, index)
@@ -115,7 +148,7 @@ class Rule(object):
 
         # if a RuleClass is given, validate the rule token against that class
         if isinstance(child, RuleAlias):
-            self._validate_rule_token(rule_token, child, index)
+            self._validate_rule_token(sequence, child, index)
 
             # if it is valid, go to the next token in the sequence
             return index + 1
@@ -124,12 +157,16 @@ class Rule(object):
 
     def validate_sequence(self, sequence: ['RuleToken']):
         """
-        Public function to validate a given sequence. May raise a RuleNotFulfilled
+        Public function to validate a given sequence. May raise a RuleNotFulfilled or a SequenceNotFinished.
         """
         assert all([isinstance(el, RuleToken) for el in sequence]), 'Every entry in the passed sequence must be of ' \
                                                                     'class "RuleToken"'
 
-        result_index = self._validate_sequence(sequence, 0)
+        try:
+            result_index = self._validate_sequence(sequence, 0)
+        except SequenceEnded as e:
+            raise RuleNotFulfilled(str(e), sequence_index=e.sequence_index, rule_alias=e.rule_alias, rule=e.rule)
+
         if result_index < len(sequence):
             raise SequenceNotFinished()
 
@@ -151,7 +188,7 @@ class Optional(Rule):
         # try to get the next index. If that fails, just ignore, since it is optional
         try:
             return self._get_valid_index_for_child(self.child_rule, sequence, index)
-        except (RuleNotFulfilled, GrammarNotUsed, IndexError):
+        except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded):
             # if not valid, continue at current index
             return index
 
@@ -184,7 +221,7 @@ class OneOf(Rule):
         for child in self.child_rule:
             try:
                 return self._get_valid_index_for_child(child, sequence, index)
-            except (RuleNotFulfilled, GrammarNotUsed, IndexError) as e:
+            except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded) as e:
                 errors.append((e, child))
 
         # if each child has thrown an error, this is invalid
@@ -198,10 +235,11 @@ class Repeatable(Rule):
         super().__init__(child, debug)
         self.minimum = minimum
 
-        assert not isinstance(child, list), 'You must not use a list as a child of Repeatable, use Chain ' \
-                                            'or OneOf instead.'
-        assert not isinstance(child, Optional), 'You must not use Optional as a child of ' \
-                                                'Repeatable. Use minimum=0 instead.'
+    def _validate_init_child(self, child):
+        super()._validate_init_child(child)
+
+        if isinstance(child, Optional):
+            raise ValueError('You must not use Optional as a child of Repeatable. Use minimum=0 instead.')
 
     def _validate_sequence(self, sequence, index):
         rounds_done = 0
@@ -210,7 +248,7 @@ class Repeatable(Rule):
         while True:
             try:
                 index = self._get_valid_index_for_child(self.child_rule, sequence, index)
-            except (RuleNotFulfilled, GrammarNotUsed, IndexError) as e:
+            except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded) as e:
                 break_error = e
                 break
             else:
@@ -229,10 +267,19 @@ class Chain(Rule):
     """
     supports_list_as_children = True
 
+    def __init__(self, child):
+        super().__init__(child)
+
+        if not isinstance(child, list):
+            raise ValueError('You must use a list for OneOf')
+
     def _validate_sequence(self, sequence, index):
         # validate each child and get the index
         for child in self.child_rule:
-            index = self._get_valid_index_for_child(child, sequence, index)
+            try:
+                index = self._get_valid_index_for_child(child, sequence, index)
+            except GrammarNotUsed as e:
+                raise RuleNotFulfilled(str(e), rule_alias=e.rule_alias, sequence_index=e.sequence_index, rule=e.rule)
 
         return index
 
@@ -342,16 +389,6 @@ class Grammar(object):
         return self.get_grammar_criterion() in [t.rule_alias for t in non_committed]
 
     def _validate_sequence(self, sequence, index):
-        try:
-            # noinspection PyProtectedMember
-            return self.rule._validate_sequence(sequence, index)
-        except RuleNotFulfilled as e:
-            if not self.used_by_sequence_area(sequence, index, e.sequence_index):
-                raise GrammarNotUsed(str(e))
-
-            raise GrammarInvalid('Invalid syntax for {} - {}'.format(self.get_name(), str(e)))
-
-    def validate_sequence(self, sequence: [RuleToken]):
         """
         Validates the given sequence. If this is called by a parent, no index should be passed.
         It will call Rules that will call this method recursively.
@@ -363,12 +400,32 @@ class Grammar(object):
 
         :return: current index in sequence
         """
+        try:
+            # noinspection PyProtectedMember
+            return self.rule._validate_sequence(sequence, index)
+        except (RuleNotFulfilled, SequenceEnded) as e:
+            if not self.used_by_sequence_area(sequence, index, e.sequence_index):
+                raise GrammarNotUsed(
+                    str(e), rule_alias=e.rule_alias, sequence_index=e.sequence_index, rule=e.rule, grammar=self)
+
+            raise GrammarInvalid('Invalid syntax for {} - {}'.format(self.get_name(), str(e)))
+
+    def validate_sequence(self, sequence: [RuleToken]):
+        """
+        The entrypoint to the validation. Call this function to start the validation of a sequence.
+
+        :raises SequenceNotFinished - all rules were fulfilled, but there are still elements in the sequence that were
+                                    not validated.
+        :raises GrammarInvalid  - The grammar was used but is not valid. It is also thrown when the grammar that
+                                used this method is not used in the sequence.
+        """
         assert all([isinstance(el, RuleToken) for el in sequence]), 'Every entry in the passed sequence must be of ' \
                                                                     'class "RuleToken"'
 
-        if len(sequence) == 0:
-            return
+        try:
+            result_index = self._validate_sequence(sequence, 0)
+        except GrammarNotUsed:
+            raise GrammarInvalid('The grammar you called was not used.')
 
-        result_index = self._validate_sequence(sequence, 0)
         if result_index != len(sequence):
             raise SequenceNotFinished()
