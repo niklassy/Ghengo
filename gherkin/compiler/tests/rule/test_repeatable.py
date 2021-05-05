@@ -132,3 +132,9 @@ def test_repeatable_grammar():
         GrammarInvalid,
         args=[token_sequence([EOF(None), EndOfLine(None), EOF(None), Feature('', None)])],  # <- Feature not correct
     )
+
+    assert_callable_raises(
+        repeatable.validate_sequence,
+        RuleNotFulfilled,
+        args=[token_sequence([Description('', None)])]
+    )

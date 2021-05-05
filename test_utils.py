@@ -12,3 +12,4 @@ def assert_callable_raises(to_call, exception_cls, message=None, args=None, kwar
     except exception_cls as e:
         if message is not None:
             assert message == str(e)
+        return e

@@ -21,7 +21,9 @@ class GrammarInvalid(Exception):
     """
     An exception that is raised when a Grammar was detected but is not valid.
     """
-    pass
+    def __init__(self, msg, grammar):
+        super().__init__(msg)
+        self.grammar = grammar
 
 
 class SequenceEnded(Exception):
@@ -249,7 +251,10 @@ class Repeatable(Rule):
             try:
                 index = self._get_valid_index_for_child(self.child_rule, sequence, index)
             except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded) as e:
-                break_error = e
+                if isinstance(e, GrammarNotUsed):
+                    break_error = RuleNotFulfilled(str(e), sequence_index=index, rule_alias=e.rule_alias, rule=e.rule)
+                else:
+                    break_error = e
                 break
             else:
                 rounds_done += 1
@@ -271,7 +276,7 @@ class Chain(Rule):
         super().__init__(child)
 
         if not isinstance(child, list):
-            raise ValueError('You must use a list for OneOf')
+            raise ValueError('You must use a list for a Chain')
 
     def _validate_sequence(self, sequence, index):
         # validate each child and get the index
@@ -355,7 +360,7 @@ class Grammar(object):
         - did the input actually try to create this Grammar?
         - should the validation continue?
 
-    Grammar objects seperate Rules from each other and isolate each "Area" of grammar. If
+    Grammar objects separate Rules from each other and isolate each "Area" of grammar. If
     a rule raises an error, the grammar catches and handles it.
     """
     name = None
@@ -363,8 +368,14 @@ class Grammar(object):
     criterion_rule_alias: RuleAlias = None
 
     def __init__(self):
-        assert self.rule is not None and (isinstance(self.rule, Chain) or isinstance(self.rule, OneOf))
-        assert self.criterion_rule_alias is None or isinstance(self.criterion_rule_alias, RuleAlias)
+        if self.rule is None:
+            raise ValueError('You must provide a rule')
+
+        if not isinstance(self.rule, Chain):
+            raise ValueError('You must only use Chain on Grammar objects as its rule.')
+
+        if self.criterion_rule_alias is not None and not isinstance(self.criterion_rule_alias, RuleAlias):
+            raise ValueError('You must either use None or a RuleAlias instance for criterion_rule_alias.')
 
     def get_name(self):
         """
@@ -408,7 +419,7 @@ class Grammar(object):
                 raise GrammarNotUsed(
                     str(e), rule_alias=e.rule_alias, sequence_index=e.sequence_index, rule=e.rule, grammar=self)
 
-            raise GrammarInvalid('Invalid syntax for {} - {}'.format(self.get_name(), str(e)))
+            raise GrammarInvalid('Invalid syntax for {} - {}'.format(self.get_name(), str(e)), grammar=self)
 
     def validate_sequence(self, sequence: [RuleToken]):
         """
@@ -418,14 +429,13 @@ class Grammar(object):
                                     not validated.
         :raises GrammarInvalid  - The grammar was used but is not valid. It is also thrown when the grammar that
                                 used this method is not used in the sequence.
+        :raises GrammarNotUsed  - This grammar could not be identified and is not used in the sequence. This is only
+                                risen if the top level Grammar is not recognized.
         """
         assert all([isinstance(el, RuleToken) for el in sequence]), 'Every entry in the passed sequence must be of ' \
                                                                     'class "RuleToken"'
 
-        try:
-            result_index = self._validate_sequence(sequence, 0)
-        except GrammarNotUsed:
-            raise GrammarInvalid('The grammar you called was not used.')
+        result_index = self._validate_sequence(sequence, 0)
 
         if result_index != len(sequence):
             raise SequenceNotFinished()

@@ -41,6 +41,11 @@ def test_optional_grammar():
         GrammarInvalid,
         args=(token_sequence([Description('', None), Description('', None)]),),
     )
+    assert_callable_raises(
+        optional.validate_sequence,
+        SequenceNotFinished,
+        args=(token_sequence([EOF(None), EOF(None)]),),
+    )
 
     optional.validate_sequence(token_sequence([]))
 
