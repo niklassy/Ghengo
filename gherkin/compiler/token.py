@@ -165,10 +165,18 @@ class Comment(Token):
         return string
 
 
-class Language(Comment):
+class Language(Token):
     def __init__(self, line, text):
         self.locale = self.get_locale_from_line(line.trimmed_text)
         super().__init__(line=line, text=self.locale)
+
+    @classmethod
+    def get_keywords(cls):
+        return ['#']
+
+    @classmethod
+    def get_full_matching_text(cls, string: str):
+        return string
 
     @classmethod
     def string_fits_token(cls, string: str):

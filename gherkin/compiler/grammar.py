@@ -1,6 +1,7 @@
-from gherkin.compiler.rule import Chain, OneOf, Repeatable, Optional, RuleAlias, Grammar
+from gherkin.compiler.rule import Chain, OneOf, Repeatable, Optional, RuleAlias, Grammar, RuleToken
 from gherkin.compiler.token import Language, Feature, EOF, Description, Rule, Scenario, EndOfLine, Tag, \
     Given, And, But, When, Then, Background, DocString, DataTable, Examples, ScenarioOutline
+from gherkin.compiler.ast import GherkinDocument as ASTGherkinDocument, Language as ASTLanguage
 
 
 class DescriptionGrammar(Grammar):
@@ -135,7 +136,7 @@ class ScenarioOutlineGrammar(Grammar):
         ]),
         StepsGrammar,
         ExamplesGrammar(),
-    ], debug=True)
+    ])
 
 
 class ScenarioGrammar(Grammar):
@@ -172,6 +173,9 @@ class RuleTokenGrammar(Grammar):
 
 
 class FeatureGrammar(Grammar):
+    class FeaturePlaceholder(object):
+        pass
+
     criterion_rule_alias = RuleAlias(Feature)
     rule = Chain([
         Optional(TagGrammar()),
@@ -193,6 +197,7 @@ class FeatureGrammar(Grammar):
             ])),
         ]),
     ])
+    ast_object_cls = FeaturePlaceholder
 
 
 class LanguageGrammar(Grammar):
@@ -201,6 +206,7 @@ class LanguageGrammar(Grammar):
         criterion_rule_alias,
         RuleAlias(EndOfLine),
     ])
+    ast_object_cls = ASTLanguage
 
 
 class GherkinDocumentGrammar(Grammar):
@@ -212,20 +218,12 @@ class GherkinDocumentGrammar(Grammar):
     criterion_rule_alias = None
     name = 'Gherkin document'
 
+    def convert_to_object(self, sequence, index=0):
+        output = super().convert_to_object(sequence, index)
+        doc = ASTGherkinDocument()
 
-# class LanguageGrammar(Grammar):
-#     criterion_rule_alias = RuleAlias(Feature)
-#     rule = Chain([
-#         criterion_rule_alias,
-#         RuleAlias(Description),
-#         RuleAlias(EndOfLine),
-#     ])
-#
-#
-# class GherkinDocumentGrammar(Grammar):
-#     rule = Chain([
-#         Optional(LanguageGrammar()),
-#         Optional(LanguageGrammar()),
-#         RuleAlias(EOF),
-#     ])
-#     name = 'Gherkin document'
+        # check if there is a feature; if yes, add it
+        if output[1]:
+            doc.set_feature(output[0])
+
+        return doc

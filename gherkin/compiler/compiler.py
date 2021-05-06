@@ -1,4 +1,4 @@
-from gherkin.compiler.grammar import GherkinDocumentGrammar
+from gherkin.compiler.grammar import GherkinDocumentGrammar, DescriptionGrammar, LanguageGrammar
 from gherkin.compiler.rule import RuleToken
 from gherkin.document import GherkinDocument
 from gherkin.compiler.line import GherkinLine
@@ -137,8 +137,13 @@ class Parser(object):
         # get the rule for the whole document and add wrapper around the objects
         # head_rule = GherkinDocumentGrammar.rule
         wrapped_tokens = [RuleToken(token=t) for t in tokens_trimmed]
-        GherkinDocumentGrammar().validate_sequence(wrapped_tokens)
+        grammar = GherkinDocumentGrammar()
+        # grammar.validate_sequence(wrapped_tokens)
+        obj = grammar.convert_to_object(wrapped_tokens)
+        a = 1
         # head_rule.validate_sequence(sequence=wrapped_tokens)
+
+        # LanguageGrammar().convert_to_object(wrapped_tokens)
 
     def _create_ast(self):
         # gherkin_doc = GherkinDocument(lines=None)

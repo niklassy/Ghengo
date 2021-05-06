@@ -3,6 +3,15 @@ class GherkinDocument(object):
         self.feature = None
         self.comments = []
 
+    def set_feature(self, feature: 'Feature'):
+        self.feature = feature
+
+
+class Language(object):
+    # TODO: must not be optional
+    def __init__(self, language=None):
+        self.language = language
+
 
 class Comment(object):
     def __init__(self, text):

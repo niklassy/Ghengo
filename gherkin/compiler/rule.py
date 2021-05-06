@@ -127,7 +127,7 @@ class Rule(object):
 
             raise RuleNotFulfilled(message, rule_alias=rule_alias, sequence_index=index, rule=self)
 
-    def _get_valid_index_for_child(self, child: Union['Rule', 'RuleAlias'], sequence: ['RuleToken'], index: int) -> int:
+    def _get_valid_index_for_child(self, child: Union['Rule', 'RuleAlias', 'Grammar'], sequence: ['RuleToken'], index: int) -> int:
         """
         This function is used in the validation. It will return the next valid index in the sequence for the
         current rule (this instance) for a given child.
@@ -157,7 +157,11 @@ class Rule(object):
 
         raise ValueError('This should not happen.')
 
-    def validate_sequence(self, sequence: ['RuleToken']):
+    def get_object(self, sequence, index=0):
+        """Returns a sequence until this rule is no longer valid"""
+        raise NotImplementedError()
+
+    def validate_sequence(self, sequence: ['RuleToken'], index=0):
         """
         Public function to validate a given sequence. May raise a RuleNotFulfilled or a SequenceNotFinished.
         """
@@ -165,12 +169,14 @@ class Rule(object):
                                                                     'class "RuleToken"'
 
         try:
-            result_index = self._validate_sequence(sequence, 0)
+            result_index = self._validate_sequence(sequence, index)
         except SequenceEnded as e:
             raise RuleNotFulfilled(str(e), sequence_index=e.sequence_index, rule_alias=e.rule_alias, rule=e.rule)
 
         if result_index < len(sequence):
             raise SequenceNotFinished()
+
+        return result_index
 
     def __str__(self):
         return 'Rule {} - {}'.format(self.__class__.__name__, self.child_rule)
@@ -194,6 +200,25 @@ class Optional(Rule):
             # if not valid, continue at current index
             return index
 
+    def get_object(self, sequence, index=0):
+        try:
+            new_index = self._get_valid_index_for_child(self.child_rule, sequence, index)
+        except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded):
+            return None
+
+        if isinstance(self.child_rule, Grammar):
+            return self.child_rule.convert_to_object(sequence, index)
+
+        if isinstance(self.child_rule, Rule):
+            return self.child_rule.get_object(sequence, index)
+
+        # if the input was not valid, this found nothing
+        if index == new_index:
+            return None
+
+        # else it returns the RuleToken that was found
+        return sequence[index]
+
 
 class OneOf(Rule):
     """
@@ -206,6 +231,21 @@ class OneOf(Rule):
 
         if not isinstance(child, list):
             raise ValueError('You must use a list for OneOf')
+
+    def get_object(self, sequence, index=0):
+        for child in self.child_rule:
+            try:
+                self._get_valid_index_for_child(child, sequence, index)
+            except (RuleNotFulfilled, SequenceEnded, GrammarNotUsed):
+                continue
+
+            if isinstance(self.child_rule, Grammar):
+                return self.child_rule.convert_to_object(sequence, index)
+
+            if isinstance(self.child_rule, Rule):
+                return self.child_rule.get_object(sequence, index)
+
+        return sequence[index]
 
     def _validate_init_child(self, child):
         super()._validate_init_child(child)
@@ -265,6 +305,35 @@ class Repeatable(Rule):
 
         return index
 
+    def get_object(self, sequence, index=0):
+        output = []
+        initial_index = index
+
+        next_round_index = index
+        while True:
+            try:
+                next_round_index = self._get_valid_index_for_child(self.child_rule, sequence, index)
+
+                if isinstance(self.child_rule, Grammar):
+                    output.append(self.child_rule.convert_to_object(sequence, index))
+                    index = next_round_index
+                    continue
+
+                if isinstance(self.child_rule, Rule):
+                    to_add = self.child_rule.get_object(sequence, index)
+                    index = next_round_index
+                    if isinstance(to_add, list):
+                        output += to_add
+                    else:
+                        output.append(to_add)
+                    continue
+
+                output += sequence[initial_index:index]
+                index = next_round_index
+            except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded):
+                break
+        return output
+
 
 class Chain(Rule):
     """
@@ -277,6 +346,35 @@ class Chain(Rule):
 
         if not isinstance(child, list):
             raise ValueError('You must use a list for a Chain')
+
+    def get_object(self, sequence, index=0):
+        output = []
+
+        for child in self.child_rule:
+            # get the index where we will end
+            try:
+                next_round_index = self._get_valid_index_for_child(child, sequence, index)
+            except (GrammarNotUsed, RuleNotFulfilled):
+                continue
+
+            if isinstance(child, Grammar):
+                output.append(child.convert_to_object(sequence, index))
+                index = next_round_index
+                continue
+
+            if isinstance(child, Rule):
+                to_add = child.get_object(sequence, index)
+                index = next_round_index
+                if isinstance(to_add, list):
+                    output += to_add
+                else:
+                    output.append(to_add)
+                continue
+
+            output.append(sequence[index])
+            index = next_round_index
+
+        return output
 
     def _validate_sequence(self, sequence, index):
         # validate each child and get the index
@@ -364,8 +462,9 @@ class Grammar(object):
     a rule raises an error, the grammar catches and handles it.
     """
     name = None
-    rule = None
+    rule: Rule = None
     criterion_rule_alias: RuleAlias = None
+    ast_object_cls = None
 
     def __init__(self):
         if self.rule is None:
@@ -439,3 +538,9 @@ class Grammar(object):
 
         if result_index != len(sequence):
             raise SequenceNotFinished()
+
+    def convert_to_object(self, sequence, index=0) -> [RuleToken]:
+        if self.ast_object_cls:
+            return self.ast_object_cls()
+
+        return self.rule.get_object(sequence, index)
