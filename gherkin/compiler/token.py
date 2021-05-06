@@ -19,7 +19,7 @@ class Token(object):
         self.text: Optional[str] = text
         self.matched_keyword_full = self.get_full_matching_text(text)
 
-        if self.keyword_with_colon:
+        if self.keyword_with_colon and self.matched_keyword_full:
             self.matched_keyword = self.matched_keyword_full.replace(':', '')
         else:
             self.matched_keyword = self.matched_keyword_full

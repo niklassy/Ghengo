@@ -200,6 +200,7 @@ class FeatureGrammar(Grammar):
             Repeatable(DescriptionGrammar()),
         ]),
         Optional(Chain([
+            # TODO: Background grammar!
             RuleAlias(Background),
             RuleAlias(EndOfLine),
             StepsGrammar,
