@@ -239,11 +239,11 @@ class OneOf(Rule):
             except (RuleNotFulfilled, SequenceEnded, GrammarNotUsed):
                 continue
 
-            if isinstance(self.child_rule, Grammar):
-                return self.child_rule.convert_to_object(sequence, index)
+            if isinstance(child, Rule):
+                return child.get_object(sequence, index)
 
-            if isinstance(self.child_rule, Rule):
-                return self.child_rule.get_object(sequence, index)
+            if isinstance(child, Grammar):
+                return child.convert_to_object(sequence, index)
 
         return sequence[index]
 
@@ -309,7 +309,6 @@ class Repeatable(Rule):
         output = []
         initial_index = index
 
-        next_round_index = index
         while True:
             try:
                 next_round_index = self._get_valid_index_for_child(self.child_rule, sequence, index)
@@ -322,13 +321,10 @@ class Repeatable(Rule):
                 if isinstance(self.child_rule, Rule):
                     to_add = self.child_rule.get_object(sequence, index)
                     index = next_round_index
-                    if isinstance(to_add, list):
-                        output += to_add
-                    else:
-                        output.append(to_add)
+                    output.append(to_add)
                     continue
 
-                output += sequence[initial_index:index]
+                output += sequence[index:next_round_index]
                 index = next_round_index
             except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded):
                 break
@@ -365,10 +361,7 @@ class Chain(Rule):
             if isinstance(child, Rule):
                 to_add = child.get_object(sequence, index)
                 index = next_round_index
-                if isinstance(to_add, list):
-                    output += to_add
-                else:
-                    output.append(to_add)
+                output.append(to_add)
                 continue
 
             output.append(sequence[index])
@@ -464,7 +457,12 @@ class Grammar(object):
     name = None
     rule: Rule = None
     criterion_rule_alias: RuleAlias = None
-    ast_object_cls = None
+
+    class GrammarPlaceholder(object):
+        def __init__(self, **kwargs):
+            pass
+
+    ast_object_cls = GrammarPlaceholder
 
     def __init__(self):
         if self.rule is None:
@@ -475,6 +473,8 @@ class Grammar(object):
 
         if self.criterion_rule_alias is not None and not isinstance(self.criterion_rule_alias, RuleAlias):
             raise ValueError('You must either use None or a RuleAlias instance for criterion_rule_alias.')
+
+        self.validated_sequence = None
 
     def get_name(self):
         """
@@ -536,11 +536,33 @@ class Grammar(object):
 
         result_index = self._validate_sequence(sequence, 0)
 
-        if result_index != len(sequence):
+        if result_index < len(sequence):
             raise SequenceNotFinished()
 
-    def convert_to_object(self, sequence, index=0) -> [RuleToken]:
-        if self.ast_object_cls:
-            return self.ast_object_cls()
+        self.validated_sequence = sequence
 
+        return result_index
+
+    def get_ast_objects_kwargs(self, rule_output):
+        """Can be used to modify what is passed to the ast_object __init__"""
+        return {}
+
+    def get_rule_tree(self, sequence, index):
+        """Returns the tree that is returned by self.rule"""
         return self.rule.get_object(sequence, index)
+
+    def get_tree_object(self, sequence, index):
+        """Returns an object of the ast_object_cls"""
+        return self.ast_object_cls(**self.get_ast_objects_kwargs(self.get_rule_tree(sequence, index)))
+
+    def prepare_object(self, rule_tree, obj):
+        """Can be used to modify the object before it is returned by `convert_to_object`."""
+        return obj
+
+    def convert_to_object(self, sequence, index=0):
+        """Converts a given sequence into an object that can be used as an ast."""
+        # TODO: make sure that everything was validated before this is called
+        tree_for_rule = self.get_rule_tree(sequence, index)
+        kwargs = self.get_ast_objects_kwargs(tree_for_rule)
+        obj = self.ast_object_cls(**kwargs)
+        return self.prepare_object(tree_for_rule, obj)

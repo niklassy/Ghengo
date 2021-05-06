@@ -19,6 +19,11 @@ class Token(object):
         self.text: Optional[str] = text
         self.matched_keyword_full = self.get_full_matching_text(text)
 
+        if self.keyword_with_colon:
+            self.matched_keyword = self.matched_keyword_full.replace(':', '')
+        else:
+            self.matched_keyword = self.matched_keyword_full
+
     @classmethod
     def get_matching_keyword(cls, string: str):
         for keyword in cls.get_keywords():
@@ -156,6 +161,10 @@ class Tags(Token):
 
 
 class Comment(Token):
+    def __init__(self, text, line):
+        super().__init__(text, line)
+        self.text = self.text.replace('#', '', 1).lstrip()
+
     @classmethod
     def get_keywords(cls):
         return ['#']

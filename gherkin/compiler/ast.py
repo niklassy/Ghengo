@@ -6,6 +6,9 @@ class GherkinDocument(object):
     def set_feature(self, feature: 'Feature'):
         self.feature = feature
 
+    def add_comment(self, comment: 'Comment'):
+        self.comments.append(comment)
+
 
 class Language(object):
     # TODO: must not be optional
@@ -18,18 +21,26 @@ class Comment(object):
         self.text = text
 
 
+class Description(object):
+    def __init__(self, text):
+        self.text = text
+
+
 class Feature(object):
-    def __init__(self, language, keyword, name, description):
-        self.language = language
-        self.keyword = keyword
-        self.name = name
-        self.description = description
+    def __init__(self):
+        self.language = None
+        self.keyword = None
+        self.name = None
+        self.description = None
 
         self.tags = []
         self.scenario_definitions = []
 
     def add_scenario_definition(self):
         self.scenario_definitions.append(ScenarioDefinition(feature=self))
+
+    def add_tag(self, tag: 'Tag'):
+        self.tags.append(tag)
 
 
 class ScenarioDefinition(object):
@@ -60,4 +71,5 @@ class Examples(object):
 
 
 class Tag(object):
-    pass
+    def __init__(self, name):
+        self.name = name

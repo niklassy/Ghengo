@@ -1,6 +1,7 @@
 from gherkin.compiler.grammar import GherkinDocumentGrammar, DescriptionGrammar, LanguageGrammar
 from gherkin.compiler.rule import RuleToken
 from gherkin.document import GherkinDocument
+from gherkin.compiler.ast import Comment as ASTComment
 from gherkin.compiler.line import GherkinLine
 from gherkin.compiler.token import Feature, Rule, Description, EOF, Background, Scenario, Comment, Given, Then, \
     When, Empty, And, But, Tags, Language, EndOfLine, Token, ScenarioOutline, DocString, DataTable, Examples
@@ -116,11 +117,9 @@ class Parser(object):
 
     def parse(self, tokens: [Token]):
         self._tokens = tokens
-        self._validate()
+        return self._validate_and_create_ast()
 
-        return self._create_ast()
-
-    def _validate(self):
+    def _validate_and_create_ast(self):
         tokens = self.tokens
 
         # remove any empty or comment lines
@@ -135,19 +134,16 @@ class Parser(object):
             del tokens_trimmed[index]
 
         # get the rule for the whole document and add wrapper around the objects
-        # head_rule = GherkinDocumentGrammar.rule
         wrapped_tokens = [RuleToken(token=t) for t in tokens_trimmed]
         grammar = GherkinDocumentGrammar()
-        # grammar.validate_sequence(wrapped_tokens)
+        grammar.validate_sequence(wrapped_tokens)
         obj = grammar.convert_to_object(wrapped_tokens)
-        a = 1
-        # head_rule.validate_sequence(sequence=wrapped_tokens)
 
-        # LanguageGrammar().convert_to_object(wrapped_tokens)
+        comments = [token for token in tokens if isinstance(token, Comment)]
+        for c in comments:
+            obj.add_comment(ASTComment(c.text))
 
-    def _create_ast(self):
-        # gherkin_doc = GherkinDocument(lines=None)
-        return None
+        return obj
 
 
 class CodeGenerator(object):

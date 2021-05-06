@@ -50,6 +50,14 @@ Feature: asd
 """
 
 test = """
+Feature: asd
+
+    qweqwe
+    qwe
+    
+    # asasdda
+    
+    Scenario: asd
 """
 
 

@@ -1,7 +1,9 @@
 from gherkin.compiler.rule import Chain, OneOf, Repeatable, Optional, RuleAlias, Grammar, RuleToken
 from gherkin.compiler.token import Language, Feature, EOF, Description, Rule, Scenario, EndOfLine, Tag, \
     Given, And, But, When, Then, Background, DocString, DataTable, Examples, ScenarioOutline
-from gherkin.compiler.ast import GherkinDocument as ASTGherkinDocument, Language as ASTLanguage
+from gherkin.compiler.ast import GherkinDocument as ASTGherkinDocument, Language as ASTLanguage, \
+    Feature as ASTFeature, Description as ASTDescription, Tag as ASTTag
+from settings import Settings
 
 
 class DescriptionGrammar(Grammar):
@@ -10,6 +12,12 @@ class DescriptionGrammar(Grammar):
         criterion_rule_alias,
         RuleAlias(EndOfLine),
     ])
+    ast_object_cls = ASTDescription
+
+    def get_ast_objects_kwargs(self, rule_output):
+        return {
+            'text': rule_output[0].token.text,
+        }
 
 
 class DocStringGrammar(Grammar):
@@ -117,18 +125,28 @@ StepsGrammar = Chain([
 ])
 
 
-class TagGrammar(Grammar):
+class TagsGrammar(Grammar):
     criterion_rule_alias = RuleAlias(Tag)
     rule = Chain([
         Repeatable(criterion_rule_alias),
         RuleAlias(EndOfLine),
     ])
+    ast_object_cls = ASTTag
+
+    def convert_to_object(self, sequence, index=0):
+        tags = []
+        rule_tree = self.get_rule_tree(sequence, index)
+
+        for tag in rule_tree[0]:
+            tags.append(ASTTag(tag.token.text))
+
+        return tags
 
 
 class ScenarioOutlineGrammar(Grammar):
     criterion_rule_alias = RuleAlias(ScenarioOutline)
     rule = Chain([
-        Optional(TagGrammar()),
+        Optional(TagsGrammar()),
         criterion_rule_alias,
         OneOf([
             RuleAlias(EndOfLine),
@@ -142,7 +160,7 @@ class ScenarioOutlineGrammar(Grammar):
 class ScenarioGrammar(Grammar):
     criterion_rule_alias = RuleAlias(Scenario)
     rule = Chain([
-        Optional(TagGrammar()),
+        Optional(TagsGrammar()),
         criterion_rule_alias,
         OneOf([
             RuleAlias(EndOfLine),
@@ -173,12 +191,9 @@ class RuleTokenGrammar(Grammar):
 
 
 class FeatureGrammar(Grammar):
-    class FeaturePlaceholder(object):
-        pass
-
     criterion_rule_alias = RuleAlias(Feature)
     rule = Chain([
-        Optional(TagGrammar()),
+        Optional(TagsGrammar()),
         criterion_rule_alias,
         OneOf([
             RuleAlias(EndOfLine),
@@ -197,7 +212,30 @@ class FeatureGrammar(Grammar):
             ])),
         ]),
     ])
-    ast_object_cls = FeaturePlaceholder
+    ast_object_cls = ASTFeature
+
+    def prepare_object(self, rule_tree: [RuleToken], obj: ASTFeature):
+        obj.language = Settings.language
+
+        tags = rule_tree[0]
+        if tags and isinstance(tags, list):
+            for t in tags:
+                obj.add_tag(t)
+
+        # handle feature
+        obj.keyword = rule_tree[1].token.matched_keyword
+
+        # handle description
+        if isinstance(rule_tree[2], list):
+            descriptions = rule_tree[2]
+            obj.name = descriptions[0].text
+
+            if len(descriptions) > 1:
+                obj.description = ' '.join([d.text for d in descriptions[1:]])
+
+        # TODO: handle scenario definitions
+
+        return obj
 
 
 class LanguageGrammar(Grammar):
@@ -217,13 +255,12 @@ class GherkinDocumentGrammar(Grammar):
     ])
     criterion_rule_alias = None
     name = 'Gherkin document'
+    ast_object_cls = ASTGherkinDocument
 
-    def convert_to_object(self, sequence, index=0):
-        output = super().convert_to_object(sequence, index)
-        doc = ASTGherkinDocument()
+    def prepare_object(self, rule_tree, obj):
+        feature = rule_tree[1]
 
-        # check if there is a feature; if yes, add it
-        if output[1]:
-            doc.set_feature(output[0])
+        if feature:
+            obj.set_feature(feature)
 
-        return doc
+        return obj
