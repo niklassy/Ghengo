@@ -489,6 +489,7 @@ class Grammar(object):
         return self.criterion_rule_alias
 
     def used_by_sequence_area(self, sequence, start_index, end_index):
+        """Checks if this grammar is used in a given area in a sequence of RuleTokens."""
         criterion = self.get_grammar_criterion()
 
         if not criterion:
@@ -496,7 +497,7 @@ class Grammar(object):
 
         non_committed = sequence[start_index:end_index]
 
-        return self.get_grammar_criterion() in [t.rule_alias for t in non_committed]
+        return criterion in [t.rule_alias for t in non_committed]
 
     def _validate_sequence(self, sequence, index):
         """

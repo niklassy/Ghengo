@@ -2,7 +2,7 @@ from gherkin.compiler.rule import Chain, OneOf, Repeatable, Optional, RuleAlias,
 from gherkin.compiler.token import Language, Feature, EOF, Description, Rule, Scenario, EndOfLine, Tag, \
     Given, And, But, When, Then, Background, DocString, DataTable, Examples, ScenarioOutline
 from gherkin.compiler.ast import GherkinDocument as ASTGherkinDocument, Language as ASTLanguage, \
-    Feature as ASTFeature, Description as ASTDescription, Tag as ASTTag
+    Feature as ASTFeature, Description as ASTDescription, Tag as ASTTag, Background as ASTBackground
 from settings import Settings
 
 
@@ -118,11 +118,20 @@ class ThenGrammar(Grammar):
     ])
 
 
-StepsGrammar = Chain([
-    Repeatable(GivenGrammar(), minimum=0),
-    Repeatable(WhenGrammar(), minimum=0),
-    Repeatable(ThenGrammar(), minimum=0),
-])
+class StepsGrammar(Grammar):
+    rule = Chain([
+        Repeatable(GivenGrammar(), minimum=0),
+        Repeatable(WhenGrammar(), minimum=0),
+        Repeatable(ThenGrammar(), minimum=0),
+    ])
+    name = 'Steps'
+
+    def used_by_sequence_area(self, sequence, start_index, end_index):
+        given = GivenGrammar().used_by_sequence_area(sequence, start_index, end_index)
+        when = WhenGrammar().used_by_sequence_area(sequence, start_index, end_index)
+        then = ThenGrammar().used_by_sequence_area(sequence, start_index, end_index)
+
+        return given or when or then
 
 
 class TagsGrammar(Grammar):
@@ -152,7 +161,7 @@ class ScenarioOutlineGrammar(Grammar):
             RuleAlias(EndOfLine),
             Repeatable(DescriptionGrammar()),
         ]),
-        StepsGrammar,
+        StepsGrammar(),
         ExamplesGrammar(),
     ])
 
@@ -166,8 +175,42 @@ class ScenarioGrammar(Grammar):
             RuleAlias(EndOfLine),
             Repeatable(DescriptionGrammar()),
         ]),
-        StepsGrammar,
+        StepsGrammar(),
     ])
+
+
+class BackgroundGrammar(Grammar):
+    criterion_rule_alias = RuleAlias(Background)
+    rule = Chain([
+        RuleAlias(Background),
+        OneOf([
+            RuleAlias(EndOfLine),
+            Repeatable(DescriptionGrammar()),
+        ]),
+        Repeatable(GivenGrammar(), minimum=1),
+    ])
+    ast_object_cls = ASTBackground
+
+    def get_ast_objects_kwargs(self, rule_output):
+        output = {
+            'keyword': rule_output[0].token.matched_keyword,
+        }
+
+        if isinstance(rule_output[1], list):
+            descriptions = rule_output[1]
+            output['name'] = descriptions[0].text
+
+            if len(descriptions) > 1:
+                output['description'] = ' '.join([d.text for d in descriptions[1:]])
+        else:
+            output['name'] = None
+            output['description'] = None
+
+        return output
+
+    def prepare_object(self, rule_tree, obj):
+        # TODO: add steps
+        pass
 
 
 class RuleTokenGrammar(Grammar):
@@ -178,11 +221,7 @@ class RuleTokenGrammar(Grammar):
             RuleAlias(EndOfLine),
             Repeatable(DescriptionGrammar()),
         ]),
-        Optional(Chain([
-            RuleAlias(Background),
-            RuleAlias(EndOfLine),
-            StepsGrammar,
-        ])),
+        Optional(BackgroundGrammar()),
         Repeatable(OneOf([
             ScenarioGrammar(),
             ScenarioOutlineGrammar(),
@@ -199,12 +238,7 @@ class FeatureGrammar(Grammar):
             RuleAlias(EndOfLine),
             Repeatable(DescriptionGrammar()),
         ]),
-        Optional(Chain([
-            # TODO: Background grammar!
-            RuleAlias(Background),
-            RuleAlias(EndOfLine),
-            StepsGrammar,
-        ])),
+        Optional(BackgroundGrammar()),
         OneOf([
             Repeatable(RuleTokenGrammar()),
             Repeatable(OneOf([
