@@ -3,7 +3,8 @@ from gherkin.compiler.token import Language, Feature, EOF, Description, Rule, Sc
     Given, And, But, When, Then, Background, DocString, DataTable, Examples, ScenarioOutline
 from gherkin.compiler.ast import GherkinDocument as ASTGherkinDocument, Language as ASTLanguage, \
     Feature as ASTFeature, Description as ASTDescription, Tag as ASTTag, Background as ASTBackground, \
-    DocString as ASTDocString, DataTable as ASTDataTable, TableCell as ASTTableCell, TableRow as ASTTableRow
+    DocString as ASTDocString, DataTable as ASTDataTable, TableCell as ASTTableCell, TableRow as ASTTableRow, \
+    And as ASTAnd, But as ASTBut, When as ASTWhen, Given as ASTGiven, Then as ASTThen
 from settings import Settings
 
 
@@ -86,6 +87,13 @@ class AndGrammar(Grammar):
             DataTableGrammar(),
         ])),
     ])
+    ast_object_cls = ASTAnd
+
+    def get_ast_objects_kwargs(self, rule_output):
+        return {
+            'text': rule_output[1].token.text,
+            'keyword': rule_output[0].token.matched_keyword,
+        }
 
 
 class ButGrammar(Grammar):
@@ -198,6 +206,10 @@ class ScenarioOutlineGrammar(Grammar):
         StepsGrammar(),
         ExamplesGrammar(),
     ])
+
+    def prepare_object(self, rule_tree, obj):
+        # TODO: add examples content to arguments
+        return obj
 
 
 class ScenarioGrammar(Grammar):
