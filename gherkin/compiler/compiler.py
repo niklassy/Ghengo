@@ -136,8 +136,8 @@ class Parser(object):
         # get the rule for the whole document and add wrapper around the objects
         wrapped_tokens = [RuleToken(token=t) for t in tokens_trimmed]
         grammar = GherkinDocumentGrammar()
-        grammar.validate_sequence(wrapped_tokens)
-        obj = grammar.convert_to_object(wrapped_tokens)
+        # grammar.validate_sequence(wrapped_tokens)
+        obj = grammar.convert(wrapped_tokens)
 
         comments = [token for token in tokens if isinstance(token, Comment)]
         for c in comments:

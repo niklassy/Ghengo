@@ -142,7 +142,7 @@ class TagsGrammar(Grammar):
     ])
     ast_object_cls = ASTTag
 
-    def convert_to_object(self, sequence, index=0):
+    def sequence_to_object(self, sequence, index=0):
         tags = []
         rule_tree = self.get_rule_tree(sequence, index)
 
@@ -250,6 +250,7 @@ class FeatureGrammar(Grammar):
     ast_object_cls = ASTFeature
 
     def prepare_object(self, rule_tree: [RuleToken], obj: ASTFeature):
+        # language was already set previously
         obj.language = Settings.language
 
         tags = rule_tree[0]
@@ -295,6 +296,7 @@ class GherkinDocumentGrammar(Grammar):
     def prepare_object(self, rule_tree, obj):
         feature = rule_tree[1]
 
+        # set the feature if it exists
         if feature:
             obj.set_feature(feature)
 

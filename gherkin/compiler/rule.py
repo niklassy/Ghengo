@@ -100,7 +100,7 @@ class Rule(object):
             if not keywords:
                 message += '{} is invalid. {}'.format(rule_token.get_text(), rule_token.get_place_to_search())
             else:
-                message += 'Got {} instead. {}'.format(rule_token.get_text(), rule_token.get_place_to_search())
+                message += ' Got {} instead. {}'.format(rule_token.get_text(), rule_token.get_place_to_search())
 
         return message
 
@@ -157,9 +157,20 @@ class Rule(object):
 
         raise ValueError('This should not happen.')
 
-    def get_object(self, sequence, index=0):
-        """Returns a sequence until this rule is no longer valid"""
+    def sequence_to_object(self, sequence, index=0):
+        """
+        Defines how a sequence at a given index is transformed into an object.
+
+        This function may return a RuleToken, None, [RuleToken] or a custom object.
+        """
         raise NotImplementedError()
+
+    def convert(self, sequence):
+        """
+        Can be called to convert a given sequence to an object. The returned object depends on the Rule.
+        """
+        self.validate_sequence(sequence)
+        return self.sequence_to_object(sequence)
 
     def validate_sequence(self, sequence: ['RuleToken'], index=0):
         """
@@ -200,21 +211,28 @@ class Optional(Rule):
             # if not valid, continue at current index
             return index
 
-    def get_object(self, sequence, index=0):
+    def sequence_to_object(self, sequence, index=0):
+        """
+        Transforms an entry of a sequence at an index into an object. This will either return:
+            -> None if the requirement of the child is not met
+            -> a RuleToken if the child is a RuleAlias
+            -> Whatever the child has defined if the child is a Grammar or a Rule
+        """
+        self._validate_sequence(sequence, index)
+
+        # check if the child exists - if not return None
         try:
-            new_index = self._get_valid_index_for_child(self.child_rule, sequence, index)
+            self._get_valid_index_for_child(self.child_rule, sequence, index)
         except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded):
             return None
 
+        # if the child is a grammar, let it resolve
         if isinstance(self.child_rule, Grammar):
-            return self.child_rule.convert_to_object(sequence, index)
+            return self.child_rule.sequence_to_object(sequence, index)
 
+        # if the child is a Rule, let it resolve
         if isinstance(self.child_rule, Rule):
-            return self.child_rule.get_object(sequence, index)
-
-        # if the input was not valid, this found nothing
-        if index == new_index:
-            return None
+            return self.child_rule.sequence_to_object(sequence, index)
 
         # else it returns the RuleToken that was found
         return sequence[index]
@@ -232,20 +250,31 @@ class OneOf(Rule):
         if not isinstance(child, list):
             raise ValueError('You must use a list for OneOf')
 
-    def get_object(self, sequence, index=0):
+    def sequence_to_object(self, sequence, index=0):
+        """
+        Returns an object for an entry in a sequence at a given index. This will return:
+            -> the first child that is valid will return its value
+                -> RuleAlias: the current RuleToken
+                -> Grammar or Rule: get its value instead.
+        """
+        self._validate_sequence(sequence, index)
+
         for child in self.child_rule:
             try:
+                # TODO: does this really work if children are of type RuleAlias??
                 self._get_valid_index_for_child(child, sequence, index)
             except (RuleNotFulfilled, SequenceEnded, GrammarNotUsed):
                 continue
 
             if isinstance(child, Rule):
-                return child.get_object(sequence, index)
+                return child.sequence_to_object(sequence, index)
 
             if isinstance(child, Grammar):
-                return child.convert_to_object(sequence, index)
+                return child.sequence_to_object(sequence, index)
 
-        return sequence[index]
+            return sequence[index]
+
+        assert False, 'This should not happen because it was validated beforehand - there should be one valid entry.'
 
     def _validate_init_child(self, child):
         super()._validate_init_child(child)
@@ -305,23 +334,27 @@ class Repeatable(Rule):
 
         return index
 
-    def get_object(self, sequence, index=0):
+    def sequence_to_object(self, sequence, index=0):
+        """
+        Returns a list of entries for a given sequence at a special index. This will return a list of whatever
+        the child will return. If no valid entry was found it will simply return an empty list.
+        """
         output = []
-        initial_index = index
+        self._validate_sequence(sequence, index)
 
         while True:
             try:
                 next_round_index = self._get_valid_index_for_child(self.child_rule, sequence, index)
 
                 if isinstance(self.child_rule, Grammar):
-                    output.append(self.child_rule.convert_to_object(sequence, index))
+                    # noinspection PyProtectedMember
+                    output.append(self.child_rule.sequence_to_object(sequence, index))
                     index = next_round_index
                     continue
 
                 if isinstance(self.child_rule, Rule):
-                    to_add = self.child_rule.get_object(sequence, index)
+                    output.append(self.child_rule.sequence_to_object(sequence, index))
                     index = next_round_index
-                    output.append(to_add)
                     continue
 
                 output += sequence[index:next_round_index]
@@ -343,8 +376,16 @@ class Chain(Rule):
         if not isinstance(child, list):
             raise ValueError('You must use a list for a Chain')
 
-    def get_object(self, sequence, index=0):
+    def sequence_to_object(self, sequence, index=0):
+        """
+        Returns a list of objects that represent an area at a starting index of a given sequence. The list will
+        contain entries where each entry of the list is determined by the child.
+            -> If a child is a rule, look at its implementation of `sequence_to_object`
+            -> If a child is a grammar, look at its implementation of `sequence_to_object`
+            -> If a child is RuleAlias, the entry will be the current RuleToken at the given index
+        """
         output = []
+        self._validate_sequence(sequence, index)
 
         for child in self.child_rule:
             # get the index where we will end
@@ -354,12 +395,12 @@ class Chain(Rule):
                 continue
 
             if isinstance(child, Grammar):
-                output.append(child.convert_to_object(sequence, index))
+                output.append(child.sequence_to_object(sequence, index))
                 index = next_round_index
                 continue
 
             if isinstance(child, Rule):
-                to_add = child.get_object(sequence, index)
+                to_add = child.sequence_to_object(sequence, index)
                 index = next_round_index
                 output.append(to_add)
                 continue
@@ -550,20 +591,28 @@ class Grammar(object):
 
     def get_rule_tree(self, sequence, index):
         """Returns the tree that is returned by self.rule"""
-        return self.rule.get_object(sequence, index)
+        return self.rule.sequence_to_object(sequence, index)
 
     def get_tree_object(self, sequence, index):
         """Returns an object of the ast_object_cls"""
         return self.ast_object_cls(**self.get_ast_objects_kwargs(self.get_rule_tree(sequence, index)))
 
     def prepare_object(self, rule_tree, obj):
-        """Can be used to modify the object before it is returned by `convert_to_object`."""
+        """Can be used to modify the object before it is returned by `convert`."""
         return obj
 
-    def convert_to_object(self, sequence, index=0):
-        """Converts a given sequence into an object that can be used as an ast."""
-        # TODO: make sure that everything was validated before this is called
+    def sequence_to_object(self, sequence, index=0):
+        """
+        Returns an object that represents this grammar. By default it will create an instance of `ast_object_cls`,
+        add kwargs and return it. The object can be used by the caller of this function.
+        """
         tree_for_rule = self.get_rule_tree(sequence, index)
         kwargs = self.get_ast_objects_kwargs(tree_for_rule)
         obj = self.ast_object_cls(**kwargs)
         return self.prepare_object(tree_for_rule, obj)
+
+    def convert(self, sequence):
+        """Converts a given sequence into an object that can be used as an ast."""
+        self.validate_sequence(sequence)
+
+        return self.sequence_to_object(sequence, 0)

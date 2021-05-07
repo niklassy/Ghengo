@@ -44,11 +44,10 @@ class Feature(object):
 
 
 class ScenarioDefinition(object):
-    def __init__(self, keyword, name, description, feature):
+    def __init__(self, keyword, name, description):
         self.keyword = keyword
         self.name = name
         self.description = description
-        self.feature = feature
 
 
 class Background(ScenarioDefinition):
@@ -73,3 +72,6 @@ class Examples(object):
 class Tag(object):
     def __init__(self, name):
         self.name = name
+
+    def __repr__(self):
+        return 'Tag: {}'.format(self.name)
