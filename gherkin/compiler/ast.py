@@ -37,7 +37,7 @@ class Feature(object):
         self.scenario_definitions = []
 
     def add_scenario_definition(self):
-        self.scenario_definitions.append(ScenarioDefinition(feature=self))
+        self.scenario_definitions.append(ScenarioDefinition())
 
     def add_tag(self, tag: 'Tag'):
         self.tags.append(tag)
@@ -60,6 +60,30 @@ class ScenarioOutline(ScenarioDefinition):
 
 class Scenario(ScenarioDefinition):
     pass
+
+
+class DocString(object):
+    def __init__(self, text):
+        self.text = text
+
+
+class TableCell(object):
+    def __init__(self, value):
+        self.value = value
+
+
+class TableRow(object):
+    def __init__(self, cells=None):
+        self.cells: [TableCell] = cells if cells is not None else []
+
+    def get_value_at(self, index):
+        return self.cells[index].value
+
+
+class DataTable(object):
+    def __init__(self, header, rows=None):
+        self.header = header
+        self.rows = rows if rows is not None else []
 
 
 class Examples(object):

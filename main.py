@@ -17,6 +17,7 @@ Feature: Ich bin etwas
             Given qwe
                 ```
                 Hier ist ein DocString
+                Der auch etwas länger ist
                 ```
             And qweqwe
             When qwe

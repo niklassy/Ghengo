@@ -2,7 +2,8 @@ from gherkin.compiler.rule import Chain, OneOf, Repeatable, Optional, RuleAlias,
 from gherkin.compiler.token import Language, Feature, EOF, Description, Rule, Scenario, EndOfLine, Tag, \
     Given, And, But, When, Then, Background, DocString, DataTable, Examples, ScenarioOutline
 from gherkin.compiler.ast import GherkinDocument as ASTGherkinDocument, Language as ASTLanguage, \
-    Feature as ASTFeature, Description as ASTDescription, Tag as ASTTag, Background as ASTBackground
+    Feature as ASTFeature, Description as ASTDescription, Tag as ASTTag, Background as ASTBackground, \
+    DocString as ASTDocString, DataTable as ASTDataTable, TableCell as ASTTableCell, TableRow as ASTTableRow
 from settings import Settings
 
 
@@ -29,6 +30,17 @@ class DocStringGrammar(Grammar):
         RuleAlias(DocString),
         RuleAlias(EndOfLine),
     ])
+    ast_object_cls = ASTDocString
+
+    def get_ast_objects_kwargs(self, rule_output):
+        descriptions = rule_output[2]
+
+        if len(descriptions) > 0:
+            text = ' '.join([d.text for d in descriptions])
+        else:
+            text = ''
+
+        return {'text': text}
 
 
 class DataTableGrammar(Grammar):
@@ -39,6 +51,28 @@ class DataTableGrammar(Grammar):
             RuleAlias(EndOfLine),
         ]), minimum=2),
     ])
+    ast_object_cls = ASTDataTable
+
+    @classmethod
+    def get_values_of_datatable(cls, entry):
+        header_entry = entry[0]     # <- second entry is always the end of line, so take the first
+        return [v.lstrip().rstrip() for v in header_entry.token.text.split('|') if v.lstrip().rstrip()]
+
+    def get_ast_objects_kwargs(self, rule_output):
+        datatable_entries = rule_output[0]
+        header_row = datatable_entries[0]
+        header_values = self.get_values_of_datatable(header_row)
+        header = ASTTableRow(cells=[ASTTableCell(value=v) for v in header_values])
+
+        rows = []
+        for row in datatable_entries[1:]:
+            row_values = self.get_values_of_datatable(row)
+            rows.append(ASTTableRow(cells=[ASTTableCell(value=v) for v in row_values]))
+
+        return {
+            'header': header,
+            'rows': rows,
+        }
 
 
 class AndGrammar(Grammar):
