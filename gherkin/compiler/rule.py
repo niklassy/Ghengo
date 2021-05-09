@@ -597,7 +597,7 @@ class Grammar(object):
         """Returns an object of the ast_object_cls"""
         return self.ast_object_cls(**self.get_ast_objects_kwargs(self.get_rule_tree(sequence, index)))
 
-    def prepare_object(self, rule_tree, obj):
+    def prepare_object(self, rule_output, obj):
         """Can be used to modify the object before it is returned by `convert`."""
         return obj
 

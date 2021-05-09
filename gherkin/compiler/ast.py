@@ -51,6 +51,21 @@ class ScenarioDefinition(object):
         self.keyword = keyword
         self.name = name
         self.description = description
+        self._steps = []
+
+    @property
+    def steps(self):
+        steps = []
+        for step in self._steps:
+            steps.append(step)
+
+            for sub_step in step.sub_steps:
+                steps.append(sub_step)
+
+        return steps
+
+    def add_step(self, step):
+        self._steps.append(step)
 
 
 class Background(ScenarioDefinition):
@@ -111,10 +126,11 @@ class DataTable(StepArgument):
 
 
 class Examples(object):
-    def __init__(self, keyword, name, description):
+    def __init__(self, keyword, name, description, datatable):
         self.keyword = keyword
         self.name = name
         self.description = description
+        self.datatable = datatable
 
 
 class Tag(object):
@@ -156,22 +172,45 @@ class Step(object):
 
         return output
 
+    def __repr__(self):
+        return '{} - {}{}'.format(self.__class__.__name__.upper(), self.keyword, self.text)
 
-class Given(Step):
+
+class ParentStep(Step):
+    def __init__(self, keyword, text):
+        super().__init__(keyword, text)
+        self._sub_steps = []
+
+    @property
+    def sub_steps(self):
+        return self._sub_steps
+
+    def add_sub_step(self, step):
+        self._sub_steps.append(step)
+        step.parent = self
+
+
+class SubStep(Step):
+    def __init__(self, keyword, text):
+        super().__init__(keyword, text)
+        self.parent = None
+
+
+class Given(ParentStep):
     type = 'GIVEN'
 
 
-class When(Step):
+class When(ParentStep):
     type = 'WHEN'
 
 
-class Then(Step):
+class Then(ParentStep):
     type = 'THEN'
 
 
-class And(Step):
+class And(SubStep):
     type = 'AND'
 
 
-class But(Step):
+class But(SubStep):
     type = 'BUT'

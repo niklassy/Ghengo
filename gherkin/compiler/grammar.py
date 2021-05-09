@@ -107,18 +107,70 @@ class ButGrammar(Grammar):
             DataTableGrammar(),
         ])),
     ])
+    ast_object_cls = ASTBut
+
+    def get_ast_objects_kwargs(self, rule_output):
+        return {
+            'text': rule_output[1].token.text,
+            'keyword': rule_output[0].token.matched_keyword,
+        }
 
 
 class ExamplesGrammar(Grammar):
     criterion_rule_alias = RuleAlias(Examples)
     rule = Chain([
         criterion_rule_alias,
-        RuleAlias(EndOfLine),
+        OneOf([
+            RuleAlias(EndOfLine),
+            Repeatable(DescriptionGrammar()),
+        ]),
         DataTableGrammar(),
     ])
 
+    def get_ast_objects_kwargs(self, rule_output):
+        descriptions = rule_output[1]
 
-class GivenGrammar(Grammar):
+        if isinstance(descriptions, list):
+            name = descriptions[0][0].text
+
+            if len(descriptions) > 1:
+                description = ' '.join(d.text for d in descriptions[1:])
+            else:
+                description = None
+        else:
+            name = None
+            description = None
+
+        return {
+            'keyword': rule_output[0].token.matched_keyword,
+            'name': name,
+            'description': description,
+            'datatable': rule_output[2]
+        }
+
+
+class GivenWhenThenBase(Grammar):
+    def get_ast_objects_kwargs(self, rule_output):
+        return {
+            'keyword': rule_output[0].token.matched_keyword,
+            'text': rule_output[1].token.text,
+        }
+
+    def prepare_object(self, rule_output, obj):
+        # add any step arguments
+        step_argument = rule_output[3]
+        if step_argument:
+            obj.add_argument(step_argument)
+
+        # add sub steps like BUT and AND
+        sub_steps = rule_output[4]
+        for step in sub_steps:
+            obj.add_sub_step(step)
+
+        return obj
+
+
+class GivenGrammar(GivenWhenThenBase):
     criterion_rule_alias = RuleAlias(Given)
     rule = Chain([
         criterion_rule_alias,
@@ -130,9 +182,10 @@ class GivenGrammar(Grammar):
         ])),
         Repeatable(OneOf([AndGrammar(), ButGrammar()]), minimum=0),
     ])
+    ast_object_cls = ASTGiven
 
 
-class WhenGrammar(Grammar):
+class WhenGrammar(GivenWhenThenBase):
     criterion_rule_alias = RuleAlias(When)
     rule = Chain([
         criterion_rule_alias,
@@ -144,9 +197,10 @@ class WhenGrammar(Grammar):
         ])),
         Repeatable(OneOf([AndGrammar(), ButGrammar()]), minimum=0),
     ])
+    ast_object_cls = ASTWhen
 
 
-class ThenGrammar(Grammar):
+class ThenGrammar(GivenWhenThenBase):
     criterion_rule_alias = RuleAlias(Then)
     rule = Chain([
         criterion_rule_alias,
@@ -158,6 +212,7 @@ class ThenGrammar(Grammar):
         ])),
         Repeatable(OneOf([AndGrammar(), ButGrammar()]), minimum=0),
     ])
+    ast_object_cls = ASTThen
 
 
 class StepsGrammar(Grammar):
@@ -207,7 +262,7 @@ class ScenarioOutlineGrammar(Grammar):
         ExamplesGrammar(),
     ])
 
-    def prepare_object(self, rule_tree, obj):
+    def prepare_object(self, rule_output, obj):
         # TODO: add examples content to arguments
         return obj
 
@@ -254,7 +309,7 @@ class BackgroundGrammar(Grammar):
 
         return output
 
-    def prepare_object(self, rule_tree, obj):
+    def prepare_object(self, rule_output, obj):
         # TODO: add steps
         pass
 
@@ -295,21 +350,21 @@ class FeatureGrammar(Grammar):
     ])
     ast_object_cls = ASTFeature
 
-    def prepare_object(self, rule_tree: [RuleToken], obj: ASTFeature):
+    def prepare_object(self, rule_output: [RuleToken], obj: ASTFeature):
         # language was already set previously
         obj.language = Settings.language
 
-        tags = rule_tree[0]
+        tags = rule_output[0]
         if tags and isinstance(tags, list):
             for t in tags:
                 obj.add_tag(t)
 
         # handle feature
-        obj.keyword = rule_tree[1].token.matched_keyword
+        obj.keyword = rule_output[1].token.matched_keyword
 
         # handle description
-        if isinstance(rule_tree[2], list):
-            descriptions = rule_tree[2]
+        if isinstance(rule_output[2], list):
+            descriptions = rule_output[2]
             obj.name = descriptions[0].text
 
             if len(descriptions) > 1:
@@ -339,8 +394,8 @@ class GherkinDocumentGrammar(Grammar):
     name = 'Gherkin document'
     ast_object_cls = ASTGherkinDocument
 
-    def prepare_object(self, rule_tree, obj):
-        feature = rule_tree[1]
+    def prepare_object(self, rule_output, obj):
+        feature = rule_output[1]
 
         # set the feature if it exists
         if feature:
