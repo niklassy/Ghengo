@@ -1,6 +1,6 @@
 from gherkin.compiler.grammar import GherkinDocumentGrammar
 from gherkin.compiler.base.rule import RuleToken
-from gherkin.compiler.ast import Comment as ASTComment
+from gherkin.ast import Comment as ASTComment
 from gherkin.compiler.line import GherkinLine
 from gherkin.compiler.token import Feature, Rule, Description, EOF, Background, Scenario, Comment, Given, Then, \
     When, Empty, And, But, Tags, Language, EndOfLine, Token, ScenarioOutline, DocString, DataTable, Examples

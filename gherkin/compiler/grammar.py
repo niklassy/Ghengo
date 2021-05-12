@@ -1,7 +1,7 @@
 from gherkin.compiler.base.rule import Chain, OneOf, Repeatable, Optional, RuleAlias, Grammar, RuleToken
 from gherkin.compiler.token import Language, Feature, EOF, Description, Rule, Scenario, EndOfLine, Tag, \
     Given, And, But, When, Then, Background, DocString, DataTable, Examples, ScenarioOutline
-from gherkin.compiler.ast import GherkinDocument as ASTGherkinDocument, Language as ASTLanguage, \
+from gherkin.ast import GherkinDocument as ASTGherkinDocument, Language as ASTLanguage, \
     Feature as ASTFeature, Description as ASTDescription, Tag as ASTTag, Background as ASTBackground, \
     DocString as ASTDocString, DataTable as ASTDataTable, TableCell as ASTTableCell, TableRow as ASTTableRow, \
     And as ASTAnd, But as ASTBut, When as ASTWhen, Given as ASTGiven, Then as ASTThen, \
