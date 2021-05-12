@@ -4,8 +4,24 @@ from gherkin.compiler.token import Language, Feature, EOF, Description, Rule, Sc
 from gherkin.compiler.ast import GherkinDocument as ASTGherkinDocument, Language as ASTLanguage, \
     Feature as ASTFeature, Description as ASTDescription, Tag as ASTTag, Background as ASTBackground, \
     DocString as ASTDocString, DataTable as ASTDataTable, TableCell as ASTTableCell, TableRow as ASTTableRow, \
-    And as ASTAnd, But as ASTBut, When as ASTWhen, Given as ASTGiven, Then as ASTThen
+    And as ASTAnd, But as ASTBut, When as ASTWhen, Given as ASTGiven, Then as ASTThen, \
+    ScenarioOutline as ASTScenarioOutline, Rule as ASTRule, Scenario as ASTScenario
 from settings import Settings
+
+
+def get_name_and_description(descriptions):
+    if isinstance(descriptions, list):
+        name = descriptions[0].text
+
+        if len(descriptions) > 1:
+            description = ' '.join(d.text for d in descriptions[1:])
+        else:
+            description = None
+    else:
+        name = None
+        description = None
+
+    return name, description
 
 
 class DescriptionGrammar(Grammar):
@@ -20,6 +36,24 @@ class DescriptionGrammar(Grammar):
         return {
             'text': rule_output[0].token.text,
         }
+
+
+class TagsGrammar(Grammar):
+    criterion_rule_alias = RuleAlias(Tag)
+    rule = Chain([
+        Repeatable(criterion_rule_alias),
+        RuleAlias(EndOfLine),
+    ])
+    ast_object_cls = ASTTag
+
+    def sequence_to_object(self, sequence, index=0):
+        tags = []
+        rule_tree = self.get_rule_tree(sequence, index)
+
+        for tag in rule_tree[0]:
+            tags.append(ASTTag(tag.token.text))
+
+        return tags
 
 
 class DocStringGrammar(Grammar):
@@ -76,17 +110,21 @@ class DataTableGrammar(Grammar):
         }
 
 
-class AndGrammar(Grammar):
+class AndButGrammarBase(Grammar):
+    def get_rule(self):
+        return Chain([
+            self.criterion_rule_alias,
+            RuleAlias(Description),
+            RuleAlias(EndOfLine),
+            Optional(OneOf([
+                DocStringGrammar(),
+                DataTableGrammar(),
+            ])),
+        ])
+
+
+class AndGrammar(AndButGrammarBase):
     criterion_rule_alias = RuleAlias(And)
-    rule = Chain([
-        criterion_rule_alias,
-        RuleAlias(Description),
-        RuleAlias(EndOfLine),
-        Optional(OneOf([
-            DocStringGrammar(),
-            DataTableGrammar(),
-        ])),
-    ])
     ast_object_cls = ASTAnd
 
     def get_ast_objects_kwargs(self, rule_output):
@@ -96,17 +134,8 @@ class AndGrammar(Grammar):
         }
 
 
-class ButGrammar(Grammar):
+class ButGrammar(AndButGrammarBase):
     criterion_rule_alias = RuleAlias(But)
-    rule = Chain([
-        criterion_rule_alias,
-        RuleAlias(Description),
-        RuleAlias(EndOfLine),
-        Optional(OneOf([
-            DocStringGrammar(),
-            DataTableGrammar(),
-        ])),
-    ])
     ast_object_cls = ASTBut
 
     def get_ast_objects_kwargs(self, rule_output):
@@ -116,9 +145,22 @@ class ButGrammar(Grammar):
         }
 
 
-class ExamplesGrammar(Grammar):
+class TagsGrammarMixin(object):
+    def prepare_object(self, rule_output, obj):
+        obj = super().prepare_object(rule_output, obj)
+
+        tags = rule_output[0]
+        if tags and isinstance(tags, list):
+            for tag in tags:
+                obj.add_tag(tag)
+
+        return obj
+
+
+class ExamplesGrammar(TagsGrammarMixin, Grammar):
     criterion_rule_alias = RuleAlias(Examples)
     rule = Chain([
+        Optional(TagsGrammar()),
         criterion_rule_alias,
         OneOf([
             RuleAlias(EndOfLine),
@@ -128,24 +170,13 @@ class ExamplesGrammar(Grammar):
     ])
 
     def get_ast_objects_kwargs(self, rule_output):
-        descriptions = rule_output[1]
-
-        if isinstance(descriptions, list):
-            name = descriptions[0][0].text
-
-            if len(descriptions) > 1:
-                description = ' '.join(d.text for d in descriptions[1:])
-            else:
-                description = None
-        else:
-            name = None
-            description = None
+        name, description = get_name_and_description(rule_output[2])
 
         return {
-            'keyword': rule_output[0].token.matched_keyword,
+            'keyword': rule_output[1].token.matched_keyword,
             'name': name,
             'description': description,
-            'datatable': rule_output[2]
+            'datatable': rule_output[3]
         }
 
 
@@ -230,26 +261,40 @@ class StepsGrammar(Grammar):
 
         return given or when or then
 
-
-class TagsGrammar(Grammar):
-    criterion_rule_alias = RuleAlias(Tag)
-    rule = Chain([
-        Repeatable(criterion_rule_alias),
-        RuleAlias(EndOfLine),
-    ])
-    ast_object_cls = ASTTag
-
     def sequence_to_object(self, sequence, index=0):
-        tags = []
-        rule_tree = self.get_rule_tree(sequence, index)
+        output = []
 
-        for tag in rule_tree[0]:
-            tags.append(ASTTag(tag.token.text))
+        for step_list in self.get_rule_tree(sequence, index):
+            for step in step_list:
+                output.append(step)
 
-        return tags
+        return output
 
 
-class ScenarioOutlineGrammar(Grammar):
+class ScenarioDefinitionGrammar(Grammar):
+    description_index = 2
+    steps_index = 3
+
+    def get_ast_objects_kwargs(self, rule_output):
+        name, description = get_name_and_description(rule_output[self.description_index])
+
+        return {
+            'description': description,
+            'keyword': rule_output[1].token.matched_keyword,
+            'name': name,
+        }
+
+    def prepare_object(self, rule_output, obj):
+        steps = rule_output[self.steps_index]
+
+        # add each step to the definition
+        for step in steps:
+            obj.add_step(step)
+
+        return obj
+
+
+class ScenarioOutlineGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
     criterion_rule_alias = RuleAlias(ScenarioOutline)
     rule = Chain([
         Optional(TagsGrammar()),
@@ -259,15 +304,28 @@ class ScenarioOutlineGrammar(Grammar):
             Repeatable(DescriptionGrammar()),
         ]),
         StepsGrammar(),
-        ExamplesGrammar(),
+        Repeatable(ExamplesGrammar()),
     ])
+    ast_object_cls = ASTScenarioOutline
 
     def prepare_object(self, rule_output, obj):
-        # TODO: add examples content to arguments
+        """In addition to the steps, we need to add the argument of the Examples here."""
+        obj = super().prepare_object(rule_output, obj)
+        examples = rule_output[4]
+
+        for example in examples:
+            example.parent = obj
+
+        # TODO: add the arguments as inteded!!
+        # This does not work as wished since it is possible to add multiple Examples
+        for step in rule_output[self.steps_index]:
+            pass
+            # step.add_argument(examples.datatable)
+
         return obj
 
 
-class ScenarioGrammar(Grammar):
+class ScenarioGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
     criterion_rule_alias = RuleAlias(Scenario)
     rule = Chain([
         Optional(TagsGrammar()),
@@ -278,12 +336,15 @@ class ScenarioGrammar(Grammar):
         ]),
         StepsGrammar(),
     ])
+    ast_object_cls = ASTScenario
 
 
-class BackgroundGrammar(Grammar):
+class BackgroundGrammar(ScenarioDefinitionGrammar):
+    description_index = 1
+    steps_index = 2
     criterion_rule_alias = RuleAlias(Background)
     rule = Chain([
-        RuleAlias(Background),
+        criterion_rule_alias,
         OneOf([
             RuleAlias(EndOfLine),
             Repeatable(DescriptionGrammar()),
@@ -292,31 +353,11 @@ class BackgroundGrammar(Grammar):
     ])
     ast_object_cls = ASTBackground
 
-    def get_ast_objects_kwargs(self, rule_output):
-        output = {
-            'keyword': rule_output[0].token.matched_keyword,
-        }
 
-        if isinstance(rule_output[1], list):
-            descriptions = rule_output[1]
-            output['name'] = descriptions[0].text
-
-            if len(descriptions) > 1:
-                output['description'] = ' '.join([d.text for d in descriptions[1:]])
-        else:
-            output['name'] = None
-            output['description'] = None
-
-        return output
-
-    def prepare_object(self, rule_output, obj):
-        # TODO: add steps
-        pass
-
-
-class RuleTokenGrammar(Grammar):
+class RuleTokenGrammar(TagsGrammarMixin, Grammar):
     criterion_rule_alias = RuleAlias(Rule)
     rule = Chain([
+        Optional(TagsGrammar()),    # support was added some time ago (https://github.com/cucumber/common/pull/1356)
         criterion_rule_alias,
         OneOf([
             RuleAlias(EndOfLine),
@@ -328,9 +369,31 @@ class RuleTokenGrammar(Grammar):
             ScenarioOutlineGrammar(),
         ]))
     ])
+    ast_object_cls = ASTRule
+
+    def get_ast_objects_kwargs(self, rule_output):
+        name, description = get_name_and_description(rule_output[2])
+
+        return {
+            'description': description,
+            'keyword': rule_output[1].token.matched_keyword,
+            'name': name,
+            'background': rule_output[3],
+        }
+
+    def prepare_object(self, rule_output, obj):
+        # set tags
+        obj = super().prepare_object(rule_output, obj)
+
+        # set all the children/ scenario definitions
+        for sr in rule_output[4]:
+            sr.parent = obj
+            obj.add_child(sr)
+
+        return obj
 
 
-class FeatureGrammar(Grammar):
+class FeatureGrammar(TagsGrammarMixin, Grammar):
     criterion_rule_alias = RuleAlias(Feature)
     rule = Chain([
         Optional(TagsGrammar()),
@@ -350,27 +413,24 @@ class FeatureGrammar(Grammar):
     ])
     ast_object_cls = ASTFeature
 
+    def get_ast_objects_kwargs(self, rule_output):
+        name, description = get_name_and_description(rule_output[2])
+
+        return {
+            'description': description,
+            'keyword': rule_output[1].token.matched_keyword,
+            'name': name,
+            'language': Settings.language,
+            'background': rule_output[3],
+        }
+
     def prepare_object(self, rule_output: [RuleToken], obj: ASTFeature):
-        # language was already set previously
-        obj.language = Settings.language
+        scenario_rules = rule_output[4]
 
-        tags = rule_output[0]
-        if tags and isinstance(tags, list):
-            for t in tags:
-                obj.add_tag(t)
-
-        # handle feature
-        obj.keyword = rule_output[1].token.matched_keyword
-
-        # handle description
-        if isinstance(rule_output[2], list):
-            descriptions = rule_output[2]
-            obj.name = descriptions[0].text
-
-            if len(descriptions) > 1:
-                obj.description = ' '.join([d.text for d in descriptions[1:]])
-
-        # TODO: handle scenario definitions
+        # add all the rules/ scenario definitions
+        for sr in scenario_rules:
+            sr.parent = obj
+            obj.add_child(sr)
 
         return obj
 

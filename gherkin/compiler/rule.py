@@ -506,16 +506,19 @@ class Grammar(object):
     ast_object_cls = GrammarPlaceholder
 
     def __init__(self):
-        if self.rule is None:
+        if self.get_rule() is None:
             raise ValueError('You must provide a rule')
 
-        if not isinstance(self.rule, Chain):
+        if not isinstance(self.get_rule(), Chain):
             raise ValueError('You must only use Chain on Grammar objects as its rule.')
 
         if self.criterion_rule_alias is not None and not isinstance(self.criterion_rule_alias, RuleAlias):
             raise ValueError('You must either use None or a RuleAlias instance for criterion_rule_alias.')
 
         self.validated_sequence = None
+
+    def get_rule(self):
+        return self.rule
 
     def get_name(self):
         """
@@ -554,7 +557,7 @@ class Grammar(object):
         """
         try:
             # noinspection PyProtectedMember
-            return self.rule._validate_sequence(sequence, index)
+            return self.get_rule()._validate_sequence(sequence, index)
         except (RuleNotFulfilled, SequenceEnded) as e:
             if not self.used_by_sequence_area(sequence, index, e.sequence_index):
                 raise GrammarNotUsed(
@@ -590,8 +593,8 @@ class Grammar(object):
         return {}
 
     def get_rule_tree(self, sequence, index):
-        """Returns the tree that is returned by self.rule"""
-        return self.rule.sequence_to_object(sequence, index)
+        """Returns the tree that is returned by self.get_rule"""
+        return self.get_rule().sequence_to_object(sequence, index)
 
     def get_tree_object(self, sequence, index):
         """Returns an object of the ast_object_cls"""

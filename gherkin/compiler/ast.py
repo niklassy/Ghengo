@@ -13,6 +13,38 @@ class GherkinDocument(object):
         self.comments.append(comment)
 
 
+class HasBackgroundMixin(object):
+    def __init__(self, background=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.background: 'Background' = background
+
+    @property
+    def steps(self):
+        return self.background.steps
+
+
+class HasTagsMixin(object):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._tags = []
+        self.parent = None
+
+    @property
+    def tags(self):
+        """Returns all the tags of this object AND of its parents since Gherkin uses inheritance for tags."""
+        tags = self._tags.copy()
+
+        if self.parent:
+            parent_tags = getattr(self.parent, 'tags', None)
+            if parent_tags:
+                tags += parent_tags.copy()
+
+        return tags
+
+    def add_tag(self, tag):
+        self._tags.append(tag)
+
+
 class Language(object):
     # TODO: must not be optional
     def __init__(self, language=None):
@@ -29,21 +61,21 @@ class Description(object):
         self.text = text
 
 
-class Feature(object):
-    def __init__(self):
-        self.language = None
-        self.keyword = None
-        self.name = None
-        self.description = None
+class Feature(HasBackgroundMixin, HasTagsMixin):
+    def __init__(self, language, keyword, name, description, background=None):
+        super().__init__(background=background)
+        self.language = language
+        self.keyword = keyword
+        self.name = name
+        self.description = description
+        self._children = []
 
-        self.tags = []
-        self.scenario_definitions = []
+    @property
+    def children(self):
+        return self._children
 
-    def add_scenario_definition(self):
-        self.scenario_definitions.append(ScenarioDefinition())
-
-    def add_tag(self, tag: 'Tag'):
-        self.tags.append(tag)
+    def add_child(self, child):
+        self._children.append(child)
 
 
 class ScenarioDefinition(object):
@@ -52,11 +84,20 @@ class ScenarioDefinition(object):
         self.name = name
         self.description = description
         self._steps = []
+        self.parent = None
 
     @property
     def steps(self):
         steps = []
-        for step in self._steps:
+
+        # get parent steps (e.g. if the parent has a background)
+        if self.parent:
+            parent_steps = getattr(self.parent, 'steps', None)
+            if parent_steps:
+                steps += parent_steps.copy()
+
+        # add own steps
+        for step in self._steps.copy():
             steps.append(step)
 
             for sub_step in step.sub_steps:
@@ -68,15 +109,21 @@ class ScenarioDefinition(object):
         self._steps.append(step)
 
 
+class ScenarioImplementation(HasTagsMixin, ScenarioDefinition):
+    def __init__(self, keyword, name, description, background=None):
+        super().__init__(keyword, name, description)
+        self.background = background
+
+
 class Background(ScenarioDefinition):
     pass
 
 
-class ScenarioOutline(ScenarioDefinition):
+class ScenarioOutline(ScenarioImplementation):
     pass
 
 
-class Scenario(ScenarioDefinition):
+class Scenario(ScenarioImplementation):
     pass
 
 
@@ -125,8 +172,9 @@ class DataTable(StepArgument):
         return output
 
 
-class Examples(object):
+class Examples(HasTagsMixin):
     def __init__(self, keyword, name, description, datatable):
+        super().__init__()
         self.keyword = keyword
         self.name = name
         self.description = description
@@ -139,6 +187,22 @@ class Tag(object):
 
     def __repr__(self):
         return 'Tag: {}'.format(self.name)
+
+
+class Rule(HasBackgroundMixin, HasTagsMixin):
+    def __init__(self, keyword, name, description, background=None):
+        super().__init__(background)
+        self.keyword = keyword
+        self.name = name
+        self.description = description
+        self._children = []
+
+    @property
+    def children(self):
+        return self._children
+
+    def add_child(self, child):
+        self._children.append(child)
 
 
 class Step(object):
@@ -179,14 +243,14 @@ class Step(object):
 class ParentStep(Step):
     def __init__(self, keyword, text):
         super().__init__(keyword, text)
-        self._sub_steps = []
+        self.__sub_steps = []
 
     @property
     def sub_steps(self):
-        return self._sub_steps
+        return self.__sub_steps
 
     def add_sub_step(self, step):
-        self._sub_steps.append(step)
+        self.__sub_steps.append(step)
         step.parent = self
 
 
