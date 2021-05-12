@@ -2,6 +2,7 @@ import re
 
 
 class GherkinDocument(object):
+    """Represents the whole gherkin document/ text."""
     def __init__(self):
         self.feature = None
         self.comments = []
@@ -47,19 +48,22 @@ class HasTagsMixin(object):
 
 
 class Language(object):
+    """A simple object that represents the language in the document/ feature."""
     def __init__(self, language):
         self.language = language
 
 
 class Comment(object):
-    def __init__(self, text):
-        self.text = text
+    """Represents a comment in a gherkin document. All comments are attached to the document."""
+    def __init__(self, text: str):
+        self.text: str = text
 
     def __repr__(self):
         return self.text
 
 
 class Description(object):
+    """Represents a description. The object is not attached directly to any other object. It is just a wrapper."""
     def __init__(self, text):
         self.text = text
 
@@ -68,6 +72,16 @@ class Description(object):
 
 
 class Feature(HasBackgroundMixin, HasTagsMixin):
+    """
+    A feature has:
+        - language
+        - name, description and keyword
+        - an optional background (provided by `HasBackgroundMixin`)
+        - optional tags (provided by `HasTagsMixin`)
+        - children, which will either be a list of Rules or ScenarioDefinitions
+
+    I will always be inside of a GherkinDocument.
+    """
     def __init__(self, language, keyword, name, description, background=None):
         super().__init__(background=background)
         self.language = language
@@ -81,6 +95,7 @@ class Feature(HasBackgroundMixin, HasTagsMixin):
 
     @property
     def children(self):
+        """Represents all the children (can either bei Rule or ScenarioDefinition)"""
         return self._children
 
     def add_child(self, child):
@@ -88,6 +103,12 @@ class Feature(HasBackgroundMixin, HasTagsMixin):
 
 
 class ScenarioDefinition(object):
+    """
+    A ScenarioDefinition is a base class for all types of Scenarios. They all have:
+        - name, keyword and description
+        - steps (GIVEN, AND, BUT, WHEN, THEN)
+        - a parent (e.g. a feature or a rule)
+    """
     def __init__(self, keyword, name, description):
         self.keyword = keyword
         self.name = name
@@ -103,7 +124,8 @@ class ScenarioDefinition(object):
         """Returns all the steps of the scenario definition (the ones from Background included)"""
         steps = []
 
-        # get parent steps (e.g. if the parent has a background)
+        # Rules and feature may have backgrounds. Backgrounds add steps that are executed before the steps of
+        # the scenario definition
         if self.parent:
             parent_steps = getattr(self.parent, 'steps', None)
             if parent_steps:
@@ -123,19 +145,15 @@ class ScenarioDefinition(object):
         self._steps.append(step)
 
 
-class ScenarioImplementation(HasTagsMixin, ScenarioDefinition):
-    def __init__(self, keyword, name, description, background=None):
-        super().__init__(keyword, name, description)
-        self.background = background
-
-
 class Background(ScenarioDefinition):
+    """A Background only holds GIVEN steps. These steps will be passed to other scenarios/ scenario outlines."""
     pass
 
 
-class ScenarioOutline(ScenarioImplementation):
-    def __init__(self, keyword, name, description, background=None):
-        super().__init__(keyword, name, description, background)
+class ScenarioOutline(HasTagsMixin, ScenarioDefinition):
+    """Scenario outlines use examples to be run multiple times. The examples will pass arguments to the steps."""
+    def __init__(self, keyword, name, description):
+        super().__init__(keyword, name, description)
         self._examples = []
 
     @property
@@ -146,31 +164,44 @@ class ScenarioOutline(ScenarioImplementation):
         self._examples.append(example)
 
 
-class Scenario(ScenarioImplementation):
+class Scenario(HasTagsMixin, ScenarioDefinition):
+    """A Scenario is a simple ScenarioDefinition with steps."""
     pass
 
 
 class StepArgument(object):
+    """
+    A StepArgument is passed to a single step. They are defined AFTER the step:
+
+        Given foo and bar
+            <Here comes the step argument for Given>
+        When baz
+    """
     pass
 
 
 class DocString(StepArgument):
+    """A doc string is a step argument to pass a very long string to it."""
     def __init__(self, text):
         self.text = text
 
 
 class TableCell(object):
+    """Represents a single cell in a TableRow. It holds a values (like a string)."""
     def __init__(self, value):
         self.value = value
 
     def __repr__(self):
-        return self.value
+        return str(self.value)
 
     def __str__(self):
-        return self.value
+        return str(self.value)
 
 
 class TableRow(object):
+    """
+    Represents a row in a DataTable.
+    """
     def __init__(self, cells=None):
         self.cells: [TableCell] = cells if cells is not None else []
 
@@ -185,6 +216,14 @@ class TableRow(object):
 
 
 class DataTable(StepArgument):
+    """
+    A DataTable is a step argument that holds data for steps. There is always a header and rows underneath it.
+    The header defines the name of the variables. The rows define the data.
+
+    DataTables can be passed as a StepArgument to a single Step.
+
+    They are also used inside of Examples.
+    """
     def __init__(self, header, rows=None):
         self.header: TableRow = header
         self.rows: [TableRow] = rows if rows is not None else []
@@ -213,6 +252,11 @@ class DataTable(StepArgument):
 
 
 class Examples(HasTagsMixin):
+    """
+    Examples are defined inside of ScenarioOutlines. They have:
+        - keyword, name and description
+        - a data table that holds data for the ScenarioOutline
+    """
     def __init__(self, keyword, name, description, datatable):
         super().__init__()
         self.keyword = keyword
@@ -225,6 +269,12 @@ class Examples(HasTagsMixin):
 
 
 class Tag(object):
+    """
+    A Tag can be used on Rules, Features and ScenariosDefinitions (not Backgrounds though).
+
+    They are used internally by Gherkin to determine which steps should be run. Tags work in an inherit-way.
+    That means that parents pass their tags to the children as well (see `UsesTagsMixin` for more information).
+    """
     def __init__(self, name):
         self.name = name
 
@@ -233,6 +283,12 @@ class Tag(object):
 
 
 class Rule(HasBackgroundMixin, HasTagsMixin):
+    """
+    Rules were introduced in v6 of Gherkin. They group multiple ScenarioDefinitions. They have:
+        - keyword, name and description
+        - an optional background
+        - optional tags
+    """
     def __init__(self, keyword, name, description, background=None):
         super().__init__(background)
         self.keyword = keyword
@@ -252,6 +308,9 @@ class Rule(HasBackgroundMixin, HasTagsMixin):
 
 
 class Step(object):
+    """
+    A step is defined in a ScenarioDefinition and is a part of the scenario. It can receive arguments.
+    """
     type = None
 
     def __init__(self, keyword, text, argument=None):
@@ -265,6 +324,9 @@ class Step(object):
 
 
 class ParentStep(Step):
+    """
+    A base class for GIVEN, THEN, WHEN.
+    """
     def __init__(self, keyword, text, argument=None):
         super().__init__(keyword, text, argument)
         self.__sub_steps = []
@@ -279,6 +341,7 @@ class ParentStep(Step):
 
 
 class SubStep(Step):
+    """A base class for AND and BUT."""
     def __init__(self, keyword, text, argument=None):
         super().__init__(keyword, text, argument)
         self.parent = None

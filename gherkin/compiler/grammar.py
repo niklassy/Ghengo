@@ -346,7 +346,7 @@ class BackgroundGrammar(ScenarioDefinitionGrammar):
     convert_cls = ASTBackground
 
 
-class RuleTokenGrammar(TagsGrammarMixin, Grammar):
+class RuleGrammar(TagsGrammarMixin, Grammar):
     criterion_rule_alias = RuleAlias(Rule)
     rule = Chain([
         Optional(TagsGrammar()),    # support was added some time ago (https://github.com/cucumber/common/pull/1356)
@@ -396,7 +396,7 @@ class FeatureGrammar(TagsGrammarMixin, Grammar):
         ]),
         Optional(BackgroundGrammar()),
         OneOf([
-            Repeatable(RuleTokenGrammar()),
+            Repeatable(RuleGrammar()),
             Repeatable(OneOf([
                 ScenarioGrammar(),
                 ScenarioOutlineGrammar(),
@@ -455,5 +455,6 @@ class GherkinDocumentGrammar(Grammar):
         # set the feature if it exists
         if feature:
             grammar_obj.set_feature(feature)
+            feature.parent = grammar_obj
 
         return grammar_obj
