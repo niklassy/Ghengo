@@ -1,6 +1,5 @@
 from gherkin.compiler.grammar import GherkinDocumentGrammar, DescriptionGrammar, LanguageGrammar
 from gherkin.compiler.rule import RuleToken
-from gherkin.document import GherkinDocument
 from gherkin.compiler.ast import Comment as ASTComment
 from gherkin.compiler.line import GherkinLine
 from gherkin.compiler.token import Feature, Rule, Description, EOF, Background, Scenario, Comment, Given, Then, \
@@ -136,9 +135,9 @@ class Parser(object):
         # get the rule for the whole document and add wrapper around the objects
         wrapped_tokens = [RuleToken(token=t) for t in tokens_trimmed]
         grammar = GherkinDocumentGrammar()
-        # grammar.validate_sequence(wrapped_tokens)
         obj = grammar.convert(wrapped_tokens)
 
+        # extract all the comments and add them to the document
         comments = [token for token in tokens if isinstance(token, Comment)]
         for c in comments:
             obj.add_comment(ASTComment(c.text))
@@ -163,10 +162,6 @@ class GherkinCompiler(object):
         lexer = Lexer(compiler=self)
         tokens = lexer.tokenize()
 
-        parser = Parser(self)
-        parser.parse(tokens)
-
-
-        lines = [GherkinLine(text, index) for index, text in enumerate(self.gherkin_text.splitlines())]
-        self.gherkin_doc = GherkinDocument(lines)
+        parser = Parser(compiler=self)
+        return parser.parse(tokens)
 

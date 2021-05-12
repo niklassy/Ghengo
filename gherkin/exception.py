@@ -1,2 +1,0 @@
-class InvalidGherkin(Exception):
-    pass

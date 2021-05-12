@@ -5,7 +5,7 @@ from gherkin.compiler.ast import GherkinDocument as ASTGherkinDocument, Language
     Feature as ASTFeature, Description as ASTDescription, Tag as ASTTag, Background as ASTBackground, \
     DocString as ASTDocString, DataTable as ASTDataTable, TableCell as ASTTableCell, TableRow as ASTTableRow, \
     And as ASTAnd, But as ASTBut, When as ASTWhen, Given as ASTGiven, Then as ASTThen, \
-    ScenarioOutline as ASTScenarioOutline, Rule as ASTRule, Scenario as ASTScenario
+    ScenarioOutline as ASTScenarioOutline, Rule as ASTRule, Scenario as ASTScenario, Examples as ASTExamples
 from settings import Settings
 
 
@@ -168,6 +168,7 @@ class ExamplesGrammar(TagsGrammarMixin, Grammar):
         ]),
         DataTableGrammar(),
     ])
+    ast_object_cls = ASTExamples
 
     def get_ast_objects_kwargs(self, rule_output):
         name, description = get_name_and_description(rule_output[2])
@@ -185,14 +186,10 @@ class GivenWhenThenBase(Grammar):
         return {
             'keyword': rule_output[0].token.matched_keyword,
             'text': rule_output[1].token.text,
+            'argument': rule_output[3]
         }
 
     def prepare_object(self, rule_output, obj):
-        # add any step arguments
-        step_argument = rule_output[3]
-        if step_argument:
-            obj.add_argument(step_argument)
-
         # add sub steps like BUT and AND
         sub_steps = rule_output[4]
         for step in sub_steps:
@@ -315,12 +312,7 @@ class ScenarioOutlineGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
 
         for example in examples:
             example.parent = obj
-
-        # TODO: add the arguments as inteded!!
-        # This does not work as wished since it is possible to add multiple Examples
-        for step in rule_output[self.steps_index]:
-            pass
-            # step.add_argument(examples.datatable)
+            obj.add_example(example)
 
         return obj
 
@@ -442,6 +434,9 @@ class LanguageGrammar(Grammar):
         RuleAlias(EndOfLine),
     ])
     ast_object_cls = ASTLanguage
+
+    def get_ast_objects_kwargs(self, rule_output):
+        return {'language': rule_output[0].token.locale}
 
 
 class GherkinDocumentGrammar(Grammar):

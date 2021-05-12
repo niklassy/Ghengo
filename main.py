@@ -28,6 +28,13 @@ Feature: Ich bin etwas
             When I eat <eat> cucumbers
             Then I should have <left> cucumbers
             
+            @test1
+            Examples:
+            | start | eat | left |
+            |    12 |   5 |    7 |
+            |    20 |   5 |   15 |
+            
+            @test2
             Examples:
             | start | eat | left |
             |    12 |   5 |    7 |

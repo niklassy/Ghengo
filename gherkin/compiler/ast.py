@@ -20,6 +20,7 @@ class HasBackgroundMixin(object):
 
     @property
     def steps(self):
+        """Since a background has steps, the parent of the background should also have these steps defined."""
         return self.background.steps
 
 
@@ -46,8 +47,7 @@ class HasTagsMixin(object):
 
 
 class Language(object):
-    # TODO: must not be optional
-    def __init__(self, language=None):
+    def __init__(self, language):
         self.language = language
 
 
@@ -55,10 +55,16 @@ class Comment(object):
     def __init__(self, text):
         self.text = text
 
+    def __repr__(self):
+        return self.text
+
 
 class Description(object):
     def __init__(self, text):
         self.text = text
+
+    def __repr__(self):
+        return self.text
 
 
 class Feature(HasBackgroundMixin, HasTagsMixin):
@@ -69,6 +75,9 @@ class Feature(HasBackgroundMixin, HasTagsMixin):
         self.name = name
         self.description = description
         self._children = []
+
+    def __repr__(self):
+        return 'Feature - {} {}'.format(self.keyword, self.name)
 
     @property
     def children(self):
@@ -86,8 +95,12 @@ class ScenarioDefinition(object):
         self._steps = []
         self.parent = None
 
+    def __repr__(self):
+        return '{} - {} {}'.format(self.__class__.__name__, self.keyword, self.name)
+
     @property
     def steps(self):
+        """Returns all the steps of the scenario definition (the ones from Background included)"""
         steps = []
 
         # get parent steps (e.g. if the parent has a background)
@@ -106,6 +119,7 @@ class ScenarioDefinition(object):
         return steps
 
     def add_step(self, step):
+        """Add a step to a specific step."""
         self._steps.append(step)
 
 
@@ -120,7 +134,16 @@ class Background(ScenarioDefinition):
 
 
 class ScenarioOutline(ScenarioImplementation):
-    pass
+    def __init__(self, keyword, name, description, background=None):
+        super().__init__(keyword, name, description, background)
+        self._examples = []
+
+    @property
+    def examples(self):
+        return self._examples
+
+    def add_example(self, example):
+        self._examples.append(example)
 
 
 class Scenario(ScenarioImplementation):
@@ -140,6 +163,12 @@ class TableCell(object):
     def __init__(self, value):
         self.value = value
 
+    def __repr__(self):
+        return self.value
+
+    def __str__(self):
+        return self.value
+
 
 class TableRow(object):
     def __init__(self, cells=None):
@@ -148,16 +177,27 @@ class TableRow(object):
     def get_value_at(self, index):
         return self.cells[index].value
 
+    def __repr__(self):
+        return 'TableRow - {}'.format(' | '.join([str(c) for c in self.cells]))
+
+    def __str__(self):
+        return self.__repr__()
+
 
 class DataTable(StepArgument):
     def __init__(self, header, rows=None):
-        self.header = header
+        self.header: TableRow = header
         self.rows: [TableRow] = rows if rows is not None else []
 
+    def __repr__(self):
+        return 'DataTable - {}'.format(str(self.header))
+
     def get_row_at(self, index):
+        """Returns a specific row (not the header)."""
         return self.rows[index]
 
     def get_values(self):
+        """Returns all the values in the format: {<column_name_1>: [str], ...}"""
         output = {}
         names = [cell.value for cell in self.header.cells]
 
@@ -180,13 +220,16 @@ class Examples(HasTagsMixin):
         self.description = description
         self.datatable = datatable
 
+    def __repr__(self):
+        return 'Examples - {} {}'.format(self.keyword, self.name)
+
 
 class Tag(object):
     def __init__(self, name):
         self.name = name
 
     def __repr__(self):
-        return 'Tag: {}'.format(self.name)
+        return 'Tag - {}'.format(self.name)
 
 
 class Rule(HasBackgroundMixin, HasTagsMixin):
@@ -196,6 +239,9 @@ class Rule(HasBackgroundMixin, HasTagsMixin):
         self.name = name
         self.description = description
         self._children = []
+
+    def __repr__(self):
+        return 'Rule - {} {}'.format(self.keyword, self.name)
 
     @property
     def children(self):
@@ -208,41 +254,19 @@ class Rule(HasBackgroundMixin, HasTagsMixin):
 class Step(object):
     type = None
 
-    def __init__(self, keyword, text):
+    def __init__(self, keyword, text, argument=None):
         self.keyword = keyword
         self.text = text
-        self._arguments = {}
+        self.argument = argument
         self.argument_names = [name.replace(' ', '') for name in re.findall('{(.*?)}', self.text)]
-        self.doc_string = None
-
-    def add_argument(self, argument: StepArgument):
-        if isinstance(argument, DocString):
-            self.doc_string = argument
-        elif isinstance(argument, DataTable):
-            datatable_values = argument.get_values()
-
-            for key in datatable_values:
-                if key in self.argument_names:
-                    self._arguments[key] = datatable_values[key]
-        else:
-            raise ValueError('You can only pass a DocString or a DataTable to Step')
-
-    @property
-    def arguments(self):
-        output = [self._arguments[key] for key in self._arguments]
-
-        if self.doc_string:
-            output.append(self.doc_string)
-
-        return output
 
     def __repr__(self):
         return '{} - {}{}'.format(self.__class__.__name__.upper(), self.keyword, self.text)
 
 
 class ParentStep(Step):
-    def __init__(self, keyword, text):
-        super().__init__(keyword, text)
+    def __init__(self, keyword, text, argument=None):
+        super().__init__(keyword, text, argument)
         self.__sub_steps = []
 
     @property
@@ -255,8 +279,8 @@ class ParentStep(Step):
 
 
 class SubStep(Step):
-    def __init__(self, keyword, text):
-        super().__init__(keyword, text)
+    def __init__(self, keyword, text, argument=None):
+        super().__init__(keyword, text, argument)
         self.parent = None
 
 
