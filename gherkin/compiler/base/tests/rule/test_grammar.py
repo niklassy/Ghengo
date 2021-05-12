@@ -1,4 +1,4 @@
-from gherkin.compiler.rule import Optional, RuleAlias, RuleToken, Grammar, Chain, GrammarInvalid, \
+from gherkin.compiler.base.rule import Optional, RuleAlias, RuleToken, Grammar, Chain, GrammarInvalid, \
     OneOf, Repeatable, GrammarNotUsed
 from gherkin.compiler.token import Description, EndOfLine, EOF, Feature
 from test_utils import assert_callable_raises

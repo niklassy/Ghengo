@@ -1,5 +1,5 @@
-from gherkin.compiler.grammar import GherkinDocumentGrammar, DescriptionGrammar, LanguageGrammar
-from gherkin.compiler.rule import RuleToken
+from gherkin.compiler.grammar import GherkinDocumentGrammar
+from gherkin.compiler.base.rule import RuleToken
 from gherkin.compiler.ast import Comment as ASTComment
 from gherkin.compiler.line import GherkinLine
 from gherkin.compiler.token import Feature, Rule, Description, EOF, Background, Scenario, Comment, Given, Then, \

@@ -1,4 +1,4 @@
-from gherkin.compiler.rule import Chain, OneOf, Repeatable, Optional, RuleAlias, Grammar, RuleToken
+from gherkin.compiler.base.rule import Chain, OneOf, Repeatable, Optional, RuleAlias, Grammar, RuleToken
 from gherkin.compiler.token import Language, Feature, EOF, Description, Rule, Scenario, EndOfLine, Tag, \
     Given, And, But, When, Then, Background, DocString, DataTable, Examples, ScenarioOutline
 from gherkin.compiler.ast import GherkinDocument as ASTGherkinDocument, Language as ASTLanguage, \
