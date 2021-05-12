@@ -30,9 +30,9 @@ class DescriptionGrammar(Grammar):
         criterion_rule_alias,
         RuleAlias(EndOfLine),
     ])
-    ast_object_cls = ASTDescription
+    convert_cls = ASTDescription
 
-    def get_ast_objects_kwargs(self, rule_output):
+    def get_convert_kwargs(self, rule_output):
         return {
             'text': rule_output[0].token.text,
         }
@@ -44,11 +44,11 @@ class TagsGrammar(Grammar):
         Repeatable(criterion_rule_alias),
         RuleAlias(EndOfLine),
     ])
-    ast_object_cls = ASTTag
+    convert_cls = ASTTag
 
     def sequence_to_object(self, sequence, index=0):
         tags = []
-        rule_tree = self.get_rule_tree(sequence, index)
+        rule_tree = self.get_rule_sequence_to_object(sequence, index)
 
         for tag in rule_tree[0]:
             tags.append(ASTTag(tag.token.text))
@@ -65,9 +65,9 @@ class DocStringGrammar(Grammar):
         RuleAlias(DocString),
         RuleAlias(EndOfLine),
     ])
-    ast_object_cls = ASTDocString
+    convert_cls = ASTDocString
 
-    def get_ast_objects_kwargs(self, rule_output):
+    def get_convert_kwargs(self, rule_output):
         descriptions = rule_output[2]
 
         if len(descriptions) > 0:
@@ -86,14 +86,14 @@ class DataTableGrammar(Grammar):
             RuleAlias(EndOfLine),
         ]), minimum=2),
     ])
-    ast_object_cls = ASTDataTable
+    convert_cls = ASTDataTable
 
     @classmethod
     def get_values_of_datatable(cls, entry):
         header_entry = entry[0]     # <- second entry is always the end of line, so take the first
         return [v.lstrip().rstrip() for v in header_entry.token.text.split('|') if v.lstrip().rstrip()]
 
-    def get_ast_objects_kwargs(self, rule_output):
+    def get_convert_kwargs(self, rule_output):
         datatable_entries = rule_output[0]
         header_row = datatable_entries[0]
         header_values = self.get_values_of_datatable(header_row)
@@ -125,9 +125,9 @@ class AndButGrammarBase(Grammar):
 
 class AndGrammar(AndButGrammarBase):
     criterion_rule_alias = RuleAlias(And)
-    ast_object_cls = ASTAnd
+    convert_cls = ASTAnd
 
-    def get_ast_objects_kwargs(self, rule_output):
+    def get_convert_kwargs(self, rule_output):
         return {
             'text': rule_output[1].token.text,
             'keyword': rule_output[0].token.matched_keyword,
@@ -136,9 +136,9 @@ class AndGrammar(AndButGrammarBase):
 
 class ButGrammar(AndButGrammarBase):
     criterion_rule_alias = RuleAlias(But)
-    ast_object_cls = ASTBut
+    convert_cls = ASTBut
 
-    def get_ast_objects_kwargs(self, rule_output):
+    def get_convert_kwargs(self, rule_output):
         return {
             'text': rule_output[1].token.text,
             'keyword': rule_output[0].token.matched_keyword,
@@ -168,9 +168,9 @@ class ExamplesGrammar(TagsGrammarMixin, Grammar):
         ]),
         DataTableGrammar(),
     ])
-    ast_object_cls = ASTExamples
+    convert_cls = ASTExamples
 
-    def get_ast_objects_kwargs(self, rule_output):
+    def get_convert_kwargs(self, rule_output):
         name, description = get_name_and_description(rule_output[2])
 
         return {
@@ -182,20 +182,20 @@ class ExamplesGrammar(TagsGrammarMixin, Grammar):
 
 
 class GivenWhenThenBase(Grammar):
-    def get_ast_objects_kwargs(self, rule_output):
+    def get_convert_kwargs(self, rule_output):
         return {
             'keyword': rule_output[0].token.matched_keyword,
             'text': rule_output[1].token.text,
             'argument': rule_output[3]
         }
 
-    def prepare_object(self, rule_output, obj):
+    def prepare_converted_object(self, rule_convert_obj, grammar_obj):
         # add sub steps like BUT and AND
-        sub_steps = rule_output[4]
+        sub_steps = rule_convert_obj[4]
         for step in sub_steps:
-            obj.add_sub_step(step)
+            grammar_obj.add_sub_step(step)
 
-        return obj
+        return grammar_obj
 
 
 class GivenGrammar(GivenWhenThenBase):
@@ -210,7 +210,7 @@ class GivenGrammar(GivenWhenThenBase):
         ])),
         Repeatable(OneOf([AndGrammar(), ButGrammar()]), minimum=0),
     ])
-    ast_object_cls = ASTGiven
+    convert_cls = ASTGiven
 
 
 class WhenGrammar(GivenWhenThenBase):
@@ -225,7 +225,7 @@ class WhenGrammar(GivenWhenThenBase):
         ])),
         Repeatable(OneOf([AndGrammar(), ButGrammar()]), minimum=0),
     ])
-    ast_object_cls = ASTWhen
+    convert_cls = ASTWhen
 
 
 class ThenGrammar(GivenWhenThenBase):
@@ -240,7 +240,7 @@ class ThenGrammar(GivenWhenThenBase):
         ])),
         Repeatable(OneOf([AndGrammar(), ButGrammar()]), minimum=0),
     ])
-    ast_object_cls = ASTThen
+    convert_cls = ASTThen
 
 
 class StepsGrammar(Grammar):
@@ -261,7 +261,7 @@ class StepsGrammar(Grammar):
     def sequence_to_object(self, sequence, index=0):
         output = []
 
-        for step_list in self.get_rule_tree(sequence, index):
+        for step_list in self.get_rule_sequence_to_object(sequence, index):
             for step in step_list:
                 output.append(step)
 
@@ -272,7 +272,7 @@ class ScenarioDefinitionGrammar(Grammar):
     description_index = 2
     steps_index = 3
 
-    def get_ast_objects_kwargs(self, rule_output):
+    def get_convert_kwargs(self, rule_output):
         name, description = get_name_and_description(rule_output[self.description_index])
 
         return {
@@ -281,14 +281,14 @@ class ScenarioDefinitionGrammar(Grammar):
             'name': name,
         }
 
-    def prepare_object(self, rule_output, obj):
-        steps = rule_output[self.steps_index]
+    def prepare_converted_object(self, rule_convert_obj, grammar_obj):
+        steps = rule_convert_obj[self.steps_index]
 
         # add each step to the definition
         for step in steps:
-            obj.add_step(step)
+            grammar_obj.add_step(step)
 
-        return obj
+        return grammar_obj
 
 
 class ScenarioOutlineGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
@@ -303,18 +303,18 @@ class ScenarioOutlineGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
         StepsGrammar(),
         Repeatable(ExamplesGrammar()),
     ])
-    ast_object_cls = ASTScenarioOutline
+    convert_cls = ASTScenarioOutline
 
-    def prepare_object(self, rule_output, obj):
+    def prepare_converted_object(self, rule_convert_obj, grammar_obj):
         """In addition to the steps, we need to add the argument of the Examples here."""
-        obj = super().prepare_object(rule_output, obj)
-        examples = rule_output[4]
+        grammar_obj = super().prepare_converted_object(rule_convert_obj, grammar_obj)
+        examples = rule_convert_obj[4]
 
         for example in examples:
-            example.parent = obj
-            obj.add_example(example)
+            example.parent = grammar_obj
+            grammar_obj.add_example(example)
 
-        return obj
+        return grammar_obj
 
 
 class ScenarioGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
@@ -328,7 +328,7 @@ class ScenarioGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
         ]),
         StepsGrammar(),
     ])
-    ast_object_cls = ASTScenario
+    convert_cls = ASTScenario
 
 
 class BackgroundGrammar(ScenarioDefinitionGrammar):
@@ -343,7 +343,7 @@ class BackgroundGrammar(ScenarioDefinitionGrammar):
         ]),
         Repeatable(GivenGrammar(), minimum=1),
     ])
-    ast_object_cls = ASTBackground
+    convert_cls = ASTBackground
 
 
 class RuleTokenGrammar(TagsGrammarMixin, Grammar):
@@ -361,9 +361,9 @@ class RuleTokenGrammar(TagsGrammarMixin, Grammar):
             ScenarioOutlineGrammar(),
         ]))
     ])
-    ast_object_cls = ASTRule
+    convert_cls = ASTRule
 
-    def get_ast_objects_kwargs(self, rule_output):
+    def get_convert_kwargs(self, rule_output):
         name, description = get_name_and_description(rule_output[2])
 
         return {
@@ -373,16 +373,16 @@ class RuleTokenGrammar(TagsGrammarMixin, Grammar):
             'background': rule_output[3],
         }
 
-    def prepare_object(self, rule_output, obj):
+    def prepare_converted_object(self, rule_convert_obj, grammar_obj):
         # set tags
-        obj = super().prepare_object(rule_output, obj)
+        grammar_obj = super().prepare_converted_object(rule_convert_obj, grammar_obj)
 
         # set all the children/ scenario definitions
-        for sr in rule_output[4]:
-            sr.parent = obj
-            obj.add_child(sr)
+        for sr in rule_convert_obj[4]:
+            sr.parent = grammar_obj
+            grammar_obj.add_child(sr)
 
-        return obj
+        return grammar_obj
 
 
 class FeatureGrammar(TagsGrammarMixin, Grammar):
@@ -403,9 +403,9 @@ class FeatureGrammar(TagsGrammarMixin, Grammar):
             ])),
         ]),
     ])
-    ast_object_cls = ASTFeature
+    convert_cls = ASTFeature
 
-    def get_ast_objects_kwargs(self, rule_output):
+    def get_convert_kwargs(self, rule_output):
         name, description = get_name_and_description(rule_output[2])
 
         return {
@@ -416,15 +416,15 @@ class FeatureGrammar(TagsGrammarMixin, Grammar):
             'background': rule_output[3],
         }
 
-    def prepare_object(self, rule_output: [RuleToken], obj: ASTFeature):
-        scenario_rules = rule_output[4]
+    def prepare_converted_object(self, rule_convert_obj: [RuleToken], grammar_obj: ASTFeature):
+        scenario_rules = rule_convert_obj[4]
 
         # add all the rules/ scenario definitions
         for sr in scenario_rules:
-            sr.parent = obj
-            obj.add_child(sr)
+            sr.parent = grammar_obj
+            grammar_obj.add_child(sr)
 
-        return obj
+        return grammar_obj
 
 
 class LanguageGrammar(Grammar):
@@ -433,9 +433,9 @@ class LanguageGrammar(Grammar):
         criterion_rule_alias,
         RuleAlias(EndOfLine),
     ])
-    ast_object_cls = ASTLanguage
+    convert_cls = ASTLanguage
 
-    def get_ast_objects_kwargs(self, rule_output):
+    def get_convert_kwargs(self, rule_output):
         return {'language': rule_output[0].token.locale}
 
 
@@ -447,13 +447,13 @@ class GherkinDocumentGrammar(Grammar):
     ])
     criterion_rule_alias = None
     name = 'Gherkin document'
-    ast_object_cls = ASTGherkinDocument
+    convert_cls = ASTGherkinDocument
 
-    def prepare_object(self, rule_output, obj):
-        feature = rule_output[1]
+    def prepare_converted_object(self, rule_convert_obj, grammar_obj):
+        feature = rule_convert_obj[1]
 
         # set the feature if it exists
         if feature:
-            obj.set_feature(feature)
+            grammar_obj.set_feature(feature)
 
-        return obj
+        return grammar_obj

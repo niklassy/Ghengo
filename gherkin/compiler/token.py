@@ -1,4 +1,4 @@
-from typing import Optional, Union, Tuple
+from typing import Optional
 
 from gherkin.config import GHERKIN_CONFIG
 from gherkin.compiler.line import GherkinLine

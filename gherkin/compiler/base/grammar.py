@@ -28,12 +28,7 @@ class Grammar(object):
     name = None
     rule = None
     criterion_rule_alias: RuleAlias = None
-
-    class GrammarPlaceholder(object):
-        def __init__(self, **kwargs):
-            pass
-
-    ast_object_cls = GrammarPlaceholder
+    convert_cls = None
 
     def __init__(self):
         if self.get_rule() is None:
@@ -119,31 +114,31 @@ class Grammar(object):
 
         return result_index
 
-    def get_ast_objects_kwargs(self, rule_output):
-        """Can be used to modify what is passed to the ast_object __init__"""
+    def get_convert_kwargs(self, rule_output):
+        """Can be used to modify what is passed to the convert_cls __init__"""
         return {}
 
-    def get_rule_tree(self, sequence, index):
+    def get_rule_sequence_to_object(self, sequence, index):
         """Returns the tree that is returned by self.get_rule"""
         return self.get_rule().sequence_to_object(sequence, index)
 
-    def get_tree_object(self, sequence, index):
-        """Returns an object of the ast_object_cls"""
-        return self.ast_object_cls(**self.get_ast_objects_kwargs(self.get_rule_tree(sequence, index)))
-
-    def prepare_object(self, rule_output, obj):
+    def prepare_converted_object(self, rule_convert_obj, grammar_obj):
         """Can be used to modify the object before it is returned by `convert`."""
-        return obj
+        return grammar_obj
 
     def sequence_to_object(self, sequence, index=0):
         """
         Returns an object that represents this grammar. By default it will create an instance of `ast_object_cls`,
         add kwargs and return it. The object can be used by the caller of this function.
         """
-        tree_for_rule = self.get_rule_tree(sequence, index)
-        kwargs = self.get_ast_objects_kwargs(tree_for_rule)
-        obj = self.ast_object_cls(**kwargs)
-        return self.prepare_object(tree_for_rule, obj)
+        if self.convert_cls is None:
+            raise NotImplementedError('You must provide a class that this Grammar converts into.')
+
+        object_of_rule = self.get_rule_sequence_to_object(sequence, index)
+        kwargs = self.get_convert_kwargs(object_of_rule)
+        obj = self.convert_cls(**kwargs)
+
+        return self.prepare_converted_object(object_of_rule, obj)
 
     def convert(self, sequence):
         """Converts a given sequence into an object that can be used as an ast."""
