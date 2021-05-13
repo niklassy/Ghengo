@@ -15,9 +15,12 @@ class Lexer(object):
     def tokens(self):
         return self._tokens
 
-    def _get_token_for_string(self, string: str):
+    def token_fits_string(self, token, string):
+        return token.string_fits_token(string)
+
+    def get_fitting_token_cls(self, string: str):
         for _token in self.token_classes:
-            if _token.string_fits_token(string):
+            if self.token_fits_string(_token, string):
                 return _token
 
         return None
@@ -50,7 +53,7 @@ class Lexer(object):
             while True:
 
                 # search for a token that fits
-                token_cls = self._get_token_for_string(remaining_text)
+                token_cls = self.get_fitting_token_cls(remaining_text)
                 assert token_cls is not None
 
                 # get the text that the token represents and create a token with it
