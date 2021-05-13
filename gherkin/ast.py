@@ -294,17 +294,19 @@ class Rule(HasBackgroundMixin, HasTagsMixin):
         self.keyword = keyword
         self.name = name
         self.description = description
-        self._children = []
+        self._scenario_definitions = []
 
     def __repr__(self):
         return 'Rule - {} {}'.format(self.keyword, self.name)
 
     @property
-    def children(self):
-        return self._children
+    def scenario_definitions(self):
+        return self._scenario_definitions
 
-    def add_child(self, child):
-        self._children.append(child)
+    def add_scenario_definition(self, child):
+        assert isinstance(child, ScenarioDefinition), 'You can only add ScenarioDefinitions.'
+
+        self._scenario_definitions.append(child)
 
 
 class Step(object):
@@ -317,6 +319,7 @@ class Step(object):
         self.keyword = keyword
         self.text = text
         self.argument = argument
+        # all names are written in the format `{<name>}`
         self.argument_names = [name.replace(' ', '') for name in re.findall('{(.*?)}', self.text)]
 
     def __repr__(self):

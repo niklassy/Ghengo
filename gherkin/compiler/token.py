@@ -10,7 +10,10 @@ class Token(object):
     A token represents a collection of characters in a text. If will be used later by the parser to check the
     validity. In our case, tokens are lines because Gherkin only has one `statement` per line.
     """
+    # the id of token within the languages.json
     _json_id = None
+
+    # does the keyword have a `:` at the end?
     keyword_with_colon = False
 
     def __init__(self, text: Optional[str], line: Optional[GherkinLine]):
@@ -26,6 +29,7 @@ class Token(object):
 
     @classmethod
     def get_matching_keyword(cls, string: str):
+        """Returns the keyword that matches a string. If there is none, it returns None."""
         for keyword in cls.get_keywords():
             if string.startswith(keyword):
                 return keyword
@@ -33,6 +37,7 @@ class Token(object):
 
     @classmethod
     def get_full_matching_text(cls, string: str):
+        """Returns the full matching text. Everything that is returned here will be added to the token."""
         return cls.get_matching_keyword(string)
 
     @classmethod
@@ -42,10 +47,13 @@ class Token(object):
 
     @classmethod
     def get_keywords(cls):
+        """Returns all the keywords that identify a token."""
         try:
             keywords = GHERKIN_CONFIG[Settings.language][cls._json_id]
+
             if cls.keyword_with_colon:
                 return ['{}:'.format(k) for k in keywords]
+
             return keywords
         except KeyError:
             return []
@@ -218,7 +226,6 @@ class Description(Token):
 
     @classmethod
     def string_fits_token(cls, string: str) -> bool:
-        # TODO: check that no other token matched
         return True
 
 

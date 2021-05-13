@@ -305,7 +305,7 @@ class ScenarioOutlineGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
     ])
     convert_cls = ASTScenarioOutline
 
-    def prepare_converted_object(self, rule_convert_obj, grammar_obj):
+    def prepare_converted_object(self, rule_convert_obj, grammar_obj: ASTScenarioOutline):
         """In addition to the steps, we need to add the argument of the Examples here."""
         grammar_obj = super().prepare_converted_object(rule_convert_obj, grammar_obj)
         examples = rule_convert_obj[4]
@@ -373,14 +373,14 @@ class RuleGrammar(TagsGrammarMixin, Grammar):
             'background': rule_output[3],
         }
 
-    def prepare_converted_object(self, rule_convert_obj, grammar_obj):
+    def prepare_converted_object(self, rule_convert_obj, grammar_obj: ASTRule):
         # set tags
         grammar_obj = super().prepare_converted_object(rule_convert_obj, grammar_obj)
 
         # set all the children/ scenario definitions
         for sr in rule_convert_obj[4]:
             sr.parent = grammar_obj
-            grammar_obj.add_child(sr)
+            grammar_obj.add_scenario_definition(sr)
 
         return grammar_obj
 
@@ -449,7 +449,7 @@ class GherkinDocumentGrammar(Grammar):
     name = 'Gherkin document'
     convert_cls = ASTGherkinDocument
 
-    def prepare_converted_object(self, rule_convert_obj, grammar_obj):
+    def prepare_converted_object(self, rule_convert_obj, grammar_obj: ASTGherkinDocument):
         feature = rule_convert_obj[1]
 
         # set the feature if it exists
