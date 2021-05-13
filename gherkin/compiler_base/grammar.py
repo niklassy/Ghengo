@@ -1,6 +1,6 @@
-from gherkin.compiler.base.exception import RuleNotFulfilled, SequenceEnded, GrammarNotUsed, GrammarInvalid, \
+from gherkin.compiler_base.exception import RuleNotFulfilled, SequenceEnded, GrammarNotUsed, GrammarInvalid, \
     SequenceNotFinished
-from gherkin.compiler.base.wrapper import RuleAlias, RuleToken
+from gherkin.compiler_base.wrapper import RuleAlias, RuleToken
 
 
 class Grammar(object):
@@ -34,7 +34,7 @@ class Grammar(object):
         if self.get_rule() is None:
             raise ValueError('You must provide a rule')
 
-        from gherkin.compiler.base.rule import Chain
+        from gherkin.compiler_base.rule import Chain
         if not isinstance(self.get_rule(), Chain):
             raise ValueError('You must only use Chain on Grammar objects as its rule.')
 

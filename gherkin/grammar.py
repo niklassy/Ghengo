@@ -1,5 +1,5 @@
-from gherkin.compiler.base.rule import Chain, OneOf, Repeatable, Optional, RuleAlias, Grammar, RuleToken
-from gherkin.compiler.token import Language, Feature, EOF, Description, Rule, Scenario, EndOfLine, Tag, \
+from gherkin.compiler_base.rule import Chain, OneOf, Repeatable, Optional, RuleAlias, Grammar, RuleToken
+from gherkin.token import Language, Feature, EOF, Description, Rule, Scenario, EndOfLine, Tag, \
     Given, And, But, When, Then, Background, DocString, DataTable, Examples, ScenarioOutline
 from gherkin.ast import GherkinDocument as ASTGherkinDocument, Language as ASTLanguage, \
     Feature as ASTFeature, Description as ASTDescription, Tag as ASTTag, Background as ASTBackground, \
@@ -7,21 +7,6 @@ from gherkin.ast import GherkinDocument as ASTGherkinDocument, Language as ASTLa
     And as ASTAnd, But as ASTBut, When as ASTWhen, Given as ASTGiven, Then as ASTThen, \
     ScenarioOutline as ASTScenarioOutline, Rule as ASTRule, Scenario as ASTScenario, Examples as ASTExamples
 from settings import Settings
-
-
-def get_name_and_description(descriptions):
-    if isinstance(descriptions, list):
-        name = descriptions[0].text
-
-        if len(descriptions) > 1:
-            description = ' '.join(d.text for d in descriptions[1:])
-        else:
-            description = None
-    else:
-        name = None
-        description = None
-
-    return name, description
 
 
 class DescriptionGrammar(Grammar):
@@ -36,6 +21,25 @@ class DescriptionGrammar(Grammar):
         return {
             'text': rule_output[0].token.text,
         }
+
+    @staticmethod
+    def get_name_and_description(descriptions):
+        """
+        Since descriptions are used in several places to define the name and description of Grammars, this function
+        can be used to determine the name and the description from a list of ASTDescription objects.
+        """
+        if isinstance(descriptions, list):
+            name = descriptions[0].text
+
+            if len(descriptions) > 1:
+                description = ' '.join(d.text for d in descriptions[1:])
+            else:
+                description = None
+        else:
+            name = None
+            description = None
+
+        return name, description
 
 
 class TagsGrammar(Grammar):
@@ -171,7 +175,7 @@ class ExamplesGrammar(TagsGrammarMixin, Grammar):
     convert_cls = ASTExamples
 
     def get_convert_kwargs(self, rule_output):
-        name, description = get_name_and_description(rule_output[2])
+        name, description = DescriptionGrammar.get_name_and_description(rule_output[2])
 
         return {
             'keyword': rule_output[1].token.matched_keyword,
@@ -273,7 +277,7 @@ class ScenarioDefinitionGrammar(Grammar):
     steps_index = 3
 
     def get_convert_kwargs(self, rule_output):
-        name, description = get_name_and_description(rule_output[self.description_index])
+        name, description = DescriptionGrammar.get_name_and_description(rule_output[self.description_index])
 
         return {
             'description': description,
@@ -364,7 +368,7 @@ class RuleGrammar(TagsGrammarMixin, Grammar):
     convert_cls = ASTRule
 
     def get_convert_kwargs(self, rule_output):
-        name, description = get_name_and_description(rule_output[2])
+        name, description = DescriptionGrammar.get_name_and_description(rule_output[2])
 
         return {
             'description': description,
@@ -406,7 +410,7 @@ class FeatureGrammar(TagsGrammarMixin, Grammar):
     convert_cls = ASTFeature
 
     def get_convert_kwargs(self, rule_output):
-        name, description = get_name_and_description(rule_output[2])
+        name, description = DescriptionGrammar.get_name_and_description(rule_output[2])
 
         return {
             'description': description,

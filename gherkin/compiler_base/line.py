@@ -1,4 +1,4 @@
-class GherkinLine(object):
+class Line(object):
     """Represents a line in a gherkin document."""
     def __init__(self, text, line_index):
         self.text = text

@@ -1,4 +1,4 @@
-from gherkin.compiler.compiler import GherkinCompiler
+from gherkin.compiler import GherkinCompiler
 
 feature_string = """# language en
 

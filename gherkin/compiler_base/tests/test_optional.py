@@ -1,6 +1,6 @@
-from gherkin.compiler.base.exception import GrammarInvalid, RuleNotFulfilled, SequenceNotFinished
-from gherkin.compiler.base.rule import Optional, RuleAlias, RuleToken, Grammar, Chain, OneOf, Repeatable
-from gherkin.compiler.token import Description, EndOfLine, EOF, Feature
+from gherkin.compiler_base.exception import GrammarInvalid, RuleNotFulfilled, SequenceNotFinished
+from gherkin.compiler_base.rule import Optional, RuleAlias, RuleToken, Grammar, Chain, OneOf, Repeatable
+from gherkin.token import Description, EndOfLine, EOF, Feature
 from test_utils import assert_callable_raises
 
 

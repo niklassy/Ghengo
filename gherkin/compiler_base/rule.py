@@ -1,8 +1,8 @@
 from typing import Union
 
-from gherkin.compiler.base.exception import SequenceEnded, RuleNotFulfilled, SequenceNotFinished, GrammarNotUsed
-from gherkin.compiler.base.grammar import Grammar
-from gherkin.compiler.base.wrapper import RuleAlias, RuleToken
+from gherkin.compiler_base.exception import SequenceEnded, RuleNotFulfilled, SequenceNotFinished, GrammarNotUsed
+from gherkin.compiler_base.grammar import Grammar
+from gherkin.compiler_base.wrapper import RuleAlias, RuleToken
 
 
 class Rule(object):
