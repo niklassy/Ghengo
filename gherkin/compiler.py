@@ -1,6 +1,8 @@
 from gherkin.compiler_base.compiler import Lexer, Compiler, Parser
 
 from gherkin.ast import Comment as ASTComment
+from gherkin.compiler_base.exception import RuleNotFulfilled, GrammarInvalid
+from gherkin.exception import GherkinInvalid
 from gherkin.grammar import GherkinDocumentGrammar
 from gherkin.token import Feature, Rule, Description, EOF, Background, Scenario, Comment, Given, Then, \
     When, Empty, And, But, Tags, Language, EndOfLine, ScenarioOutline, DocString, DataTable, Examples
@@ -32,8 +34,11 @@ class GherkinLexer(Lexer):
     ]
 
     def on_token_added(self, token):
-        # if at any point a language is found, set it for the whole process
+        # the first line may contain the language, so if it is found, set it
         if isinstance(token, Language):
+            if token.line.line_index > 0:
+                raise GherkinInvalid('You may only set the language in the first line of the document')
+
             Settings.language = token.locale
 
     def on_end_of_line(self, line):
@@ -53,8 +58,15 @@ class GherkinParser(Parser):
         for index, token in enumerate(tokens):
             if isinstance(token, Empty) or isinstance(token, Comment):
                 to_remove.append(index)
+
                 # Comment and Empty are always followed by an EndOfLine
-                to_remove.append(index + 1)
+                try:
+                    next_token = tokens[index + 1]
+                except IndexError:
+                    continue
+
+                if isinstance(next_token, EndOfLine):
+                    to_remove.append(index + 1)
 
         tokens_trimmed = tokens.copy()
         for index in sorted(to_remove, reverse=True):
@@ -76,3 +88,9 @@ class GherkinCompiler(Compiler):
     """Will parse a gherkin text and analyze line by line in order for easy transformation to an AST."""
     lexer = GherkinLexer
     parser = GherkinParser
+
+    def compile(self):
+        try:
+            return super().compile()
+        except (RuleNotFulfilled, GrammarInvalid) as e:
+            raise GherkinInvalid(str(e))
