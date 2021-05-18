@@ -1,3 +1,6 @@
+import inspect
+
+from gherkin.compiler_base.grammar import Grammar
 from gherkin.compiler_base.rule import RuleToken
 from gherkin.compiler_base.line import Line
 from gherkin.compiler_base.token import Token
@@ -117,9 +120,6 @@ class Parser(object):
         self.compiler = compiler
         self._tokens = []
 
-        if self.grammar is None:
-            raise ValueError('You must define a "head"-grammar for your parser that wraps everything else.')
-
     @property
     def tokens(self):
         """Returns all the tokens that this parser uses."""
@@ -127,6 +127,9 @@ class Parser(object):
 
     def parse(self, tokens: [Token]):
         """Parses the tokens - it will validate the input and create an AST."""
+        if not isinstance(tokens, list):
+            raise ValueError('You may only pass a list of tokens to `parse`.')
+
         self._tokens = tokens
         return self.validate_and_create_ast()
 
@@ -138,11 +141,24 @@ class Parser(object):
         """Returns an instance of the grammar for the parser."""
         return self.grammar()
 
-    def validate_and_create_ast(self):
-        """Validate the tokens and create a AST with them."""
-        # check that the rule_token_cls is of correct type
+    def _validate_parser(self):
+        """Makes sure that the parser is set up correctly."""
+        if not inspect.isclass(self.rule_token_cls) or not inspect.isclass(self.grammar):
+            raise ValueError('Only use classes for `rule_token_cls` and `grammar`')
+
         if not issubclass(self.rule_token_cls, RuleToken) and self.rule_token_cls != RuleToken:
             raise ValueError('You must use a subclass of RuleToken for the Parser.')
+
+        if self.grammar is None:
+            raise ValueError('You must define a "head"-grammar for your parser that wraps everything else.')
+
+        if not issubclass(self.grammar, Grammar):
+            raise ValueError('You must use a subclass of Grammar in a parser.')
+
+    def validate_and_create_ast(self):
+        """Validate the tokens and create a AST with them."""
+        # validate everything
+        self._validate_parser()
 
         # prepare the tokens before validating them
         prepared_tokens = self.prepare_tokens(self.tokens)
