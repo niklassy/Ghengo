@@ -15,10 +15,26 @@ class Lexer(object):
     def tokens(self):
         return self._tokens
 
-    def token_fits_string(self, token, string):
-        return token.string_fits_token(string)
+    def token_fits_string(self, token_cls, string):
+        """A wrapper function to define how a token defines if given string fits it."""
+        return token_cls.string_fits_token(string)
+
+    def get_matching_text_for_token(self, token_cls, text) -> str:
+        """
+        Returns the text that belongs to a token. This is only called if the token class matches
+        the text somehow.
+
+        Example:
+            A comment token would likely contain the whole line (Python `# asdasdasd` comment).
+            In this case, this method should return `# asdasdasd`.
+
+            If a token represents an if, it would only return `if` here, since the rest would
+            be represented by a different token, even though it might be on the same line.
+        """
+        return token_cls.get_full_matching_text(text)
 
     def get_fitting_token_cls(self, string: str):
+        """Returns the first class in token_classes where token_fits_string returns true"""
         for _token in self.token_classes:
             if self.token_fits_string(_token, string):
                 return _token
@@ -51,14 +67,16 @@ class Lexer(object):
             remaining_text = line.trimmed_text
             # loop must run at least once
             while True:
-
                 # search for a token that fits
                 token_cls = self.get_fitting_token_cls(remaining_text)
-                assert token_cls is not None
+                if token_cls is None:
+                    raise NotImplementedError(
+                        '`{}` in line {} did not result in a Token object. You should define a token for '
+                        'every case.'.format(remaining_text, line.line_index + 1))
 
                 # get the text that the token represents and create a token with it
-                matching_text = token_cls.get_full_matching_text(remaining_text)
-                token = self.init_and_add_token(token_cls, remaining_text, line)
+                matching_text = self.get_matching_text_for_token(token_cls, remaining_text)
+                token = self.init_and_add_token(token_cls, matching_text, line)
 
                 self.on_token_added(token)
 
@@ -93,37 +111,49 @@ class Parser(object):
     Checks that the tokens are valid aka if the syntax of the input is valid. It also generates an AST with the tokens.
     """
     grammar = None
+    rule_token_cls = RuleToken
 
     def __init__(self, compiler):
         self.compiler = compiler
         self._tokens = []
 
-        assert self.grammar is not None
+        if self.grammar is None:
+            raise ValueError('You must define a "head"-grammar for your parser that wraps everything else.')
 
     @property
     def tokens(self):
+        """Returns all the tokens that this parser uses."""
         return self._tokens
 
     def parse(self, tokens: [Token]):
+        """Parses the tokens - it will validate the input and create an AST."""
         self._tokens = tokens
         return self.validate_and_create_ast()
 
     def prepare_tokens(self, tokens):
+        """Can be used by children to modify the tokens before validating them."""
         return tokens
 
+    def get_grammar(self):
+        """Returns an instance of the grammar for the parser."""
+        return self.grammar()
+
     def validate_and_create_ast(self):
-        tokens = self.tokens
+        """Validate the tokens and create a AST with them."""
+        # check that the rule_token_cls is of correct type
+        if not issubclass(self.rule_token_cls, RuleToken) and self.rule_token_cls != RuleToken:
+            raise ValueError('You must use a subclass of RuleToken for the Parser.')
 
-        # remove any empty or comment lines
-        prepared_tokens = self.prepare_tokens(tokens)
+        # prepare the tokens before validating them
+        prepared_tokens = self.prepare_tokens(self.tokens)
 
-        # get the rule for the whole document and add wrapper around the objects
-        wrapped_tokens = [RuleToken(token=t) for t in prepared_tokens]
+        # wrap the tokens in RuleTokens because they will be used by Rules and Grammars in the validation
+        wrapped_tokens = [self.rule_token_cls(token=t) for t in prepared_tokens]
 
         # convert also validates the tokens
-        obj = self.grammar().convert(wrapped_tokens)
+        ast = self.get_grammar().convert(wrapped_tokens)
 
-        return obj
+        return ast
 
 
 class CodeGenerator(object):

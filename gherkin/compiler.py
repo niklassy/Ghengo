@@ -48,7 +48,6 @@ class GherkinParser(Parser):
 
     def prepare_tokens(self, tokens):
         """Remove any empty lines or comments because they can be everywhere in the Grammar of Gherkin."""
-
         to_remove = []
 
         for index, token in enumerate(tokens):
