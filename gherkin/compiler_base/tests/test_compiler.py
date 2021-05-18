@@ -17,7 +17,7 @@ class TestToken2(TestToken):
         return ['12345']
 
     @classmethod
-    def get_full_matching_text(cls, string: str):
+    def reduce_to_belonging(cls, string: str):
         return string
 
 

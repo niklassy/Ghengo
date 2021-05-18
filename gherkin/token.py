@@ -22,6 +22,12 @@ class GherkinToken(Token):
             return []
 
 
+class TokenContainsWholeLineMixin(object):
+    @classmethod
+    def reduce_to_belonging(cls, string: str):
+        return string
+
+
 class Feature(GherkinToken):
     _json_id = 'feature'
     keyword_with_colon = True
@@ -47,30 +53,22 @@ class Examples(GherkinToken):
     keyword_with_colon = True
 
 
-class DataTable(GherkinToken):
+class DataTable(TokenContainsWholeLineMixin, GherkinToken):
     @classmethod
     def get_keywords(cls):
         return ['|']
 
     @classmethod
-    def get_full_matching_text(cls, string: str):
-        return string
-
-    @classmethod
-    def string_fits_token(cls, string: str):
+    def string_contains_token(cls, string: str):
         keyword = cls.get_keywords()[0]
         clean_string = string.rstrip().lstrip()
         return clean_string and clean_string[0] == keyword and clean_string[-1] == keyword
 
 
-class DocString(GherkinToken):
+class DocString(TokenContainsWholeLineMixin, GherkinToken):
     @classmethod
     def get_keywords(cls):
         return ['"""', '```']
-
-    @classmethod
-    def get_full_matching_text(cls, string: str):
-        return string
 
 
 class Background(GherkinToken):
@@ -104,7 +102,7 @@ class Tag(GherkinToken):
         self.text = text
         self.full_text = '@{}'.format(text)
 
-    def get_full_matching_text(self, string: str):
+    def reduce_to_belonging(self, string: str):
         return '@{}'.format(self.text)
 
     @classmethod
@@ -115,7 +113,7 @@ class Tag(GherkinToken):
         return super().get_matching_keyword(string)
 
 
-class Tags(GherkinToken):
+class Tags(TokenContainsWholeLineMixin, GherkinToken):
     def __new__(cls, text, line):
         return [Tag(line=line, text=text.replace('@', '')) for text in line.trimmed_text.split(' ')]
 
@@ -123,12 +121,8 @@ class Tags(GherkinToken):
     def get_keywords(cls):
         return ['@']
 
-    @classmethod
-    def get_full_matching_text(cls, string: str):
-        return string
 
-
-class Comment(GherkinToken):
+class Comment(TokenContainsWholeLineMixin, GherkinToken):
     def __init__(self, text, line):
         super().__init__(text, line)
         self.text = self.text.replace('#', '', 1).lstrip()
@@ -137,12 +131,8 @@ class Comment(GherkinToken):
     def get_keywords(cls):
         return ['#']
 
-    @classmethod
-    def get_full_matching_text(cls, string: str):
-        return string
 
-
-class Language(GherkinToken):
+class Language(TokenContainsWholeLineMixin, GherkinToken):
     def __init__(self, line, text):
         self.locale = self.get_locale_from_line(line.trimmed_text)
         super().__init__(line=line, text=self.locale)
@@ -152,13 +142,9 @@ class Language(GherkinToken):
         return ['#']
 
     @classmethod
-    def get_full_matching_text(cls, string: str):
-        return string
-
-    @classmethod
-    def string_fits_token(cls, string: str):
+    def string_contains_token(cls, string: str):
         locale = cls.get_locale_from_line(string)
-        return super().string_fits_token(string) and locale in GHERKIN_CONFIG
+        return super().string_contains_token(string) and locale in GHERKIN_CONFIG
 
     @classmethod
     def get_locale_from_line(cls, string):
@@ -171,21 +157,17 @@ class Empty(GherkinToken):
         return ''
 
     @classmethod
-    def string_fits_token(cls, string: str):
+    def string_contains_token(cls, string: str):
         return not bool(string)
 
 
-class Description(GherkinToken):
-    @classmethod
-    def get_matching_keyword(cls, string: str):
-        return string
-
+class Description(TokenContainsWholeLineMixin, GherkinToken):
     @classmethod
     def get_keywords(cls):
         return ['Any string with no keywords']
 
     @classmethod
-    def string_fits_token(cls, string: str) -> bool:
+    def string_contains_token(cls, string: str) -> bool:
         return True
 
 
@@ -195,7 +177,7 @@ class EndOfBase(GherkinToken):
         return ''
 
     @classmethod
-    def get_full_matching_text(cls, string: str):
+    def reduce_to_belonging(cls, string: str):
         return ''
 
 
@@ -204,7 +186,7 @@ class EndOfLine(GherkinToken):
         super().__init__(text=None, line=line)
 
     @classmethod
-    def string_fits_token(cls, string: str):
+    def string_contains_token(cls, string: str):
         return False
 
     @classmethod
@@ -216,7 +198,7 @@ class EndOfLine(GherkinToken):
         return ''
 
     @classmethod
-    def get_full_matching_text(cls, string: str):
+    def reduce_to_belonging(cls, string: str):
         return 'End of line'
 
 
@@ -229,7 +211,7 @@ class EOF(GherkinToken):
         return ''
 
     @classmethod
-    def get_full_matching_text(cls, string: str):
+    def reduce_to_belonging(cls, string: str):
         return 'End of file'
 
     @classmethod
@@ -237,5 +219,5 @@ class EOF(GherkinToken):
         return ['End of file']
 
     @classmethod
-    def string_fits_token(cls, string: str):
+    def string_contains_token(cls, string: str):
         return False

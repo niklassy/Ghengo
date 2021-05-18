@@ -15,7 +15,7 @@ class Token(object):
         self.line: Optional[Line] = line
 
         self.text: Optional[str] = text
-        self.matched_keyword_full = self.get_full_matching_text(text) if text else None
+        self.matched_keyword_full = self.reduce_to_belonging(text) if text else None
 
         if self.keyword_with_colon and self.matched_keyword_full:
             self.matched_keyword = self.matched_keyword_full.replace(':', '')
@@ -31,13 +31,13 @@ class Token(object):
         return None
 
     @classmethod
-    def get_full_matching_text(cls, string: str):
-        """Returns the full matching text. Everything that is returned here will be added to the token."""
+    def reduce_to_belonging(cls, string: str):
+        """Given a string, this will return everything of it that belongs to this token."""
         return cls.get_matching_keyword(string)
 
     @classmethod
-    def string_fits_token(cls, string: str):
-        """By default a token is recognized by a keyword that is used at the beginning of a string."""
+    def string_contains_token(cls, string: str):
+        """Checks if a given string contains this token."""
         return bool(cls.get_matching_keyword(string))
 
     @classmethod

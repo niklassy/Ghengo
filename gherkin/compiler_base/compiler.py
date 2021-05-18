@@ -20,7 +20,7 @@ class Lexer(object):
 
     def token_fits_string(self, token_cls, string):
         """A wrapper function to define how a token defines if given string fits it."""
-        return token_cls.string_fits_token(string)
+        return token_cls.string_contains_token(string)
 
     def get_matching_text_for_token(self, token_cls, text) -> str:
         """
@@ -34,7 +34,7 @@ class Lexer(object):
             If a token represents an if, it would only return `if` here, since the rest would
             be represented by a different token, even though it might be on the same line.
         """
-        return token_cls.get_full_matching_text(text)
+        return token_cls.reduce_to_belonging(text)
 
     def get_fitting_token_cls(self, string: str):
         """Returns the first class in token_classes where token_fits_string returns true"""

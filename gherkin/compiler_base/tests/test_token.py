@@ -18,19 +18,19 @@ def test_init():
 
 def test_string_fits():
     token = TestToken('/// 123', Line('test', 1))
-    assert token.string_fits_token('819273') is False
-    assert token.string_fits_token('asdlkjasd') is False
-    assert token.string_fits_token('// qwe') is False
-    assert token.string_fits_token('/// qwe') is True   # <- is true since `///` is the keyword
+    assert token.string_contains_token('819273') is False
+    assert token.string_contains_token('asdlkjasd') is False
+    assert token.string_contains_token('// qwe') is False
+    assert token.string_contains_token('/// qwe') is True   # <- is true since `///` is the keyword
 
 
 def test_get_full_matching_text():
     token = TestToken('/// 123', Line('test', 1))
-    assert token.get_full_matching_text('12380') is None
-    assert token.get_full_matching_text('123qdasda') is None
-    assert token.get_full_matching_text('u918203') is None
-    assert token.get_full_matching_text('// 123 //') is None
-    assert token.get_full_matching_text('/// //') == '///'
+    assert token.reduce_to_belonging('12380') is None
+    assert token.reduce_to_belonging('123qdasda') is None
+    assert token.reduce_to_belonging('u918203') is None
+    assert token.reduce_to_belonging('// 123 //') is None
+    assert token.reduce_to_belonging('/// //') == '///'
 
 
 def test_get_matching_keyword():
