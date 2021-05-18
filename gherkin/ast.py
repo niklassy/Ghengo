@@ -1,4 +1,5 @@
 import re
+from typing import Optional
 
 
 class GherkinDocument(object):
@@ -7,7 +8,7 @@ class GherkinDocument(object):
         self.feature = None
         self.comments = []
 
-    def set_feature(self, feature: 'Feature'):
+    def set_feature(self, feature: Optional['Feature']):
         self.feature = feature
 
     def add_comment(self, comment: 'Comment'):
@@ -135,13 +136,17 @@ class ScenarioDefinition(object):
         for step in self._steps.copy():
             steps.append(step)
 
-            for sub_step in step.sub_steps:
+            sub_steps = getattr(step, 'sub_steps', [])
+            for sub_step in sub_steps:
                 steps.append(sub_step)
 
         return steps
 
     def add_step(self, step):
         """Add a step to a specific step."""
+        if not isinstance(step, Step):
+            raise ValueError('You must add a step instance!')
+
         self._steps.append(step)
 
 
@@ -304,7 +309,8 @@ class Rule(HasBackgroundMixin, HasTagsMixin):
         return self._scenario_definitions
 
     def add_scenario_definition(self, child):
-        assert isinstance(child, ScenarioDefinition), 'You can only add ScenarioDefinitions.'
+        if not isinstance(child, ScenarioDefinition):
+            raise ValueError('You can only add ScenarioDefinitions.')
 
         self._scenario_definitions.append(child)
 
@@ -320,7 +326,10 @@ class Step(object):
         self.text = text
         self.argument = argument
         # all names are written in the format `{<name>}`
-        self.argument_names = [name.replace(' ', '') for name in re.findall('{(.*?)}', self.text)]
+        if self.text:
+            self.argument_names = [name.replace(' ', '') for name in re.findall('{(.*?)}', self.text)]
+        else:
+            self.argument_names = []
 
     def __repr__(self):
         return '{} - {}{}'.format(self.__class__.__name__.upper(), self.keyword, self.text)
@@ -339,6 +348,9 @@ class ParentStep(Step):
         return self.__sub_steps
 
     def add_sub_step(self, step):
+        if not isinstance(step, SubStep):
+            raise ValueError('You can only add a SubStep to a ParentStep.')
+
         self.__sub_steps.append(step)
         step.parent = self
 

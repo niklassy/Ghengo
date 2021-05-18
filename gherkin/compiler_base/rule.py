@@ -49,7 +49,7 @@ class Rule(object):
 
         return message
 
-    def _validate_rule_token(self, sequence: RuleToken, rule_alias: RuleAlias, index: int):
+    def _validate_rule_token(self, sequence: [RuleToken], rule_alias: RuleAlias, index: int):
         """
         Validates if a given rule token belongs to a rule class.
 
