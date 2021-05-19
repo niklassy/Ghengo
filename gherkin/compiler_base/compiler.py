@@ -169,6 +169,10 @@ class Parser(object):
         # convert also validates the tokens
         ast = self.get_grammar().convert(wrapped_tokens)
 
+        return self.prepare_ast(ast)
+
+    def prepare_ast(self, ast):
+        """You can use this function to do anything to the ast before returning it the the compiler."""
         return ast
 
 

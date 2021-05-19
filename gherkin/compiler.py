@@ -74,9 +74,8 @@ class GherkinParser(Parser):
 
         return tokens_trimmed
 
-    def validate_and_create_ast(self):
-        ast = super().validate_and_create_ast()
-
+    def prepare_ast(self, ast):
+        """Add all comments to the ast."""
         comments = [token for token in self.tokens if isinstance(token, Comment)]
         for c in comments:
             ast.add_comment(ASTComment(c.text))

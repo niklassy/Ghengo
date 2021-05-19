@@ -125,7 +125,9 @@ class Tags(TokenContainsWholeLineMixin, GherkinToken):
 class Comment(TokenContainsWholeLineMixin, GherkinToken):
     def __init__(self, text, line):
         super().__init__(text, line)
-        self.text = self.text.replace('#', '', 1).lstrip()
+
+        if self.text is not None:
+            self.text = self.text.replace('#', '', 1).lstrip()
 
     @classmethod
     def get_keywords(cls):
@@ -171,16 +173,6 @@ class Description(TokenContainsWholeLineMixin, GherkinToken):
         return True
 
 
-class EndOfBase(GherkinToken):
-    @classmethod
-    def get_matching_keyword(cls, string: str):
-        return ''
-
-    @classmethod
-    def reduce_to_belonging(cls, string: str):
-        return ''
-
-
 class EndOfLine(GherkinToken):
     def __init__(self, line: Optional[Line], *args, **kwargs):
         super().__init__(text=None, line=line)
@@ -193,26 +185,10 @@ class EndOfLine(GherkinToken):
     def get_keywords(cls):
         return ['End of line']
 
-    @classmethod
-    def get_matching_keyword(cls, string: str):
-        return ''
-
-    @classmethod
-    def reduce_to_belonging(cls, string: str):
-        return 'End of line'
-
 
 class EOF(GherkinToken):
     def __init__(self, line, *args, **kwargs):
         super().__init__(text=None, line=line)
-
-    @classmethod
-    def get_matching_keyword(cls, string: str):
-        return ''
-
-    @classmethod
-    def reduce_to_belonging(cls, string: str):
-        return 'End of file'
 
     @classmethod
     def get_keywords(cls):
