@@ -6,12 +6,12 @@ class RuleAlias(object):
     def __init__(self, token_cls):
         self.token_cls = token_cls
 
-    def rule_token_is_valid(self, rule_token: 'TokenWrapper') -> bool:
+    def token_wrapper_is_valid(self, token_wrapper: 'TokenWrapper') -> bool:
         """
-        Check if a given rule_token belongs to the class that this wrapper represents. Used by rules to check if a
+        Check if a given token_wrapper belongs to the class that this wrapper represents. Used by rules to check if a
         value is valid for this class.
         """
-        return isinstance(rule_token.token, self.token_cls)
+        return isinstance(token_wrapper.token, self.token_cls)
 
     def get_keywords(self) -> [str]:
         """

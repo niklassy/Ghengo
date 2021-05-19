@@ -173,3 +173,7 @@ def test_data_table():
     )
 
     remove_eof_from_chain(grammar.rule)
+
+
+def test_and_grammar():
+    pass

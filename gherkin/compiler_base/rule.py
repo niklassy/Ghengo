@@ -34,41 +34,41 @@ class Rule(object):
         """
         raise NotImplementedError()
 
-    def _build_error_message(self, keywords, rule_token=None, message=''):
+    def _build_error_message(self, keywords, token_wrapper=None, message=''):
         """Builds the message for RuleNotFulfilled and SequenceEnded exceptions."""
         if len(keywords) == 1:
             message += 'Expected {}.'.format(keywords[0])
         elif len(keywords) > 1:
             message += 'Expected one of: {}.'.format(', '.join(['"{}"'.format(k) for k in keywords]))
 
-        if rule_token:
+        if token_wrapper:
             if not keywords:
-                message += '{} is invalid. {}'.format(rule_token.get_text(), rule_token.get_place_to_search())
+                message += '{} is invalid. {}'.format(token_wrapper.get_text(), token_wrapper.get_place_to_search())
             else:
-                message += ' Got {} instead. {}'.format(rule_token.get_text(), rule_token.get_place_to_search())
+                message += ' Got {} instead. {}'.format(token_wrapper.get_text(), token_wrapper.get_place_to_search())
 
         return message
 
-    def _validate_rule_token(self, sequence: [TokenWrapper], rule_alias: RuleAlias, index: int):
+    def _validate_token_wrapper(self, sequence: [TokenWrapper], rule_alias: RuleAlias, index: int):
         """
         Validates if a given rule token belongs to a rule class.
 
         :raises SequenceEnded: if the sequence ends abruptly this error is risen
-        :raises RuleNotFulfilled: if the rule_token in the sequence does not match the rule_alias
+        :raises RuleNotFulfilled: if the token_wrapper in the sequence does not match the rule_alias
         """
         keywords = rule_alias.get_keywords()
 
         try:
-            rule_token = sequence[index]
+            token_wrapper = sequence[index]
         except IndexError:
             message = self._build_error_message(keywords, message='Input ended abruptely. ')
             raise SequenceEnded(message, rule_alias=rule_alias, sequence_index=index, rule=self)
 
-        assert isinstance(rule_token, TokenWrapper)
+        assert isinstance(token_wrapper, TokenWrapper)
         assert isinstance(rule_alias, RuleAlias)
 
-        if not rule_alias.rule_token_is_valid(rule_token):
-            message = self._build_error_message(keywords, rule_token)
+        if not rule_alias.token_wrapper_is_valid(token_wrapper):
+            message = self._build_error_message(keywords, token_wrapper)
 
             raise RuleNotFulfilled(message, rule_alias=rule_alias, sequence_index=index, rule=self)
 
@@ -77,8 +77,8 @@ class Rule(object):
         This function is used in the validation. It will return the next valid index in the sequence for the
         current rule (this instance) for a given child.
 
-        :raises RuleNotFulfilled (see _validate_rule_token)
-        :raises SequenceEnded (see _validate_rule_token)
+        :raises RuleNotFulfilled (see _validate_token_wrapper)
+        :raises SequenceEnded (see _validate_token_wrapper)
 
         :param child: a child of a rule - can be a Rule or a RuleClass
         :param sequence: the sequence that is validated
@@ -95,7 +95,7 @@ class Rule(object):
 
         # if a RuleClass is given, validate the rule token against that class
         if isinstance(child, RuleAlias):
-            self._validate_rule_token(sequence, child, index)
+            self._validate_token_wrapper(sequence, child, index)
 
             # if it is valid, go to the next token in the sequence
             return index + 1

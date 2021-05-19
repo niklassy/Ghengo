@@ -100,9 +100,9 @@ class DataTableGrammar(Grammar):
         nmb_columns = None
 
         # for through each token that belongs to the data table
-        for rule_token in sequence[old_index:new_index]:
+        for token_wrapper in sequence[old_index:new_index]:
             # get the token
-            data_table_token = rule_token.token
+            data_table_token = token_wrapper.token
 
             # skip if EndOfLine
             if not isinstance(data_table_token, DataTableToken):
@@ -118,7 +118,7 @@ class DataTableGrammar(Grammar):
 
             # for each of next data table entry, check that it has the same amount of columns
             if len(token_columns) != nmb_columns:
-                place_to_search = rule_token.get_place_to_search()
+                place_to_search = token_wrapper.get_place_to_search()
                 raise GrammarInvalid(
                     'All rows in a data table must have the same amount of columns. {}'.format(place_to_search),
                     grammar=self

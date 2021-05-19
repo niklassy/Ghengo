@@ -144,7 +144,7 @@ class Parser(object):
     def _validate_parser(self):
         """Makes sure that the parser is set up correctly."""
         if not inspect.isclass(self.token_wrapper_cls) or not inspect.isclass(self.grammar):
-            raise ValueError('Only use classes for `rule_token_cls` and `grammar`')
+            raise ValueError('Only use classes for `token_wrapper_cls` and `grammar`')
 
         if not issubclass(self.token_wrapper_cls, TokenWrapper) and self.token_wrapper_cls != TokenWrapper:
             raise ValueError('You must use a subclass of TokenWrapper for the Parser.')
