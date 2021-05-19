@@ -1,22 +1,23 @@
 from gherkin.compiler_base.exception import GrammarNotUsed, GrammarInvalid
-from gherkin.compiler_base.wrapper import RuleToken, RuleAlias
+from gherkin.compiler_base.wrapper import TokenWrapper, RuleAlias
 from gherkin.grammar import DescriptionGrammar, TagsGrammar, DocStringGrammar, DataTableGrammar
-from gherkin.token import EOF, Description, EndOfLine, Rule, Tag, DocString, DataTable
-from gherkin.ast import Description as ASTDescription
+from gherkin.token import EOFToken, DescriptionToken, EndOfLineToken, RuleToken, TagToken, DocStringToken, \
+    DataTableToken
+from gherkin.ast import Description
 from test_utils import assert_callable_raises
 
 
-class TestRuleToken(RuleToken):
+class TestTokenWrapper(TokenWrapper):
     def get_place_to_search(self) -> str:
         return ''
 
 
 def append_eof_to_chain(chain):
-    chain.child_rule.append(RuleAlias(EOF))
+    chain.child_rule.append(RuleAlias(EOFToken))
 
 
 def remove_eof_from_chain(chain):
-    if chain.child_rule[-1] == RuleAlias(EOF):
+    if chain.child_rule[-1] == RuleAlias(EOFToken):
         chain.child_rule = chain.child_rule[:len(chain.child_rule) - 1]
     return chain
 
@@ -25,13 +26,13 @@ def get_sequence(sequence, add_end_of=False):
     output = []
 
     for entry in sequence:
-        output.append(TestRuleToken(entry))
+        output.append(TestTokenWrapper(entry))
 
         if add_end_of:
-            output.append(TestRuleToken(EndOfLine(None, None)))
+            output.append(TestTokenWrapper(EndOfLineToken(None, None)))
 
     if add_end_of:
-        output.append(TestRuleToken(EOF(None, None)))
+        output.append(TestTokenWrapper(EOFToken(None, None)))
     return output
 
 
@@ -41,15 +42,15 @@ def test_description_grammar_convert():
     append_eof_to_chain(grammar.rule)
 
     # check a valid sequence
-    sequence = get_sequence([Description(text='teasd', line=None)], add_end_of=True)
+    sequence = get_sequence([DescriptionToken(text='teasd', line=None)], add_end_of=True)
     output = grammar.convert(sequence=sequence)
-    assert isinstance(output, ASTDescription)
+    assert isinstance(output, Description)
     assert output.text == 'teasd'
 
     # check invalid sequences
-    sequence = get_sequence([Rule(text='asd', line=None)], add_end_of=True)
+    sequence = get_sequence([RuleToken(text='asd', line=None)], add_end_of=True)
     assert_callable_raises(grammar.convert, GrammarNotUsed, args=[sequence])
-    sequence = get_sequence([Description(text='asd', line=None), Rule(text='asd', line=None)])
+    sequence = get_sequence([DescriptionToken(text='asd', line=None), RuleToken(text='asd', line=None)])
     assert_callable_raises(grammar.convert, GrammarInvalid, args=[sequence])
 
     remove_eof_from_chain(grammar.rule)
@@ -57,7 +58,7 @@ def test_description_grammar_convert():
 
 def test_description_get_name_and_description():
     """Check that the DescriptionGrammar helps building the name and description of other grammars."""
-    descriptions = [ASTDescription(text='val1'), ASTDescription(text='val2'), ASTDescription(text='val3')]
+    descriptions = [Description(text='val1'), Description(text='val2'), Description(text='val3')]
 
     name, description = DescriptionGrammar.get_name_and_description(descriptions)
     assert name == 'val1'
@@ -71,25 +72,27 @@ def test_tags_grammar():
 
     # valid 1
     sequence = get_sequence(
-        [Tag(text='tag1', line=None), Tag(text='tag2', line=None), EndOfLine(None, None), EOF(None, None)])
+        [TagToken(text='tag1', line=None), TagToken(text='tag2', line=None), EndOfLineToken(None, None), EOFToken(None, None)])
     output = grammar.convert(sequence)
     assert len(output) == 2
     assert output[0].name == 'tag1'
     assert output[1].name == 'tag2'
 
     # valid 2
-    sequence = get_sequence([Tag(text='tag1', line=None), EndOfLine(None, None), EOF(None, None)])
+    sequence = get_sequence([TagToken(text='tag1', line=None), EndOfLineToken(None, None), EOFToken(None, None)])
     output = grammar.convert(sequence)
     assert len(output) == 1
     assert output[0].name == 'tag1'
 
     # invalid sequences
     assert_callable_raises(
-        grammar.convert, GrammarNotUsed, args=[get_sequence([EndOfLine(None, None), EOF(None, None)])])
+        grammar.convert, GrammarNotUsed, args=[get_sequence([EndOfLineToken(None, None), EOFToken(None, None)])])
     assert_callable_raises(
-        grammar.convert, GrammarInvalid, args=[get_sequence([Tag('tag1', None), EOF(None, None)])])
+        grammar.convert, GrammarInvalid, args=[get_sequence([TagToken('tag1', None), EOFToken(None, None)])])
     assert_callable_raises(
-        grammar.convert, GrammarInvalid, args=[get_sequence([Tag('tag1', None), Rule(None, None), EOF(None, None)])])
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([TagToken('tag1', None), RuleToken(None, None), EOFToken(None, None)])])
 
     remove_eof_from_chain(grammar.rule)
 
@@ -101,30 +104,30 @@ def test_doc_string_grammar():
 
     # check valid input
     sequence = get_sequence(
-        [DocString(None, None), Description('a', None), Description('b', None), DocString(None, None)], add_end_of=True)
+        [DocStringToken(None, None), DescriptionToken('a', None), DescriptionToken('b', None), DocStringToken(None, None)], add_end_of=True)
     output = grammar.convert(sequence)
     assert output.text == 'a b'
 
-    sequence = get_sequence([DocString(None, None), DocString(None, None)], add_end_of=True)
+    sequence = get_sequence([DocStringToken(None, None), DocStringToken(None, None)], add_end_of=True)
     output = grammar.convert(sequence)
     assert output.text == ''
 
     assert_callable_raises(
         grammar.convert,
         GrammarNotUsed,
-        args=[get_sequence([Description(None, None)], add_end_of=True)])
+        args=[get_sequence([DescriptionToken(None, None)], add_end_of=True)])
     assert_callable_raises(
         grammar.convert,
         GrammarInvalid,
-        args=[get_sequence([DocString(None, None), Description(None, None)], add_end_of=True)])
+        args=[get_sequence([DocStringToken(None, None), DescriptionToken(None, None)], add_end_of=True)])
     assert_callable_raises(
         grammar.convert,
         GrammarNotUsed,     # <- since description is at the beginning, DocString cant be identified.
-        args=[get_sequence([Description(None, None), DocString(None, None)], add_end_of=True)])
+        args=[get_sequence([DescriptionToken(None, None), DocStringToken(None, None)], add_end_of=True)])
     assert_callable_raises(
         grammar.convert,
         GrammarInvalid,
-        args=[get_sequence([DocString(None, None), Rule(None, None)], add_end_of=True)])
+        args=[get_sequence([DocStringToken(None, None), RuleToken(None, None)], add_end_of=True)])
 
     remove_eof_from_chain(grammar.rule)
 
@@ -136,7 +139,7 @@ def test_data_table():
 
     # check a valid sequence
     sequence = get_sequence(
-        [DataTable('| col1 | col2|    col3|', None), DataTable('| val1 | val2|val3', None)], add_end_of=True)
+        [DataTableToken('| col1 | col2|    col3|', None), DataTableToken('| val1 | val2|val3', None)], add_end_of=True)
     output = grammar.convert(sequence)
     assert output.header.get_value_at(0) == 'col1'
     assert output.header.get_value_at(1) == 'col2'
@@ -151,22 +154,22 @@ def test_data_table():
         grammar.convert,
         GrammarInvalid,
         message='All rows in a data table must have the same amount of columns. ',
-        args=[get_sequence([DataTable('|a|b|c|', None), DataTable('|a|b|', None)], add_end_of=True)]
+        args=[get_sequence([DataTableToken('|a|b|c|', None), DataTableToken('|a|b|', None)], add_end_of=True)]
     )
     assert_callable_raises(
         grammar.convert,
         GrammarNotUsed,
-        args=[get_sequence([Rule(None, None)], add_end_of=True)]
+        args=[get_sequence([RuleToken(None, None)], add_end_of=True)]
     )
     assert_callable_raises(
         grammar.convert,
         GrammarInvalid,
-        args=[get_sequence([DataTable(None, None)], add_end_of=True)]   # <- not enough columns
+        args=[get_sequence([DataTableToken(None, None)], add_end_of=True)]   # <- not enough columns
     )
     assert_callable_raises(
         grammar.convert,
         GrammarInvalid,
-        args=[get_sequence([DataTable(None, None), Rule(None, None)], add_end_of=True)]
+        args=[get_sequence([DataTableToken(None, None), RuleToken(None, None)], add_end_of=True)]
     )
 
     remove_eof_from_chain(grammar.rule)

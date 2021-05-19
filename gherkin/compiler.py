@@ -5,48 +5,48 @@ from gherkin.compiler_base.exception import RuleNotFulfilled, GrammarInvalid
 from gherkin.config import GHERKIN_CONFIG
 from gherkin.exception import GherkinInvalid
 from gherkin.grammar import GherkinDocumentGrammar
-from gherkin.token import Feature, Rule, Description, EOF, Background, Scenario, Comment, Given, Then, \
-    When, Empty, And, But, Tags, Language, EndOfLine, ScenarioOutline, DocString, DataTable, Examples
+from gherkin.token import FeatureToken, RuleToken, DescriptionToken, EOFToken, BackgroundToken, ScenarioToken, CommentToken, GivenToken, ThenToken, \
+    WhenToken, EmptyToken, AndToken, ButToken, TagsToken, LanguageToken, EndOfLineToken, ScenarioOutlineToken, DocStringToken, DataTableToken, ExamplesToken
 from settings import Settings
 
 
 class GherkinLexer(Lexer):
     token_classes = [
-        Tags,
-        Feature,
-        Rule,
-        Background,
-        Examples,  # <-- must stay before scenario
-        ScenarioOutline,  # <-- must stay before scenario
-        Scenario,
-        Given,
-        Then,
-        When,
-        And,
-        But,
+        TagsToken,
+        FeatureToken,
+        RuleToken,
+        BackgroundToken,
+        ExamplesToken,  # <-- must stay before scenario
+        ScenarioOutlineToken,  # <-- must stay before scenario
+        ScenarioToken,
+        GivenToken,
+        ThenToken,
+        WhenToken,
+        AndToken,
+        ButToken,
 
-        DataTable,
-        DocString,
-        Language,  # <- must stay before comment
-        Comment,
+        DataTableToken,
+        DocStringToken,
+        LanguageToken,  # <- must stay before comment
+        CommentToken,
 
-        Empty,
-        Description,  # <-- keep at the end as fallback
+        EmptyToken,
+        DescriptionToken,  # <-- keep at the end as fallback
     ]
 
     def on_token_added(self, token):
         # the first line may contain the language, so if it is found, set it
-        if isinstance(token, Language):
+        if isinstance(token, LanguageToken):
             if token.line.line_index > 0:
                 raise GherkinInvalid('You may only set the language in the first line of the document')
 
             Settings.language = token.locale
 
     def on_end_of_line(self, line):
-        self.init_and_add_token(EndOfLine, line=line, text=None)
+        self.init_and_add_token(EndOfLineToken, line=line, text=None)
 
     def on_end_of_document(self):
-        self.init_and_add_token(EOF, line=self.tokens[-1].line, text=None)
+        self.init_and_add_token(EOFToken, line=self.tokens[-1].line, text=None)
 
 
 class GherkinParser(Parser):
@@ -57,7 +57,7 @@ class GherkinParser(Parser):
         to_remove = []
 
         for index, token in enumerate(tokens):
-            if isinstance(token, Empty) or isinstance(token, Comment):
+            if isinstance(token, EmptyToken) or isinstance(token, CommentToken):
                 to_remove.append(index)
 
                 # Comment and Empty are always followed by an EndOfLine
@@ -66,7 +66,7 @@ class GherkinParser(Parser):
                 except IndexError:
                     continue
 
-                if isinstance(next_token, EndOfLine):
+                if isinstance(next_token, EndOfLineToken):
                     to_remove.append(index + 1)
 
         tokens_trimmed = tokens.copy()
@@ -77,7 +77,7 @@ class GherkinParser(Parser):
 
     def prepare_ast(self, ast):
         """Add all comments to the ast."""
-        comments = [token for token in self.tokens if isinstance(token, Comment)]
+        comments = [token for token in self.tokens if isinstance(token, CommentToken)]
         for c in comments:
             ast.add_comment(ASTComment(c.text))
 

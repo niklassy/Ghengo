@@ -6,7 +6,7 @@ class RuleAlias(object):
     def __init__(self, token_cls):
         self.token_cls = token_cls
 
-    def rule_token_is_valid(self, rule_token: 'RuleToken') -> bool:
+    def rule_token_is_valid(self, rule_token: 'TokenWrapper') -> bool:
         """
         Check if a given rule_token belongs to the class that this wrapper represents. Used by rules to check if a
         value is valid for this class.
@@ -29,7 +29,7 @@ class RuleAlias(object):
         return self.token_cls == other.token_cls
 
 
-class RuleToken(object):
+class TokenWrapper(object):
     """
     This is a wrapper around any custom token object. It is used to allow rules to get the line_number and the
     text of a token. For this project, the class could be removed, but it is a nice wrapper for future usage.

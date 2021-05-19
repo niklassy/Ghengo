@@ -2,7 +2,7 @@ from typing import Union
 
 from gherkin.compiler_base.exception import SequenceEnded, RuleNotFulfilled, SequenceNotFinished, GrammarNotUsed
 from gherkin.compiler_base.grammar import Grammar
-from gherkin.compiler_base.wrapper import RuleAlias, RuleToken
+from gherkin.compiler_base.wrapper import RuleAlias, TokenWrapper
 
 
 class Rule(object):
@@ -49,7 +49,7 @@ class Rule(object):
 
         return message
 
-    def _validate_rule_token(self, sequence: [RuleToken], rule_alias: RuleAlias, index: int):
+    def _validate_rule_token(self, sequence: [TokenWrapper], rule_alias: RuleAlias, index: int):
         """
         Validates if a given rule token belongs to a rule class.
 
@@ -64,7 +64,7 @@ class Rule(object):
             message = self._build_error_message(keywords, message='Input ended abruptely. ')
             raise SequenceEnded(message, rule_alias=rule_alias, sequence_index=index, rule=self)
 
-        assert isinstance(rule_token, RuleToken)
+        assert isinstance(rule_token, TokenWrapper)
         assert isinstance(rule_alias, RuleAlias)
 
         if not rule_alias.rule_token_is_valid(rule_token):
@@ -72,7 +72,7 @@ class Rule(object):
 
             raise RuleNotFulfilled(message, rule_alias=rule_alias, sequence_index=index, rule=self)
 
-    def _get_valid_index_for_child(self, child: Union['Rule', 'RuleAlias', 'Grammar'], sequence: ['RuleToken'], index: int) -> int:
+    def _get_valid_index_for_child(self, child: Union['Rule', 'RuleAlias', 'Grammar'], sequence: ['TokenWrapper'], index: int) -> int:
         """
         This function is used in the validation. It will return the next valid index in the sequence for the
         current rule (this instance) for a given child.
@@ -117,11 +117,11 @@ class Rule(object):
         self.validate_sequence(sequence)
         return self.sequence_to_object(sequence)
 
-    def validate_sequence(self, sequence: ['RuleToken'], index=0):
+    def validate_sequence(self, sequence: ['TokenWrapper'], index=0):
         """
         Public function to validate a given sequence. May raise a RuleNotFulfilled or a SequenceNotFinished.
         """
-        assert all([isinstance(el, RuleToken) for el in sequence]), 'Every entry in the passed sequence must be of ' \
+        assert all([isinstance(el, TokenWrapper) for el in sequence]), 'Every entry in the passed sequence must be of ' \
                                                                     'class "RuleToken"'
 
         try:

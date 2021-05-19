@@ -1,16 +1,16 @@
 from gherkin.compiler_base.exception import GrammarInvalid, GrammarNotUsed
-from gherkin.compiler_base.rule import Optional, RuleAlias, RuleToken, Grammar, Chain, OneOf, Repeatable
-from gherkin.token import Description, EndOfLine, EOF, Feature
+from gherkin.compiler_base.rule import Optional, RuleAlias, TokenWrapper, Grammar, Chain, OneOf, Repeatable
+from gherkin.token import DescriptionToken, EndOfLineToken, EOFToken, FeatureToken
 from test_utils import assert_callable_raises
 
 
-class RuleTestToken(RuleToken):
+class TestTokenWrapper(TokenWrapper):
     def get_place_to_search(self) -> str:
         return ''
 
 
 def token_sequence(sequence):
-    return [RuleTestToken(t) for t in sequence]
+    return [TestTokenWrapper(t) for t in sequence]
 
 
 def test_grammar_invalid_input():
@@ -19,21 +19,21 @@ def test_grammar_invalid_input():
         rule = None
 
     class Grammar2(Grammar):
-        rule = Repeatable(RuleAlias(EOF))
+        rule = Repeatable(RuleAlias(EOFToken))
 
     class Grammar3(Grammar):
-        rule = Optional(RuleAlias(EOF))
+        rule = Optional(RuleAlias(EOFToken))
 
     class Grammar6(Grammar):
-        rule = OneOf([RuleAlias(EOF)])
+        rule = OneOf([RuleAlias(EOFToken)])
 
     class Grammar4(Grammar):
-        criterion_rule_alias = EOF
-        rule = Chain([RuleAlias(EOF)])
+        criterion_rule_alias = EOFToken
+        rule = Chain([RuleAlias(EOFToken)])
 
     class Grammar5(Grammar):
-        criterion_rule_alias = Chain([RuleAlias(EOF)])
-        rule = Chain([RuleAlias(EOF)])
+        criterion_rule_alias = Chain([RuleAlias(EOFToken)])
+        rule = Chain([RuleAlias(EOFToken)])
 
     assert_callable_raises(Grammar1, ValueError)
     assert_callable_raises(Grammar2, ValueError)
@@ -46,66 +46,66 @@ def test_grammar_invalid_input():
 def test_grammar_chain():
     """Check that the grammar handles a chain as a rule correctly."""
     class MyGrammar(Grammar):
-        criterion_rule_alias = RuleAlias(EOF)
+        criterion_rule_alias = RuleAlias(EOFToken)
         rule = Chain([
-            RuleAlias(EOF),
-            RuleAlias(EndOfLine),
-            RuleAlias(Feature),
+            RuleAlias(EOFToken),
+            RuleAlias(EndOfLineToken),
+            RuleAlias(FeatureToken),
         ])
 
     grammar = MyGrammar()
     # valid input
-    grammar.validate_sequence(token_sequence([EOF(None), EndOfLine(None), Feature('', None)]))
+    grammar.validate_sequence(token_sequence([EOFToken(None), EndOfLineToken(None), FeatureToken('', None)]))
 
     # some other grammar that does not fit this
     assert_callable_raises(
         grammar.validate_sequence,
         GrammarNotUsed,
-        args=[token_sequence([Feature('', None), Description('', None)])]   # <- criterion_rule_alias missing
+        args=[token_sequence([FeatureToken('', None), DescriptionToken('', None)])]   # <- criterion_rule_alias missing
     )
 
     # the grammar is not valid
     assert_callable_raises(
         grammar.validate_sequence,
         GrammarInvalid,
-        args=[token_sequence([EOF(None), EndOfLine(None), EOF(None)])]      # <- grammar not complete
+        args=[token_sequence([EOFToken(None), EndOfLineToken(None), EOFToken(None)])]      # <- grammar not complete
     )
     assert_callable_raises(
         grammar.validate_sequence,
         GrammarInvalid,
-        args=[token_sequence([EOF(None), EOF(None), EOF(None)])]  # <- grammar not complete
+        args=[token_sequence([EOFToken(None), EOFToken(None), EOFToken(None)])]  # <- grammar not complete
     )
 
 
 def test_grammar_nested():
     """Check what happens if a grammars are nested."""
     class NestedGrammar(Grammar):
-        criterion_rule_alias = RuleAlias(Description)
+        criterion_rule_alias = RuleAlias(DescriptionToken)
         rule = Chain([
-            RuleAlias(Description),
-            RuleAlias(EndOfLine),
+            RuleAlias(DescriptionToken),
+            RuleAlias(EndOfLineToken),
         ])
 
     nested_grammar = NestedGrammar()
 
     class ParentGrammar(Grammar):
-        criterion_rule_alias = RuleAlias(Feature)
+        criterion_rule_alias = RuleAlias(FeatureToken)
         rule = Chain([
-            RuleAlias(Feature),
+            RuleAlias(FeatureToken),
             nested_grammar,
-            RuleAlias(EOF),
+            RuleAlias(EOFToken),
         ])
 
     grammar = ParentGrammar()
 
     # valid input
-    grammar.validate_sequence(token_sequence([Feature('', None), Description('', None), EndOfLine(None), EOF(None)]))
+    grammar.validate_sequence(token_sequence([FeatureToken('', None), DescriptionToken('', None), EndOfLineToken(None), EOFToken(None)]))
 
     # grammar of parent not used
     error = assert_callable_raises(
         grammar.validate_sequence,
         GrammarNotUsed,
-        args=[token_sequence([EOF(None)])],
+        args=[token_sequence([EOFToken(None)])],
     )
     assert error.grammar == grammar
 
@@ -113,6 +113,6 @@ def test_grammar_nested():
     error = assert_callable_raises(
         grammar.validate_sequence,
         GrammarInvalid,
-        args=[token_sequence([Feature('', None), EOF(None)])],
+        args=[token_sequence([FeatureToken('', None), EOFToken(None)])],
     )
     assert error.grammar == grammar

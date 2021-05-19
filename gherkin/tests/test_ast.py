@@ -1,6 +1,6 @@
 from gherkin.ast import GherkinDocument, Feature, Comment, HasTagsMixin, HasBackgroundMixin, Background, Step, \
-    ScenarioDefinition, ParentStep, SubStep, ScenarioOutline, Examples, Scenario, TableCell, TableRow, DataTable, Rule, \
-    DocString
+    ScenarioDefinition, ParentStep, SubStep, ScenarioOutline, Examples, Scenario, TableCell, TableRow, DataTable, \
+    Rule, DocString
 from test_utils import assert_callable_raises
 
 

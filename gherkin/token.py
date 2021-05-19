@@ -28,32 +28,32 @@ class TokenContainsWholeLineMixin(object):
         return string
 
 
-class Feature(GherkinToken):
+class FeatureToken(GherkinToken):
     _json_id = 'feature'
     keyword_with_colon = True
 
 
-class Rule(GherkinToken):
+class RuleToken(GherkinToken):
     _json_id = 'rule'
     keyword_with_colon = True
 
 
-class Scenario(GherkinToken):
+class ScenarioToken(GherkinToken):
     _json_id = 'scenario'
     keyword_with_colon = True
 
 
-class ScenarioOutline(GherkinToken):
+class ScenarioOutlineToken(GherkinToken):
     _json_id = 'scenarioOutline'
     keyword_with_colon = True
 
 
-class Examples(GherkinToken):
+class ExamplesToken(GherkinToken):
     _json_id = 'examples'
     keyword_with_colon = True
 
 
-class DataTable(TokenContainsWholeLineMixin, GherkinToken):
+class DataTableToken(TokenContainsWholeLineMixin, GherkinToken):
     @classmethod
     def get_keywords(cls):
         return ['|']
@@ -65,38 +65,38 @@ class DataTable(TokenContainsWholeLineMixin, GherkinToken):
         return clean_string and clean_string[0] == keyword and clean_string[-1] == keyword
 
 
-class DocString(TokenContainsWholeLineMixin, GherkinToken):
+class DocStringToken(TokenContainsWholeLineMixin, GherkinToken):
     @classmethod
     def get_keywords(cls):
         return ['"""', '```']
 
 
-class Background(GherkinToken):
+class BackgroundToken(GherkinToken):
     _json_id = 'background'
     keyword_with_colon = True
 
 
-class Given(GherkinToken):
+class GivenToken(GherkinToken):
     _json_id = 'given'
 
 
-class When(GherkinToken):
+class WhenToken(GherkinToken):
     _json_id = 'when'
 
 
-class Then(GherkinToken):
+class ThenToken(GherkinToken):
     _json_id = 'then'
 
 
-class And(GherkinToken):
+class AndToken(GherkinToken):
     _json_id = 'and'
 
 
-class But(GherkinToken):
+class ButToken(GherkinToken):
     _json_id = 'but'
 
 
-class Tag(GherkinToken):
+class TagToken(GherkinToken):
     def __init__(self, text, line):
         super().__init__(line=line, text=text)
         self.text = text
@@ -113,16 +113,16 @@ class Tag(GherkinToken):
         return super().get_matching_keyword(string)
 
 
-class Tags(TokenContainsWholeLineMixin, GherkinToken):
+class TagsToken(TokenContainsWholeLineMixin, GherkinToken):
     def __new__(cls, text, line):
-        return [Tag(line=line, text=text.replace('@', '')) for text in line.trimmed_text.split(' ')]
+        return [TagToken(line=line, text=text.replace('@', '')) for text in line.trimmed_text.split(' ')]
 
     @classmethod
     def get_keywords(cls):
         return ['@']
 
 
-class Comment(TokenContainsWholeLineMixin, GherkinToken):
+class CommentToken(TokenContainsWholeLineMixin, GherkinToken):
     def __init__(self, text, line):
         super().__init__(text, line)
 
@@ -134,7 +134,7 @@ class Comment(TokenContainsWholeLineMixin, GherkinToken):
         return ['#']
 
 
-class Language(TokenContainsWholeLineMixin, GherkinToken):
+class LanguageToken(TokenContainsWholeLineMixin, GherkinToken):
     def __init__(self, line, text):
         self.locale = self.get_locale_from_line(line.trimmed_text)
         super().__init__(line=line, text=self.locale)
@@ -153,7 +153,7 @@ class Language(TokenContainsWholeLineMixin, GherkinToken):
         return string.replace(' ', '').replace('#language', '')
 
 
-class Empty(GherkinToken):
+class EmptyToken(GherkinToken):
     @classmethod
     def get_matching_keyword(cls, string: str):
         return ''
@@ -163,7 +163,7 @@ class Empty(GherkinToken):
         return not bool(string)
 
 
-class Description(TokenContainsWholeLineMixin, GherkinToken):
+class DescriptionToken(TokenContainsWholeLineMixin, GherkinToken):
     @classmethod
     def get_keywords(cls):
         return ['Any string with no keywords']
@@ -173,7 +173,7 @@ class Description(TokenContainsWholeLineMixin, GherkinToken):
         return True
 
 
-class EndOfLine(GherkinToken):
+class EndOfLineToken(GherkinToken):
     def __init__(self, line: Optional[Line], *args, **kwargs):
         super().__init__(text=None, line=line)
 
@@ -186,7 +186,7 @@ class EndOfLine(GherkinToken):
         return ['End of line']
 
 
-class EOF(GherkinToken):
+class EOFToken(GherkinToken):
     def __init__(self, line, *args, **kwargs):
         super().__init__(text=None, line=line)
 

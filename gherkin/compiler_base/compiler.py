@@ -1,7 +1,7 @@
 import inspect
 
 from gherkin.compiler_base.grammar import Grammar
-from gherkin.compiler_base.rule import RuleToken
+from gherkin.compiler_base.rule import TokenWrapper
 from gherkin.compiler_base.line import Line
 from gherkin.compiler_base.token import Token
 
@@ -114,7 +114,7 @@ class Parser(object):
     Checks that the tokens are valid aka if the syntax of the input is valid. It also generates an AST with the tokens.
     """
     grammar = None
-    rule_token_cls = RuleToken
+    token_wrapper_cls = TokenWrapper
 
     def __init__(self, compiler):
         self.compiler = compiler
@@ -143,11 +143,11 @@ class Parser(object):
 
     def _validate_parser(self):
         """Makes sure that the parser is set up correctly."""
-        if not inspect.isclass(self.rule_token_cls) or not inspect.isclass(self.grammar):
+        if not inspect.isclass(self.token_wrapper_cls) or not inspect.isclass(self.grammar):
             raise ValueError('Only use classes for `rule_token_cls` and `grammar`')
 
-        if not issubclass(self.rule_token_cls, RuleToken) and self.rule_token_cls != RuleToken:
-            raise ValueError('You must use a subclass of RuleToken for the Parser.')
+        if not issubclass(self.token_wrapper_cls, TokenWrapper) and self.token_wrapper_cls != TokenWrapper:
+            raise ValueError('You must use a subclass of TokenWrapper for the Parser.')
 
         if self.grammar is None:
             raise ValueError('You must define a "head"-grammar for your parser that wraps everything else.')
@@ -164,7 +164,7 @@ class Parser(object):
         prepared_tokens = self.prepare_tokens(self.tokens)
 
         # wrap the tokens in RuleTokens because they will be used by Rules and Grammars in the validation
-        wrapped_tokens = [self.rule_token_cls(token=t) for t in prepared_tokens]
+        wrapped_tokens = [self.token_wrapper_cls(token=t) for t in prepared_tokens]
 
         # convert also validates the tokens
         ast = self.get_grammar().convert(wrapped_tokens)

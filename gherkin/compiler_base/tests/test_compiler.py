@@ -139,7 +139,7 @@ def test_parser_invalid():
     assert_callable_raises(GrammarMissingParser(None).parse, ValueError, args=[[]])
 
     class InvalidRuleParser(Parser):
-        rule_token_cls = 'asdasd'
+        token_wrapper_cls = 'asdasd'
         grammar = CustomGrammar
 
     assert_callable_raises(InvalidRuleParser(None).parse, ValueError, args=[[]])

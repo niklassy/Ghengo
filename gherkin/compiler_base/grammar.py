@@ -1,6 +1,6 @@
 from gherkin.compiler_base.exception import RuleNotFulfilled, SequenceEnded, GrammarNotUsed, GrammarInvalid, \
     SequenceNotFinished
-from gherkin.compiler_base.wrapper import RuleAlias, RuleToken
+from gherkin.compiler_base.wrapper import RuleAlias, TokenWrapper
 
 
 class Grammar(object):
@@ -44,6 +44,7 @@ class Grammar(object):
         self.validated_sequence = None
 
     def get_rule(self):
+        """Returns the rule of this grammar."""
         return self.rule
 
     def get_name(self):
@@ -91,7 +92,7 @@ class Grammar(object):
 
             raise GrammarInvalid('Invalid syntax for {} - {}'.format(self.get_name(), str(e)), grammar=self)
 
-    def validate_sequence(self, sequence: [RuleToken]):
+    def validate_sequence(self, sequence: [TokenWrapper]):
         """
         The entrypoint to the validation. Call this function to start the validation of a sequence.
 
@@ -102,8 +103,8 @@ class Grammar(object):
         :raises GrammarNotUsed  - This grammar could not be identified and is not used in the sequence. This is only
                                 risen if the top level Grammar is not recognized.
         """
-        assert all([isinstance(el, RuleToken) for el in sequence]), 'Every entry in the passed sequence must be of ' \
-                                                                    'class "RuleToken"'
+        assert all([isinstance(el, TokenWrapper) for el in sequence]), 'Every entry in the passed sequence must be ' \
+                                                                       'of class "TokenWrapper"'
 
         result_index = self._validate_sequence(sequence, 0)
 
