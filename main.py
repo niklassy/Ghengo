@@ -1,6 +1,6 @@
 from gherkin.compiler import GherkinCompiler
 
-feature_string = """# language en
+feature_string = """# language wqeqweqwe
 
 @tag1 @tag2
 Feature: Ich bin etwas

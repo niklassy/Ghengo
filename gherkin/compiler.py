@@ -2,6 +2,7 @@ from gherkin.compiler_base.compiler import Lexer, Compiler, Parser
 
 from gherkin.ast import Comment as ASTComment
 from gherkin.compiler_base.exception import RuleNotFulfilled, GrammarInvalid
+from gherkin.config import GHERKIN_CONFIG
 from gherkin.exception import GherkinInvalid
 from gherkin.grammar import GherkinDocumentGrammar
 from gherkin.token import Feature, Rule, Description, EOF, Background, Scenario, Comment, Given, Then, \

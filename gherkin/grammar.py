@@ -1,3 +1,4 @@
+from gherkin.compiler_base.exception import GrammarInvalid
 from gherkin.compiler_base.rule import Chain, OneOf, Repeatable, Optional, RuleAlias, Grammar, RuleToken
 from gherkin.token import Language, Feature, EOF, Description, Rule, Scenario, EndOfLine, Tag, \
     Given, And, But, When, Then, Background, DocString, DataTable, Examples, ScenarioOutline
@@ -92,20 +93,51 @@ class DataTableGrammar(Grammar):
     ])
     convert_cls = ASTDataTable
 
+    def _validate_sequence(self, sequence, index):
+        old_index = index
+        new_index = super()._validate_sequence(sequence, index)
+        nmb_columns = None
+
+        # for through each token that belongs to the data table
+        for rule_token in sequence[old_index:new_index]:
+            # get the token
+            data_table_token = rule_token.token
+
+            # skip if EndOfLine
+            if not isinstance(data_table_token, DataTable):
+                continue
+
+            # get all columns of that token
+            token_columns = self.get_datatable_values(data_table_token.text)
+
+            # first time, set the number of columns
+            if nmb_columns is None:
+                nmb_columns = len(token_columns)
+                continue
+
+            # for each of next data table entry, check that it has the same amount of columns
+            if len(token_columns) != nmb_columns:
+                place_to_search = rule_token.get_place_to_search()
+                raise GrammarInvalid(
+                    'All rows in a data table must have the same amount of columns. {}'.format(place_to_search),
+                    grammar=self
+                )
+
+        return new_index
+
     @classmethod
-    def get_values_of_datatable(cls, entry):
-        header_entry = entry[0]     # <- second entry is always the end of line, so take the first
-        return [v.lstrip().rstrip() for v in header_entry.token.text.split('|') if v.lstrip().rstrip()]
+    def get_datatable_values(cls, string):
+        return [v.lstrip().rstrip() for v in string.split('|') if v.lstrip().rstrip()]
 
     def get_convert_kwargs(self, rule_output):
         datatable_entries = rule_output[0]
         header_row = datatable_entries[0]
-        header_values = self.get_values_of_datatable(header_row)
+        header_values = self.get_datatable_values(header_row[0].token.text)     # <- header_row[1] will be EndOfLine
         header = ASTTableRow(cells=[ASTTableCell(value=v) for v in header_values])
 
         rows = []
         for row in datatable_entries[1:]:
-            row_values = self.get_values_of_datatable(row)
+            row_values = self.get_datatable_values(row[0].token.text)
             rows.append(ASTTableRow(cells=[ASTTableCell(value=v) for v in row_values]))
 
         return {
