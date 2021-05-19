@@ -468,6 +468,7 @@ class FeatureGrammar(TagsGrammarMixin, Grammar):
         }
 
     def prepare_converted_object(self, rule_convert_obj: [TokenWrapper], grammar_obj: Feature):
+        grammar_obj = super().prepare_converted_object(rule_convert_obj, grammar_obj)
         scenario_rules = rule_convert_obj[4]
 
         # add all the rules/ scenario definitions
@@ -496,7 +497,6 @@ class GherkinDocumentGrammar(Grammar):
         Optional(FeatureGrammar()),
         RuleAlias(EOFToken),
     ])
-    criterion_rule_alias = None
     name = 'Gherkin document'
     convert_cls = GherkinDocument
 

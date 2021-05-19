@@ -135,7 +135,7 @@ class CommentToken(TokenContainsWholeLineMixin, GherkinToken):
 
 
 class LanguageToken(TokenContainsWholeLineMixin, GherkinToken):
-    def __init__(self, line, text):
+    def __init__(self, text, line):
         self.locale = self.get_locale_from_line(line.trimmed_text)
         super().__init__(line=line, text=self.locale)
 

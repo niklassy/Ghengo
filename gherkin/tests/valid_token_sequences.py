@@ -1,5 +1,5 @@
 from gherkin.token import ExamplesToken, EndOfLineToken, DataTableToken, GivenToken, DescriptionToken, \
-    WhenToken, ThenToken, BackgroundToken, ScenarioToken, ScenarioOutlineToken
+    WhenToken, ThenToken, BackgroundToken, ScenarioToken, ScenarioOutlineToken, RuleToken, FeatureToken
 
 examples_sequence = [
     ExamplesToken(None, None),
@@ -51,3 +51,19 @@ scenario_outline_sequence = [
     DescriptionToken('desc', None),
     EndOfLineToken(None, None),
 ] + given_sequence + examples_sequence
+
+rule_sequence = [
+    RuleToken(None, None),
+    DescriptionToken('name1', None),
+    EndOfLineToken(None, None),
+    DescriptionToken('desc1', None),
+    EndOfLineToken(None, None),
+] + scenario_sequence
+
+feature_sequence = [
+    FeatureToken(None, None),
+    DescriptionToken('name123', None),
+    EndOfLineToken(None, None),
+    DescriptionToken('desc123', None),
+    EndOfLineToken(None, None),
+] + scenario_sequence

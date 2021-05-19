@@ -1,16 +1,18 @@
 import pytest
 
-from gherkin.compiler_base.exception import GrammarNotUsed, GrammarInvalid
+from gherkin.compiler_base.exception import GrammarNotUsed, GrammarInvalid, SequenceNotFinished
+from gherkin.compiler_base.line import Line
 from gherkin.compiler_base.wrapper import TokenWrapper, RuleAlias
 from gherkin.grammar import DescriptionGrammar, TagsGrammar, DocStringGrammar, DataTableGrammar, AndGrammar, ButGrammar, \
     ExamplesGrammar, GivenGrammar, WhenGrammar, ThenGrammar, StepsGrammar, ScenarioOutlineGrammar, ScenarioGrammar, \
-    BackgroundGrammar, RuleGrammar, FeatureGrammar
+    BackgroundGrammar, RuleGrammar, FeatureGrammar, LanguageGrammar, GherkinDocumentGrammar
 from gherkin.tests.valid_token_sequences import examples_sequence, given_sequence, when_sequence, then_sequence, \
-    scenario_sequence, scenario_outline_sequence, background_sequence
+    scenario_sequence, scenario_outline_sequence, background_sequence, feature_sequence
 from gherkin.token import EOFToken, DescriptionToken, EndOfLineToken, RuleToken, TagToken, DocStringToken, \
     DataTableToken, AndToken, ButToken, ExamplesToken, GivenToken, WhenToken, ThenToken, ScenarioOutlineToken, \
-    ScenarioToken, BackgroundToken
+    ScenarioToken, BackgroundToken, FeatureToken, LanguageToken
 from gherkin.ast import Description, DataTable, DocString, And, But, Given, When, Then, Background
+from settings import Settings
 from test_utils import assert_callable_raises
 
 
@@ -756,7 +758,178 @@ def test_rule_grammar_invalid():
 
 
 def test_feature_grammar_valid():
+    """Check that feature grammar handles valid input correctly."""
     grammar = FeatureGrammar()
 
+    base_sequence = [
+        FeatureToken(None, None),
+        DescriptionToken('name123', None),
+        EndOfLineToken(None, None),
+        DescriptionToken('desc123', None),
+        EndOfLineToken(None, None),
+    ]
+
+    # with one scenario
+    Settings.language = 'qweqweqwe'
+    output = grammar.convert(get_sequence(base_sequence + scenario_sequence))
+    assert output.name == 'name123'
+    assert output.description == 'desc123'
+    assert len(output.tags) == 0
+    assert output.background is None
+    assert len(output.children) == 1
+    assert output.language == 'qweqweqwe'
+    assert all([child.parent == output for child in output.children])
+
+    # with background
+    Settings.language = Settings.DEFAULT_LANGUAGE
+    output = grammar.convert(get_sequence(base_sequence + background_sequence + scenario_sequence))
+    assert output.name == 'name123'
+    assert output.description == 'desc123'
+    assert output.background is not None
+    assert len(output.children) == 1
+    assert output.language == Settings.DEFAULT_LANGUAGE
+    assert all([child.parent == output for child in output.children])
+    assert len(output.tags) == 0
+
+    # multiple scenarios
+    output = grammar.convert(get_sequence(
+        base_sequence
+        + background_sequence
+        + scenario_sequence
+        + scenario_outline_sequence
+        + scenario_sequence
+    ))
+    assert len(output.tags) == 0
+    assert output.name == 'name123'
+    assert output.description == 'desc123'
+    assert output.background is not None
+    assert len(output.children) == 3
+    assert all([child.parent == output for child in output.children])
+    assert output.language == Settings.DEFAULT_LANGUAGE
+
+    # with tags
+    output = grammar.convert(get_sequence(
+        [TagToken('tag1', None), EndOfLineToken(None, None)]
+        + base_sequence
+        + background_sequence
+        + scenario_sequence
+        + scenario_outline_sequence
+        + scenario_sequence
+    ))
+    assert output.language == Settings.DEFAULT_LANGUAGE
+    assert len(output.tags) == 1
+    assert output.name == 'name123'
+    assert output.description == 'desc123'
+    assert output.background is not None
+    assert len(output.children) == 3
+    assert all([child.parent == output for child in output.children])
 
 
+def test_feature_grammar_invalid():
+    """Check that the feature grammar handles invalid input correctly."""
+    grammar = FeatureGrammar()
+
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[[]]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[get_sequence([RuleToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[get_sequence([TagToken(None, None), EndOfLineToken(None, None), RuleToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([FeatureToken(None, None), EndOfLineToken(None, None), DescriptionToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([
+            FeatureToken(None, None),
+            BackgroundToken(None, None),
+            EndOfLineToken(None, None),
+            DescriptionToken(None, None)
+        ])]
+    )
+
+
+def test_language_grammar():
+    """Check that language grammar handles all forms of input correctly"""
+    grammar = LanguageGrammar()
+
+    # valid input
+    output = grammar.convert(get_sequence([LanguageToken(None, Line('en', 1)), EndOfLineToken(None, None)]))
+    assert output.language == 'en'
+
+    # invalid input
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[get_sequence([RuleToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[get_sequence([EndOfLineToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[[]]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([LanguageToken(None, Line('en', 1)), DescriptionToken(None, None)])]
+    )
+
+
+def test_gherkin_doc_grammar_valid():
+    """Check that Gherkin document handles all input correctly."""
+    grammar = GherkinDocumentGrammar()
+
+    # empty doc
+    output = grammar.convert(get_sequence([EOFToken(None, None)]))
+    assert output.feature is None
+
+    # with language
+    output = grammar.convert(
+        get_sequence([LanguageToken(None, Line('de', 1)), EndOfLineToken(None, None), EOFToken(None, None)]))
+    assert output.feature is None
+
+    # with feature
+    output = grammar.convert(get_sequence(
+        [LanguageToken(None, Line('de', 1)), EndOfLineToken(None, None)]
+        + feature_sequence
+        + [EOFToken(None, None)]
+    ))
+    assert output.feature is not None
+    assert output.feature.parent == output
+
+
+def test_gherkin_doc_grammar_invalid():
+    """Check that gherkin doc grammar handles invalid input."""
+    grammar = GherkinDocumentGrammar()
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[get_sequence([RuleToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[[]]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[get_sequence(feature_sequence + [RuleToken(None, None)])]
+    )
