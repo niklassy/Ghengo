@@ -322,6 +322,9 @@ class Step(object):
     type = None
 
     def __init__(self, keyword, text, argument=None):
+        if argument is not None and not isinstance(argument, StepArgument):
+            raise ValueError('You may only pass a StepArgument to a Step.')
+
         self.keyword = keyword
         self.text = text
         self.argument = argument

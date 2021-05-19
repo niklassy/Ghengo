@@ -51,7 +51,7 @@ class Grammar(object):
         """
         Returns the name of the grammar. By default it uses the name of the token class in the criterion_rule_alias
         """
-        return self.criterion_rule_alias.token_cls.__name__ if not self.name else self.name
+        return self.criterion_rule_alias.token_cls.__name__.replace('Token', '') if not self.name else self.name
 
     def get_grammar_criterion(self) -> RuleAlias:
         """

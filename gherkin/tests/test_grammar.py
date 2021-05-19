@@ -1,28 +1,39 @@
+import pytest
+
 from gherkin.compiler_base.exception import GrammarNotUsed, GrammarInvalid
 from gherkin.compiler_base.wrapper import TokenWrapper, RuleAlias
-from gherkin.grammar import DescriptionGrammar, TagsGrammar, DocStringGrammar, DataTableGrammar
+from gherkin.grammar import DescriptionGrammar, TagsGrammar, DocStringGrammar, DataTableGrammar, AndGrammar, ButGrammar, \
+    ExamplesGrammar, GivenGrammar, WhenGrammar, ThenGrammar, StepsGrammar, ScenarioOutlineGrammar, ScenarioGrammar, \
+    BackgroundGrammar, RuleGrammar, FeatureGrammar
+from gherkin.tests.valid_token_sequences import examples_sequence, given_sequence, when_sequence, then_sequence, \
+    scenario_sequence, scenario_outline_sequence, background_sequence
 from gherkin.token import EOFToken, DescriptionToken, EndOfLineToken, RuleToken, TagToken, DocStringToken, \
-    DataTableToken
-from gherkin.ast import Description
+    DataTableToken, AndToken, ButToken, ExamplesToken, GivenToken, WhenToken, ThenToken, ScenarioOutlineToken, \
+    ScenarioToken, BackgroundToken
+from gherkin.ast import Description, DataTable, DocString, And, But, Given, When, Then, Background
 from test_utils import assert_callable_raises
 
 
 class TestTokenWrapper(TokenWrapper):
     def get_place_to_search(self) -> str:
+        """In tests we simply pass None to the tokens, so simplify the place to search."""
         return ''
 
 
 def append_eof_to_chain(chain):
+    """Can be used to apply eof to a grammar. If you use it, remember to call remove_eof_from_chain."""
     chain.child_rule.append(RuleAlias(EOFToken))
 
 
 def remove_eof_from_chain(chain):
+    """Can be used to remove eof of a grammar."""
     if chain.child_rule[-1] == RuleAlias(EOFToken):
         chain.child_rule = chain.child_rule[:len(chain.child_rule) - 1]
     return chain
 
 
 def get_sequence(sequence, add_end_of=False):
+    """Wraps a sequence of tokens in the TestTokenWrapper. That ways they can be used in the tests."""
     output = []
 
     for entry in sequence:
@@ -175,5 +186,577 @@ def test_data_table():
     remove_eof_from_chain(grammar.rule)
 
 
-def test_and_grammar():
-    pass
+@pytest.mark.parametrize(
+    'grammar_cls, token_cls', [(AndGrammar, AndToken), (ButGrammar, ButToken)]
+)
+def test_and_but_grammar(grammar_cls, token_cls):
+    """Check that the AND and BUT grammar work correctly and convert everything correctly."""
+    grammar = grammar_cls()
+
+    # check valid sequence without docstring or data table
+    sequence = get_sequence([token_cls(None, None), DescriptionToken('123', None), EndOfLineToken(None, None)])
+    output = grammar.convert(sequence)
+    assert output.text == '123'
+    assert output.keyword is None
+    assert output.argument is None
+
+    # check valid sequence with data table
+    sequence = get_sequence([
+        token_cls(None, None),
+        DescriptionToken('543', None),
+        EndOfLineToken(None, None),
+        DataTableToken('|n|q|', None),
+        EndOfLineToken(None, None),
+        DataTableToken('|a|b|', None),
+        EndOfLineToken(None, None),
+    ])
+    output = grammar.convert(sequence)
+    assert output.text == '543'
+    assert output.keyword is None
+    assert output.argument is not None
+    assert isinstance(output.argument, DataTable)
+
+    # check valid sequence with doc string
+    sequence = get_sequence([
+        token_cls(None, None),
+        DescriptionToken('5435', None),
+        EndOfLineToken(None, None),
+        DocStringToken('"""', None),
+        EndOfLineToken(None, None),
+        DocStringToken('"""', None),
+        EndOfLineToken(None, None),
+    ])
+    output = grammar.convert(sequence)
+    assert output.text == '5435'
+    assert output.keyword is None
+    assert output.argument is not None
+    assert isinstance(output.argument, DocString)
+
+    # check invalid sequences
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[get_sequence([RuleToken(None, None)])],
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[get_sequence([DescriptionToken(None, None)])],
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([token_cls(None, None), EndOfLineToken(None, None)])],
+    )
+
+
+def test_examples_grammar_valid():
+    """Check that the examples grammar converts the tokens correctly."""
+    grammar = ExamplesGrammar()
+
+    # check valid sequence without tags
+    sequence = get_sequence([
+        ExamplesToken(None, None),
+        EndOfLineToken(None, None),
+        DataTableToken('|n|q|', None),
+        EndOfLineToken(None, None),
+        DataTableToken('|a|b|', None),
+        EndOfLineToken(None, None),
+    ])
+    output = grammar.convert(sequence)
+    assert output.name is None
+    assert output.description is None
+    assert isinstance(output.datatable, DataTable)
+    assert output.tags == []
+
+    # check valid sequence with tags
+    sequence = get_sequence([
+        TagToken('tag1', None),
+        TagToken('tag2', None),
+        EndOfLineToken(None, None),
+        ExamplesToken(None, None),
+        EndOfLineToken(None, None),
+        DataTableToken('|n|q|', None),
+        EndOfLineToken(None, None),
+        DataTableToken('|a|b|', None),
+        EndOfLineToken(None, None),
+    ])
+    output = grammar.convert(sequence)
+    assert output.name is None
+    assert output.description is None
+    assert isinstance(output.datatable, DataTable)
+    assert len(output.tags) == 2
+
+    # check valid with description
+    sequence = get_sequence([
+        ExamplesToken(None, None),
+        DescriptionToken('name', None),
+        EndOfLineToken(None, None),
+        DescriptionToken('desc', None),
+        EndOfLineToken(None, None),
+        DataTableToken('|n|q|', None),
+        EndOfLineToken(None, None),
+        DataTableToken('|a|b|', None),
+        EndOfLineToken(None, None),
+    ])
+    output = grammar.convert(sequence)
+    assert output.name == 'name'
+    assert output.description == 'desc'
+    assert isinstance(output.datatable, DataTable)
+    assert output.tags == []
+
+
+def test_examples_grammar_invalid():
+    """Check that the examples grammar handles invalid input correctly."""
+    grammar = ExamplesGrammar()
+
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[get_sequence([RuleToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([ExamplesToken(None, None), DataTableToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([ExamplesToken(None, None), TagToken(None, None)])]
+    )
+
+
+@pytest.mark.parametrize(
+    'grammar_cls, token_cls', [
+        (GivenGrammar, GivenToken),
+        (WhenGrammar, WhenToken),
+        (ThenGrammar, ThenToken),
+    ]
+)
+def test_given_when_then_grammar_valid(grammar_cls, token_cls):
+    """Check that step grammars handle valid input correctly."""
+    grammar = grammar_cls()
+
+    # check simple step
+    sequence = get_sequence([token_cls(None, None), DescriptionToken('blub', None), EndOfLineToken(None, None)])
+    output = grammar.convert(sequence)
+    assert output.text == 'blub'
+    assert output.argument is None
+    assert output.sub_steps == []
+
+    # check step with sub step
+    sequence = get_sequence([
+        token_cls(None, None),
+        DescriptionToken('blub', None),
+        EndOfLineToken(None, None),
+        AndToken(None, None),
+        DescriptionToken(None, None),
+        EndOfLineToken(None, None),
+        ButToken(None, None),
+        DescriptionToken(None, None),
+        EndOfLineToken(None, None),
+    ])
+    output = grammar.convert(sequence)
+    assert output.text == 'blub'
+    assert output.argument is None
+    assert len(output.sub_steps) == 2
+    assert isinstance(output.sub_steps[0], And)
+    assert isinstance(output.sub_steps[1], But)
+
+    # check step with argument
+    sequence = get_sequence([
+        token_cls(None, None),
+        DescriptionToken('blub', None),
+        EndOfLineToken(None, None),
+        DocStringToken(None, None),
+        EndOfLineToken(None, None),
+        DocStringToken(None, None),
+        EndOfLineToken(None, None),
+    ])
+    output = grammar.convert(sequence)
+    assert output.text == 'blub'
+    assert isinstance(output.argument, DocString)
+    assert len(output.sub_steps) == 0
+
+
+@pytest.mark.parametrize(
+    'grammar_cls, token_cls', [
+        (GivenGrammar, GivenToken),
+        (WhenGrammar, WhenToken),
+        (ThenGrammar, ThenToken),
+    ]
+)
+def test_given_when_then_grammar_invalid(grammar_cls, token_cls):
+    """Check that steps handle invalid input correctly."""
+    grammar = grammar_cls()
+
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[get_sequence([RuleToken(None, None)])],
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([token_cls(None, None), RuleToken(None, None)])],
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([token_cls(None, None), EndOfLineToken(None, None)])],
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([token_cls(None, None), AndToken(None, None)])],
+    )
+
+
+def test_steps_grammar_valid():
+    """Check that the steps grammar converts valid input correctly."""
+    grammar = StepsGrammar()
+
+    sequence = get_sequence(given_sequence + when_sequence + then_sequence)
+    output = grammar.convert(sequence)
+    assert len(output) == 3
+    assert all([isinstance(output[i], ast_cls) for i, ast_cls in enumerate([Given, When, Then])])
+
+    sequence = get_sequence(when_sequence + then_sequence)
+    output = grammar.convert(sequence)
+    assert len(output) == 2
+    assert all([isinstance(output[i], ast_cls) for i, ast_cls in enumerate([When, Then])])
+
+    sequence = get_sequence(then_sequence + then_sequence)
+    output = grammar.convert(sequence)
+    assert len(output) == 2
+    assert all([isinstance(output[i], ast_cls) for i, ast_cls in enumerate([Then, Then])])
+
+    sequence = get_sequence(given_sequence + given_sequence + when_sequence + then_sequence)
+    output = grammar.convert(sequence)
+    assert len(output) == 4
+    assert all([isinstance(output[i], ast_cls) for i, ast_cls in enumerate([Given, Given, When, Then])])
+
+    sequence = get_sequence(
+        given_sequence + given_sequence + when_sequence + when_sequence + then_sequence + then_sequence + then_sequence
+    )
+    output = grammar.convert(sequence)
+    assert len(output) == 7
+    assert all(
+        [isinstance(output[i], ast_cls) for i, ast_cls in enumerate([Given, Given, When, When, Then, Then, Then])])
+
+
+def test_steps_grammar_invalid():
+    """Check that the steps grammar handles invalid input correctly."""
+    grammar = StepsGrammar()
+
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([RuleToken(None, None)])],
+        message='You must use at least one Given, When or Then. '
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([GivenToken(None, None), RuleToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([WhenToken(None, None), RuleToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([ThenToken(None, None), RuleToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([ThenToken(None, None), GivenToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([ThenToken(None, None), WhenToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([WhenToken(None, None), GivenToken(None, None)])]
+    )
+
+
+def test_scenario_outline_grammar_valid():
+    """Check that the scenario outline handles valid input correctly."""
+    grammar = ScenarioOutlineGrammar()
+
+    base_sequence = [
+        ScenarioOutlineToken(None, None),
+        DescriptionToken('name', None),
+        EndOfLineToken(None, None),
+        DescriptionToken('desc', None),
+        EndOfLineToken(None, None),
+    ]
+
+    # valid simple sequence
+    sequence = get_sequence(base_sequence + given_sequence + examples_sequence)
+    output = grammar.convert(sequence)
+    assert output.name == 'name'
+    assert output.description == 'desc'
+    assert len(output.tags) == 0
+    assert len(output.examples) == 1
+    assert output.examples[0].parent == output
+    assert len(output.steps) == 1
+    assert isinstance(output.steps[0], Given)
+
+    # valid simple sequence with tags
+    sequence = get_sequence(
+        [TagToken('tag1', None), TagToken('tag2', None), EndOfLineToken(None, None)]
+        + base_sequence
+        + given_sequence
+        + examples_sequence
+    )
+    output = grammar.convert(sequence)
+    assert output.name == 'name'
+    assert output.description == 'desc'
+    assert len(output.tags) == 2
+    assert len(output.examples) == 1
+    assert output.examples[0].parent == output
+    assert len(output.steps) == 1
+    assert isinstance(output.steps[0], Given)
+
+    # multiple examples
+    sequence = get_sequence(base_sequence + given_sequence + examples_sequence + examples_sequence + examples_sequence)
+    output = grammar.convert(sequence)
+    assert output.name == 'name'
+    assert output.description == 'desc'
+    assert len(output.tags) == 0
+    assert len(output.examples) == 3
+    assert len(output.steps) == 1
+    assert isinstance(output.steps[0], Given)
+
+    for example in output.examples:
+        assert example.parent == output
+
+
+def test_scenario_outline_grammar_invalid():
+    """Check that the scenario outline handles invalid input correctly."""
+    grammar = ScenarioOutlineGrammar()
+
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[get_sequence([TagToken(None, None), EndOfLineToken(None, None), RuleToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([ScenarioOutlineToken(None, None), ExamplesToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([ScenarioOutlineToken(None, None), EndOfLineToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[get_sequence([])]
+    )
+
+
+def test_scenario_grammar_valid():
+    """Check that the scenario grammar converts valid input correctly."""
+    grammar = ScenarioGrammar()
+
+    base_sequence = [
+        ScenarioToken(None, None),
+        DescriptionToken('name', None),
+        EndOfLineToken(None, None),
+        DescriptionToken('desc', None),
+        EndOfLineToken(None, None),
+    ]
+
+    # basic sequence
+    sequence = get_sequence(base_sequence + given_sequence)
+    output = grammar.convert(sequence)
+    assert output.name == 'name'
+    assert output.description == 'desc'
+    assert len(output.steps) == 1
+    assert isinstance(output.steps[0], Given)
+
+    # with tags
+    sequence = get_sequence([TagToken('tag1', None), EndOfLineToken(None, None)] + base_sequence + given_sequence)
+    output = grammar.convert(sequence)
+    assert output.name == 'name'
+    assert output.description == 'desc'
+    assert len(output.tags) == 1
+    assert len(output.steps) == 1
+    assert isinstance(output.steps[0], Given)
+
+
+def test_scenario_grammar_invalid():
+    """Check that the scenario grammar handles invalid input correctly."""
+    grammar = ScenarioGrammar()
+
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[get_sequence([RuleToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[get_sequence([ScenarioOutlineToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([ScenarioToken(None, None)] + given_sequence)]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([ScenarioToken(None, None), DescriptionToken(None, None)] + given_sequence)]
+    )
+
+
+def test_background_grammar_valid():
+    """Check that the background handles valid input correctly."""
+    grammar = BackgroundGrammar()
+
+    base_sequence = [
+        BackgroundToken(None, None),
+        DescriptionToken('name', None),
+        EndOfLineToken(None, None),
+        DescriptionToken('desc', None),
+        EndOfLineToken(None, None),
+    ]
+    sequence = get_sequence(base_sequence + given_sequence)
+    output = grammar.convert(sequence)
+    assert output.name == 'name'
+    assert output.description == 'desc'
+    assert len(output.steps) == 1
+    assert isinstance(output.steps[0], Given)
+
+
+def test_background_grammar_invalid():
+    """Check that background grammar handles invalid input correctly."""
+    grammar = BackgroundGrammar()
+
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[get_sequence([RuleToken(None, None)])]
+    )
+    # does not support tags
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[get_sequence([TagToken(None, None), BackgroundToken(None, None)])]
+    )
+    # steps missing
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([BackgroundToken(None, None), EndOfLineToken(None, None)])]
+    )
+
+
+def test_rule_grammar_valid():
+    """Check that rule grammar handles valid input correctly."""
+    grammar = RuleGrammar()
+
+    base_sequence = [
+        RuleToken(None, None),
+        DescriptionToken('name1', None),
+        EndOfLineToken(None, None),
+        DescriptionToken('desc1', None),
+        EndOfLineToken(None, None),
+    ]
+
+    # simple version
+    output = grammar.convert(get_sequence(base_sequence + scenario_sequence))
+    assert output.name == 'name1'
+    assert output.description == 'desc1'
+    assert output.background is None
+    assert output.tags == []
+    assert len(output.scenario_definitions) == 1
+
+    # multiple scenario definitions
+    output = grammar.convert(get_sequence(
+        base_sequence
+        + scenario_sequence
+        + scenario_outline_sequence
+        + scenario_outline_sequence
+        + scenario_sequence
+    ))
+    assert output.name == 'name1'
+    assert output.description == 'desc1'
+    assert output.background is None
+    assert output.tags == []
+    assert len(output.scenario_definitions) == 4
+
+    # tags
+    output = grammar.convert(get_sequence(
+        [TagToken('tag1', None), EndOfLineToken(None, None)] +
+        base_sequence
+        + scenario_sequence
+        + scenario_outline_sequence
+        + scenario_outline_sequence
+        + scenario_sequence
+    ))
+    assert output.name == 'name1'
+    assert output.description == 'desc1'
+    assert output.background is None
+    assert len(output.tags) == 1
+    assert len(output.scenario_definitions) == 4
+
+    # background
+    output = grammar.convert(get_sequence(
+        [TagToken('tag1', None), EndOfLineToken(None, None)] +
+        base_sequence
+        + background_sequence
+        + scenario_outline_sequence
+        + scenario_sequence
+    ))
+    assert output.name == 'name1'
+    assert output.description == 'desc1'
+    assert isinstance(output.background, Background)
+    assert len(output.tags) == 1
+    assert len(output.scenario_definitions) == 2
+
+
+def test_rule_grammar_invalid():
+    """Check that the rule grammar handles invalid input correctly."""
+    grammar = RuleGrammar()
+
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[get_sequence([DescriptionToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarNotUsed,
+        args=[[]]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([RuleToken(None, None), TagToken(None, None)])]
+    )
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence([RuleToken(None, None), EndOfLineToken(None, None), GivenToken(None, None)])]
+    )
+
+
+def test_feature_grammar_valid():
+    grammar = FeatureGrammar()
+
+
+

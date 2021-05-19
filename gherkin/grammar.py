@@ -68,7 +68,7 @@ class DocStringGrammar(Grammar):
         criterion_rule_alias,
         RuleAlias(EndOfLineToken),
         Repeatable(DescriptionGrammar(), minimum=0),
-        RuleAlias(DocStringToken),
+        criterion_rule_alias,
         RuleAlias(EndOfLineToken),
     ])
     convert_cls = DocString
@@ -128,6 +128,7 @@ class DataTableGrammar(Grammar):
 
     @classmethod
     def get_datatable_values(cls, string):
+        """Returns all the values inside of a given string."""
         return [v.lstrip().rstrip() for v in string.split('|') if v.lstrip().rstrip()]
 
     def get_convert_kwargs(self, rule_output):
@@ -159,32 +160,27 @@ class AndButGrammarBase(Grammar):
             ])),
         ])
 
-
-class AndGrammar(AndButGrammarBase):
-    criterion_rule_alias = RuleAlias(AndToken)
-    convert_cls = And
-
     def get_convert_kwargs(self, rule_output):
         return {
             'text': rule_output[1].token.text,
             'keyword': rule_output[0].token.matched_keyword,
+            'argument': rule_output[3],
         }
+
+
+class AndGrammar(AndButGrammarBase):
+    criterion_rule_alias = RuleAlias(AndToken)
+    convert_cls = And
 
 
 class ButGrammar(AndButGrammarBase):
     criterion_rule_alias = RuleAlias(ButToken)
     convert_cls = But
 
-    def get_convert_kwargs(self, rule_output):
-        return {
-            'text': rule_output[1].token.text,
-            'keyword': rule_output[0].token.matched_keyword,
-        }
-
 
 class TagsGrammarMixin(object):
-    def prepare_object(self, rule_output, obj):
-        obj = super().prepare_object(rule_output, obj)
+    def prepare_converted_object(self, rule_output, obj):
+        obj = super().prepare_converted_object(rule_output, obj)
 
         tags = rule_output[0]
         if tags and isinstance(tags, list):
@@ -288,6 +284,24 @@ class StepsGrammar(Grammar):
     ])
     name = 'Steps'
 
+    def _validate_sequence(self, sequence, index):
+        new_index = super()._validate_sequence(sequence, index)
+
+        # there has to be at least one step!
+        if new_index == index:
+            if index > len(sequence) - 1:
+                token_wrapper = sequence[-1]
+            else:
+                token_wrapper = sequence[index]
+
+            place_to_search = token_wrapper.get_place_to_search()
+            raise GrammarInvalid(
+                'You must use at least one Given, When or Then. {}'.format(place_to_search),
+                grammar=self
+            )
+
+        return new_index
+
     def used_by_sequence_area(self, sequence, start_index, end_index):
         given = GivenGrammar().used_by_sequence_area(sequence, start_index, end_index)
         when = WhenGrammar().used_by_sequence_area(sequence, start_index, end_index)
@@ -314,7 +328,7 @@ class ScenarioDefinitionGrammar(Grammar):
 
         return {
             'description': description,
-            'keyword': rule_output[1].token.matched_keyword,
+            'keyword': rule_output[self.description_index - 1].token.matched_keyword,
             'name': name,
         }
 

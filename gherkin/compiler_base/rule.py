@@ -122,7 +122,7 @@ class Rule(object):
         Public function to validate a given sequence. May raise a RuleNotFulfilled or a SequenceNotFinished.
         """
         assert all([isinstance(el, TokenWrapper) for el in sequence]), 'Every entry in the passed sequence must be of ' \
-                                                                    'class "RuleToken"'
+                                                                       'class "RuleToken"'
 
         try:
             result_index = self._validate_sequence(sequence, index)

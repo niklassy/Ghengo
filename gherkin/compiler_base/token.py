@@ -46,4 +46,4 @@ class Token(object):
         raise NotImplementedError()
 
     def __repr__(self):
-        return '{}-Token: "{}" in {}'.format(self.__class__.__name__, self.matched_keyword_full, self.line)
+        return '{}: "{}" in {}'.format(self.__class__.__name__, self.matched_keyword_full, self.line)
