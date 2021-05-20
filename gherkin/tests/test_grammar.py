@@ -892,7 +892,7 @@ def test_language_grammar():
     grammar = LanguageGrammar()
 
     # valid input
-    output = grammar.convert(get_sequence([LanguageToken(None, Line('# language en', 1)), EndOfLineToken(None, None)]))
+    output = grammar.convert(get_sequence([LanguageToken(None, Line('# language: en', 1)), EndOfLineToken(None, None)]))
     assert output.language == 'en'
 
     # invalid input

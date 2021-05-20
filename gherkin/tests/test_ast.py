@@ -193,7 +193,7 @@ def test_step():
     assert step.text == 'text'
     assert step.argument == ds
     assert Step('key', None).argument_names == []
-    assert Step('key', 'test {name_1} {name_2} name_3').argument_names == ['name_1', 'name_2']
+    assert Step('key', 'test <name_1> <name_2> name_3').argument_names == ['name_1', 'name_2']
 
 
 def test_parent_step():

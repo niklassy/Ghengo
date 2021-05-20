@@ -39,7 +39,7 @@ class DescriptionGrammar(Grammar):
             return None, None
 
         # if the second entry in the list is a list, it holds all the descriptions
-        if isinstance(descriptions_input[1], list):
+        if len(descriptions_input) > 1 and isinstance(descriptions_input[1], list):
             name = None
             descriptions = descriptions_input[1]
         # if a list of descriptions is passed instead, the first entry holds the name and the

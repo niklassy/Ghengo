@@ -155,10 +155,10 @@ class LanguageToken(TokenContainsWholeLineMixin, GherkinToken):
     @classmethod
     def get_locale_from_line(cls, string):
         no_left_spaces = string.replace('#', '', 1).lstrip()
-        if not no_left_spaces.startswith('language'):
+        if not no_left_spaces.startswith('language:'):
             return ''
 
-        no_language = no_left_spaces.replace('language', '', 1)
+        no_language = no_left_spaces.replace('language:', '', 1)
         if len(no_language) == 0 or no_language[0] != ' ':
             return ''
 

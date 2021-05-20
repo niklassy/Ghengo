@@ -10,9 +10,9 @@ from test_utils import assert_callable_raises
 def test_gherkin_lexer_language():
     """Check that the Gherkin lexer handles languages just as intended."""
     lexer = GherkinLexer(None)
-    language = LanguageToken(text='# language de', line=Line('# language de', 3))
+    language = LanguageToken(text='# language: de', line=Line('# language: de', 3))
     assert_callable_raises(lexer.on_token_added, GherkinInvalid, args=[language])
-    language = LanguageToken(text='# language de', line=Line('# language de', 0))
+    language = LanguageToken(text='# language: de', line=Line('# language: de', 0))
     lexer.on_token_added(language)
     assert Settings.language == 'de'
 

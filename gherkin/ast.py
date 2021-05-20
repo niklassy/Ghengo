@@ -328,9 +328,9 @@ class Step(object):
         self.keyword = keyword
         self.text = text
         self.argument = argument
-        # all names are written in the format `{<name>}`
+        # all names are written in the format `<name>`
         if self.text:
-            self.argument_names = [name.replace(' ', '') for name in re.findall('{(.*?)}', self.text)]
+            self.argument_names = [name.replace(' ', '') for name in re.findall('<(.*?)>', self.text)]
         else:
             self.argument_names = []
 

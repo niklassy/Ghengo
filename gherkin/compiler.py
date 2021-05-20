@@ -1,7 +1,7 @@
 from gherkin.compiler_base.compiler import Lexer, Compiler, Parser
 
 from gherkin.ast import Comment as ASTComment
-from gherkin.compiler_base.exception import RuleNotFulfilled, GrammarInvalid
+from gherkin.compiler_base.exception import RuleNotFulfilled, GrammarInvalid, GrammarNotUsed
 from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
 from gherkin.grammar import GherkinDocumentGrammar
@@ -19,11 +19,11 @@ class GherkinLexer(Lexer):
         ExamplesToken,  # <-- must stay before scenario
         ScenarioOutlineToken,  # <-- must stay before scenario
         ScenarioToken,
+        AndToken,   # <-- must stay before given then when (because of * as a keyword in both of them)
+        ButToken,   # <-- same as AND
         GivenToken,
         ThenToken,
         WhenToken,
-        AndToken,
-        ButToken,
 
         DataTableToken,
         DocStringToken,
@@ -96,5 +96,5 @@ class GherkinCompiler(Compiler):
     def compile_text(self, text):
         try:
             return super().compile_text(text)
-        except (RuleNotFulfilled, GrammarInvalid) as e:
+        except (RuleNotFulfilled, GrammarInvalid, GrammarNotUsed) as e:
             raise GherkinInvalid(str(e))
