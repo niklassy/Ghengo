@@ -12,6 +12,10 @@ class Token(object):
     keyword_with_colon = False
 
     def __init__(self, text: Optional[str], line: Optional[Line]):
+        """
+        text =
+        line = The line in which this token can be found
+        """
         self.line: Optional[Line] = line
 
         self.text: Optional[str] = text

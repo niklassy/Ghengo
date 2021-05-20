@@ -26,10 +26,10 @@ def test_string_fits():
 
 def test_get_full_matching_text():
     token = TestToken('/// 123', Line('test', 1))
-    assert token.reduce_to_belonging('12380') is None
-    assert token.reduce_to_belonging('123qdasda') is None
-    assert token.reduce_to_belonging('u918203') is None
-    assert token.reduce_to_belonging('// 123 //') is None
+    assert token.reduce_to_belonging('12380') is ''
+    assert token.reduce_to_belonging('123qdasda') is ''
+    assert token.reduce_to_belonging('u918203') is ''
+    assert token.reduce_to_belonging('// 123 //') is ''
     assert token.reduce_to_belonging('/// //') == '///'
 
 
