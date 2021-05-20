@@ -57,7 +57,7 @@ class TagsGrammar(Grammar):
         rule_tree = self.get_rule_sequence_to_object(sequence, index)
 
         for tag in rule_tree[0]:
-            tags.append(self.convert_cls(tag.token.text))
+            tags.append(self.convert_cls(tag.token.text_without_keyword))
 
         return tags
 

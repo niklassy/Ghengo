@@ -12,7 +12,6 @@ def test_init():
     TestToken(None, None)
     token = TestToken('/// 123', Line('test', 1))
     assert token.text == '/// 123'
-    assert token.matched_keyword_full == '///'
     assert token.matched_keyword == '///'
 
 

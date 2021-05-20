@@ -115,7 +115,7 @@ class TagsToken(TokenContainsWholeLineMixin, GherkinToken):
 
         for tag_element_str in line.trimmed_text.split(' '):
             if TagToken.string_contains_token(tag_element_str):
-                token = TagToken(line=line, text=tag_element_str.replace('@', ''))
+                token = TagToken(line=line, text=tag_element_str)
             else:
                 token = DescriptionToken(line=line, text=tag_element_str)
 
@@ -133,12 +133,6 @@ class TagsToken(TokenContainsWholeLineMixin, GherkinToken):
 
 
 class CommentToken(TokenContainsWholeLineMixin, GherkinToken):
-    def __init__(self, text, line):
-        super().__init__(text, line)
-
-        if self.text is not None:
-            self.text = self.text.replace('#', '', 1).lstrip()
-
     @classmethod
     def get_keywords(cls):
         return ['#']
@@ -146,8 +140,8 @@ class CommentToken(TokenContainsWholeLineMixin, GherkinToken):
 
 class LanguageToken(TokenContainsWholeLineMixin, GherkinToken):
     def __init__(self, text, line):
+        super().__init__(line=line, text=text)
         self.locale = self.get_locale_from_line(line.trimmed_text)
-        super().__init__(line=line, text=self.locale)
 
     @classmethod
     def get_keywords(cls):

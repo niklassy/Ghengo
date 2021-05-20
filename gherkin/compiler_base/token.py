@@ -13,18 +13,18 @@ class Token(object):
 
     def __init__(self, text: Optional[str], line: Optional[Line]):
         """
-        text =
         line = The line in which this token can be found
+        text = the text inside the line that belongs to this token
         """
         self.line: Optional[Line] = line
-
         self.text: Optional[str] = text
-        self.matched_keyword_full = self.reduce_to_belonging(text) if text else None
 
-        if self.keyword_with_colon and self.matched_keyword_full:
-            self.matched_keyword = self.matched_keyword_full.replace(':', '')
+        self.matched_keyword = self.get_matching_keyword(self.text)
+
+        if self.matched_keyword is not None and self.text is not None:
+            self.text_without_keyword = self.text.replace(self.matched_keyword, '', 1)
         else:
-            self.matched_keyword = self.matched_keyword_full
+            self.text_without_keyword = self.text
 
     @classmethod
     def string_matches_keyword(cls, string, keyword):
@@ -58,4 +58,4 @@ class Token(object):
         raise NotImplementedError()
 
     def __repr__(self):
-        return '{}: "{}" in {}'.format(self.__class__.__name__, self.matched_keyword_full, self.line)
+        return '{}: "{}" in {} (keyword: {})'.format(self.__class__.__name__, self.text, self.line, self.matched_keyword)

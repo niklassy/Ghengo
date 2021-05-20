@@ -85,14 +85,14 @@ def test_tags_grammar():
 
     # valid 1
     sequence = get_sequence(
-        [TagToken(text='tag1', line=None), TagToken(text='tag2', line=None), EndOfLineToken(None, None), EOFToken(None, None)])
+        [TagToken(text='@tag1', line=None), TagToken(text='@tag2', line=None), EndOfLineToken(None, None), EOFToken(None, None)])
     output = grammar.convert(sequence)
     assert len(output) == 2
     assert output[0].name == 'tag1'
     assert output[1].name == 'tag2'
 
     # valid 2
-    sequence = get_sequence([TagToken(text='tag1', line=None), EndOfLineToken(None, None), EOFToken(None, None)])
+    sequence = get_sequence([TagToken(text='@tag1', line=None), EndOfLineToken(None, None), EOFToken(None, None)])
     output = grammar.convert(sequence)
     assert len(output) == 1
     assert output[0].name == 'tag1'
@@ -101,7 +101,7 @@ def test_tags_grammar():
     assert_callable_raises(
         grammar.convert, GrammarNotUsed, args=[get_sequence([EndOfLineToken(None, None), EOFToken(None, None)])])
     assert_callable_raises(
-        grammar.convert, GrammarInvalid, args=[get_sequence([TagToken('tag1', None), EOFToken(None, None)])])
+        grammar.convert, GrammarInvalid, args=[get_sequence([TagToken('@tag1', None), EOFToken(None, None)])])
     assert_callable_raises(
         grammar.convert,
         GrammarInvalid,

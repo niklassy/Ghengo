@@ -44,7 +44,7 @@ class TokenWrapper(object):
 
     def get_text(self) -> str:
         """Defines how to represent a token in text. It is used by rules to display what the current value is."""
-        return self.token.matched_keyword_full
+        return self.token.matched_keyword
 
     def __str__(self):
         return str(self.token)
