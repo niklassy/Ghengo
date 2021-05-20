@@ -11,7 +11,7 @@ examples_sequence = [
 ]
 
 given_sequence = [
-    GivenToken(None, None),
+    GivenToken('Given asd', None),
     DescriptionToken(None, None),
     EndOfLineToken(None, None),
 ]

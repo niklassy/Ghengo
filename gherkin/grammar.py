@@ -105,6 +105,7 @@ class DataTableGrammar(Grammar):
     convert_cls = DataTable
 
     def _validate_sequence(self, sequence, index):
+        """Make sure that every row has the same amount of columns."""
         old_index = index
         new_index = super()._validate_sequence(sequence, index)
         nmb_columns = None
@@ -310,8 +311,6 @@ class StepsGrammar(Grammar):
                 grammar=self
             )
 
-        # TODO: it should not be allowed to have multple steps with the same text
-
         return new_index
 
     def used_by_sequence_area(self, sequence, start_index, end_index):
@@ -334,6 +333,34 @@ class StepsGrammar(Grammar):
 class ScenarioDefinitionGrammar(Grammar):
     description_index = 2
     steps_index = 3
+
+    def _validate_sequence(self, sequence, index):
+        """
+        In scenarios it is not valid to use the same text more than once.
+
+        From docs: Keywords are not taken into account when looking for a step definition. This means you cannot
+        have a Given, When, Then, And or But step with the same text as another step.
+
+        => https://cucumber.io/docs/gherkin/reference/
+        """
+        new_index = super()._validate_sequence(sequence, index)
+
+        # first get all descriptions that follow GIVEN, WHEN, THEN, AND or BUT since they hold the text
+        descriptions = []
+        for i, token_wrapper in enumerate(sequence[index:new_index]):
+            if isinstance(token_wrapper.token, (GivenToken, WhenToken, ThenToken, AndToken, ButToken)):
+                descriptions.append(sequence[index + i + 1])
+
+        # extract all the texts
+        texts = [d.token.text_without_keyword for d in descriptions]
+        for i, text in enumerate(texts):
+            # check if there is an earlier entry with the same text; if yet, raise an error
+            if texts.index(text) < i:
+                place_to_search = descriptions[i].get_place_to_search()
+                raise GrammarInvalid(
+                    'You must not use two different steps with the same text. {}'.format(place_to_search), grammar=self)
+
+        return new_index
 
     def get_convert_kwargs(self, rule_output):
         name, description = DescriptionGrammar.get_name_and_description(rule_output[self.description_index])
@@ -404,7 +431,7 @@ class BackgroundGrammar(ScenarioDefinitionGrammar):
             Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
-        Repeatable(GivenGrammar(), minimum=1),
+        Repeatable(GivenGrammar()),
     ])
     convert_cls = Background
 

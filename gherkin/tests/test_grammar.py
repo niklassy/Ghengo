@@ -567,6 +567,19 @@ def test_scenario_outline_grammar_invalid():
         GrammarNotUsed,
         args=[get_sequence([])]
     )
+    base_sequence = [
+        ScenarioOutlineToken(None, None),
+        DescriptionToken('name', None),
+        EndOfLineToken(None, None),
+        DescriptionToken('desc', None),
+        EndOfLineToken(None, None),
+    ]
+    # it not allowed to have multiple steps with the same text
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence(base_sequence + given_sequence + given_sequence + examples_sequence)]
+    )
 
 
 def test_scenario_grammar_valid():
@@ -649,6 +662,19 @@ def test_scenario_grammar_invalid():
         GrammarInvalid,
         args=[get_sequence([ScenarioToken(None, None), DescriptionToken(None, None)] + given_sequence)]
     )
+    base_sequence = [
+        ScenarioToken(None, None),
+        DescriptionToken('name', None),
+        EndOfLineToken(None, None),
+        DescriptionToken('desc', None),
+        EndOfLineToken(None, None),
+    ]
+    # it not allowed to have multiple steps with the same text
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence(base_sequence + given_sequence + given_sequence + examples_sequence)]
+    )
 
 
 def test_background_grammar_valid():
@@ -690,6 +716,19 @@ def test_background_grammar_invalid():
         grammar.convert,
         GrammarInvalid,
         args=[get_sequence([BackgroundToken(None, None), EndOfLineToken(None, None)])]
+    )
+    base_sequence = [
+        BackgroundToken(None, None),
+        DescriptionToken('name', None),
+        EndOfLineToken(None, None),
+        DescriptionToken('desc', None),
+        EndOfLineToken(None, None),
+    ]
+    # it not allowed to have multiple steps with the same text
+    assert_callable_raises(
+        grammar.convert,
+        GrammarInvalid,
+        args=[get_sequence(base_sequence + given_sequence + given_sequence + examples_sequence)]
     )
 
 

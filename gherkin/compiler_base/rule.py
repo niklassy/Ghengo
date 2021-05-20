@@ -8,7 +8,7 @@ from gherkin.compiler_base.wrapper import RuleAlias, TokenWrapper
 class Rule(object):
     supports_list_as_children = False
 
-    def __init__(self, child_rule, debug=False):
+    def __init__(self, child_rule):
         self.child_rule = child_rule
 
         if isinstance(child_rule, list) and not self.supports_list_as_children:
@@ -245,8 +245,8 @@ class OneOf(Rule):
 class Repeatable(Rule):
     """Allows any amount of repetition of the passed child. If it is optional, minimum=0 can be passed."""
 
-    def __init__(self, child, minimum=1, debug=False):
-        super().__init__(child, debug)
+    def __init__(self, child, minimum=1):
+        super().__init__(child)
         self.minimum = minimum
 
     def _validate_init_child(self, child):

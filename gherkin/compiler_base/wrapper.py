@@ -40,7 +40,7 @@ class TokenWrapper(object):
 
     def get_place_to_search(self) -> str:
         """Is used by rules to add information where a token can be found."""
-        return 'Near line: {}'.format(self.token.line.line_index)
+        return 'Near line: {}'.format(self.token.line.line_index + 1)
 
     def get_text(self) -> str:
         """Defines how to represent a token in text. It is used by rules to display what the current value is."""

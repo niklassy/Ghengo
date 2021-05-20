@@ -2,10 +2,10 @@ Feature: qweqwe
   ich bin eine Beschreibung
 
   Background:
-    Given  qwe
-    And qwe
+    Given qweq
+    And qweqq
 
   Scenario: asasd
     Ich bin eine Beschreibung
 
-    Given asdasd
+    Given qweq

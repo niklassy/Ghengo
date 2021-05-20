@@ -7,11 +7,11 @@ Feature: Highlander
       And there are more than one ninja alive
       * 2 ninjas meet, they will fight
       Then one ninja dies (but not me)
-      * there is one ninja less alive
+      # next line is invalid since the text already exists
+      * there are more than one ninja alive
 
     Example: Only One -- One alive
       Given there is only 1 ninja alive
-      But there is one ninja less alive
-      # this step text already exists but only in a different scenario, so it is valid
-      * one ninja dies (but not me)
+      But there is one ninja less alive 123
+      * there is one ninja less alive
       Then he (or she) will live forever ;-)
