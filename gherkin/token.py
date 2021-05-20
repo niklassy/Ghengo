@@ -1,3 +1,4 @@
+import re
 from typing import Optional
 
 from gherkin.compiler_base.token import Token
@@ -25,7 +26,7 @@ class GherkinToken(Token):
 class TokenContainsWholeLineMixin(object):
     @classmethod
     def reduce_to_belonging(cls, string: str):
-        return string
+        return string if cls.string_contains_token(string) else ''
 
 
 class FeatureToken(GherkinToken):
@@ -96,26 +97,35 @@ class ButToken(GherkinToken):
     _json_id = 'but'
 
 
-class TagToken(GherkinToken):
-    def __init__(self, text, line):
-        super().__init__(line=line, text=text)
-        self.text = text
-        self.full_text = '@{}'.format(text)
-
-    def reduce_to_belonging(self, string: str):
-        return '@{}'.format(self.text)
+class TagToken(TokenContainsWholeLineMixin, GherkinToken):
+    REG_EX = '@[a-zA-Z0-9_.-]+'
 
     @classmethod
     def get_keywords(cls):
         return ['@']
 
-    def get_matching_keyword(self, string: str):
-        return super().get_matching_keyword(string)
+    @classmethod
+    def string_matches_keyword(cls, string, keyword):
+        return bool(re.match('^{tag_pattern}$'.format(tag_pattern=cls.REG_EX), string))
 
 
 class TagsToken(TokenContainsWholeLineMixin, GherkinToken):
     def __new__(cls, text, line):
-        return [TagToken(line=line, text=text.replace('@', '')) for text in line.trimmed_text.split(' ')]
+        output = []
+
+        for tag_element_str in line.trimmed_text.split(' '):
+            if TagToken.string_contains_token(tag_element_str):
+                token = TagToken(line=line, text=tag_element_str.replace('@', ''))
+            else:
+                token = DescriptionToken(line=line, text=tag_element_str)
+
+            output.append(token)
+
+        return output
+
+    @classmethod
+    def string_matches_keyword(cls, string: str, keyword):
+        return bool(re.match('^{tag_pattern}( {tag_pattern})*$'.format(tag_pattern=TagToken.REG_EX), string))
 
     @classmethod
     def get_keywords(cls):
@@ -146,21 +156,29 @@ class LanguageToken(TokenContainsWholeLineMixin, GherkinToken):
     @classmethod
     def string_contains_token(cls, string: str):
         locale = cls.get_locale_from_line(string)
-        return super().string_contains_token(string) and locale in GHERKIN_CONFIG
+        return super().string_contains_token(string) and bool(locale) and locale in GHERKIN_CONFIG
 
     @classmethod
     def get_locale_from_line(cls, string):
-        return string.replace(' ', '').replace('#language', '')
+        no_left_spaces = string.replace('#', '', 1).lstrip()
+        if not no_left_spaces.startswith('language'):
+            return ''
+
+        no_language = no_left_spaces.replace('language', '', 1)
+        if len(no_language) == 0 or no_language[0] != ' ':
+            return ''
+
+        return no_language.replace(' ', '')
 
 
-class EmptyToken(GherkinToken):
+class EmptyToken(TokenContainsWholeLineMixin, GherkinToken):
     @classmethod
     def get_matching_keyword(cls, string: str):
         return ''
 
     @classmethod
     def string_contains_token(cls, string: str):
-        return not bool(string)
+        return not bool(string.replace(' ', ''))
 
 
 class DescriptionToken(TokenContainsWholeLineMixin, GherkinToken):

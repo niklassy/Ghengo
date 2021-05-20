@@ -23,17 +23,25 @@ class Token(object):
             self.matched_keyword = self.matched_keyword_full
 
     @classmethod
+    def string_matches_keyword(cls, string, keyword):
+        """Check if a given keyword that was returned by `get_keywords` matches a string."""
+        return string.startswith(keyword)
+
+    @classmethod
     def get_matching_keyword(cls, string: str):
         """Returns the keyword that matches a string. If there is none, it returns None."""
+        if string is None:
+            return None
+
         for keyword in cls.get_keywords():
-            if string.startswith(keyword):
+            if cls.string_matches_keyword(string, keyword):
                 return keyword
         return None
 
     @classmethod
     def reduce_to_belonging(cls, string: str):
         """Given a string, this will return everything of it that belongs to this token."""
-        return cls.get_matching_keyword(string)
+        return cls.get_matching_keyword(string) or ''
 
     @classmethod
     def string_contains_token(cls, string: str):
