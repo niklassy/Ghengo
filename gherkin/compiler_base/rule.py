@@ -10,7 +10,6 @@ class Rule(object):
 
     def __init__(self, child_rule, debug=False):
         self.child_rule = child_rule
-        self.debug = debug
 
         if isinstance(child_rule, list) and not self.supports_list_as_children:
             raise ValueError('A {} does not support a list of objects as a child'.format(self.__class__.__name__))

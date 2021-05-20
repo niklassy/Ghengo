@@ -37,4 +37,4 @@ def test_invalid_files(invalid_feature_path):
     'valid_feature_path', FEATURE_PATHS_VALID
 )
 def test_valid_files(valid_feature_path):
-    GherkinCompiler().compile_file('/Users/niklas/HdM/Master_CSM/Masterarbeit/project/gherkin/tests/valid_feature_files/and_steps.feature')
+    GherkinCompiler().compile_file(valid_feature_path)

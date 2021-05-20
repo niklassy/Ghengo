@@ -310,6 +310,8 @@ class StepsGrammar(Grammar):
                 grammar=self
             )
 
+        # TODO: it should not be allowed to have multple steps with the same text
+
         return new_index
 
     def used_by_sequence_area(self, sequence, start_index, end_index):
