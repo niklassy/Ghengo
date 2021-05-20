@@ -589,6 +589,32 @@ def test_scenario_grammar_valid():
     assert len(output.steps) == 1
     assert isinstance(output.steps[0], Given)
 
+    # description but no name
+    base_sequence_no_name = [
+        ScenarioToken(None, None),
+        EndOfLineToken(None, None),
+        DescriptionToken('desc', None),
+        EndOfLineToken(None, None),
+    ]
+    sequence = get_sequence(base_sequence_no_name + given_sequence)
+    output = grammar.convert(sequence)
+    assert output.name is None
+    assert output.description == 'desc'
+    assert len(output.steps) == 1
+    assert isinstance(output.steps[0], Given)
+
+    # not name and no description
+    base_sequence_no_data = [
+        ScenarioToken(None, None),
+        EndOfLineToken(None, None),
+    ]
+    sequence = get_sequence(base_sequence_no_data + given_sequence)
+    output = grammar.convert(sequence)
+    assert output.name is None
+    assert output.description is None
+    assert len(output.steps) == 1
+    assert isinstance(output.steps[0], Given)
+
     # with tags
     sequence = get_sequence([TagToken('tag1', None), EndOfLineToken(None, None)] + base_sequence + given_sequence)
     output = grammar.convert(sequence)

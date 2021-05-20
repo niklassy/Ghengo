@@ -25,23 +25,33 @@ class DescriptionGrammar(Grammar):
         }
 
     @staticmethod
-    def get_name_and_description(descriptions):
+    def get_name_and_description(descriptions_input):
         """
         Since descriptions are used in several places to define the name and description of Grammars, this function
         can be used to determine the name and the description from a list of ASTDescription objects.
+
+        The input can be in the format:
+        [Description]
+        OR
+        [EndOfLineTokenWrapper, [Description]]
         """
-        if isinstance(descriptions, list):
-            name = descriptions[0].text
+        if not isinstance(descriptions_input, list):
+            return None, None
 
-            if len(descriptions) > 1:
-                description = ' '.join(d.text for d in descriptions[1:])
-            else:
-                description = None
-        else:
+        # if the second entry in the list is a list, it holds all the descriptions
+        if isinstance(descriptions_input[1], list):
             name = None
-            description = None
+            descriptions = descriptions_input[1]
+        # if a list of descriptions is passed instead, the first entry holds the name and the
+        # rest the descriptions
+        else:
+            name = descriptions_input[0].text
+            descriptions = descriptions_input[1:]
 
-        return name, description
+        if len(descriptions) > 0:
+            return name, ' '.join(d.text for d in descriptions)
+
+        return name, None
 
 
 class TagsGrammar(Grammar):
@@ -196,7 +206,7 @@ class ExamplesGrammar(TagsGrammarMixin, Grammar):
         Optional(TagsGrammar()),
         criterion_rule_alias,
         OneOf([
-            RuleAlias(EndOfLineToken),
+            Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
         DataTableGrammar(),
@@ -348,7 +358,7 @@ class ScenarioOutlineGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
         Optional(TagsGrammar()),
         criterion_rule_alias,
         OneOf([
-            RuleAlias(EndOfLineToken),
+            Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
         StepsGrammar(),
@@ -374,7 +384,7 @@ class ScenarioGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
         Optional(TagsGrammar()),
         criterion_rule_alias,
         OneOf([
-            RuleAlias(EndOfLineToken),
+            Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
         StepsGrammar(),
@@ -389,7 +399,7 @@ class BackgroundGrammar(ScenarioDefinitionGrammar):
     rule = Chain([
         criterion_rule_alias,
         OneOf([
-            RuleAlias(EndOfLineToken),
+            Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
         Repeatable(GivenGrammar(), minimum=1),
@@ -403,7 +413,7 @@ class RuleGrammar(TagsGrammarMixin, Grammar):
         Optional(TagsGrammar()),    # support was added some time ago (https://github.com/cucumber/common/pull/1356)
         criterion_rule_alias,
         OneOf([
-            RuleAlias(EndOfLineToken),
+            Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
         Optional(BackgroundGrammar()),
@@ -442,7 +452,7 @@ class FeatureGrammar(TagsGrammarMixin, Grammar):
         Optional(TagsGrammar()),
         criterion_rule_alias,
         OneOf([
-            RuleAlias(EndOfLineToken),
+            Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
         Optional(BackgroundGrammar()),

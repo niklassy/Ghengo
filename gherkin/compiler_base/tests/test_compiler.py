@@ -57,14 +57,13 @@ def test_lexer_init_and_add_token():
 
 def test_lexer_tokenize():
     """Check that the tokenize of Lexer works as expected."""
-    class MockCompiler:
-        text = 'ABCDE\n12345 FOO\nABCDE 12345 778293'
+    text = 'ABCDE\n12345 FOO\nABCDE 12345 778293'
 
-    lexer = Lexer(MockCompiler())
-    assert_callable_raises(lexer.tokenize, NotImplementedError)     # <- no token classes defined
+    lexer = Lexer(None)
+    assert_callable_raises(lexer.tokenize, NotImplementedError, args=[text])     # <- no token classes defined
 
     lexer.token_classes = [TestToken, TestToken2]
-    tokens = lexer.tokenize()
+    tokens = lexer.tokenize(text)
     assert lexer.tokens == tokens
     assert isinstance(tokens[0], TestToken)
     assert tokens[0].text == 'ABCDE'
@@ -93,11 +92,8 @@ def test_custom_lexer():
         def on_end_of_line(self, line):
             self.on_end_of_line_calls.append(line)
 
-    class MockCompiler:
-        text = 'ABCDE\n12345 FOO\nABCDE 12345 778293'
-
-    lexer = CustomLexer(MockCompiler())
-    lexer.tokenize()
+    lexer = CustomLexer(None)
+    lexer.tokenize('ABCDE\n12345 FOO\nABCDE 12345 778293')
     assert lexer.on_end_of_doc_calls == 1
     assert len(lexer.on_end_of_line_calls) == 3
     assert len(lexer.on_token_added_calls) == 4

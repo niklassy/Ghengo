@@ -19,11 +19,8 @@ def test_gherkin_lexer_language():
 
 def test_gherkin_lexer_end_of_tokens():
     """Check that the lexer appends EndOfLine and EOF tokens."""
-    class MockCompiler:
-        text = 'a\nb\nc'
-
-    lexer = GherkinLexer(MockCompiler())
-    tokens = lexer.tokenize()
+    lexer = GherkinLexer(None)
+    tokens = lexer.tokenize('a\nb\nc')
     assert len(tokens) == 7
     assert isinstance(tokens[-1], EOFToken)
     assert isinstance(tokens[1], EndOfLineToken)

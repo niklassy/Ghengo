@@ -56,13 +56,12 @@ class Lexer(object):
 
         return token
 
-    def tokenize(self):
+    def tokenize(self, text):
         """
         Takes the text of the compiler and returns a list of tokens that represent entities in a Gherkin document.
         :return: list of Tokens
         """
         self._tokens = []
-        text = self.compiler.text
 
         for index, line_text in enumerate(text.splitlines()):
             line = Line(line_text, index)
@@ -190,13 +189,17 @@ class Compiler(object):
     parser = None
     code_generator = None
 
-    def __init__(self, text):
-        self.text = text
+    def compile_file(self, path):
+        """Compiles the text inside of a given file."""
+        with open(path) as file:
+            file_text = file.read()
+        return self.compile_text(file_text)
 
-    def compile(self):
+    def compile_text(self, text):
+        """Compiles a given text."""
         assert self.lexer
         lexer = self.lexer(compiler=self)
-        tokens = lexer.tokenize()
+        tokens = lexer.tokenize(text)
 
         if self.parser is None:
             return tokens

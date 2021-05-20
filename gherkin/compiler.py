@@ -2,7 +2,7 @@ from gherkin.compiler_base.compiler import Lexer, Compiler, Parser
 
 from gherkin.ast import Comment as ASTComment
 from gherkin.compiler_base.exception import RuleNotFulfilled, GrammarInvalid
-from gherkin.config import GHERKIN_CONFIG
+from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
 from gherkin.grammar import GherkinDocumentGrammar
 from gherkin.token import FeatureToken, RuleToken, DescriptionToken, EOFToken, BackgroundToken, ScenarioToken, CommentToken, GivenToken, ThenToken, \
@@ -46,7 +46,11 @@ class GherkinLexer(Lexer):
         self.init_and_add_token(EndOfLineToken, line=line, text=None)
 
     def on_end_of_document(self):
-        self.init_and_add_token(EOFToken, line=self.tokens[-1].line, text=None)
+        if len(self.tokens) > 0:
+            line = self.tokens[-1].line
+        else:
+            line = Line('', 0)
+        self.init_and_add_token(EOFToken, line=line, text=None)
 
 
 class GherkinParser(Parser):
@@ -89,8 +93,8 @@ class GherkinCompiler(Compiler):
     lexer = GherkinLexer
     parser = GherkinParser
 
-    def compile(self):
+    def compile_text(self, text):
         try:
-            return super().compile()
+            return super().compile_text(text)
         except (RuleNotFulfilled, GrammarInvalid) as e:
             raise GherkinInvalid(str(e))
