@@ -1,6 +1,6 @@
-from gherkin.compiler.compiler import GherkinCompiler
+from gherkin.compiler import GherkinCompiler
 
-feature_string = """# language en
+feature_string = """# language wqeqweqwe
 
 @tag1 @tag2
 Feature: Ich bin etwas
@@ -17,6 +17,7 @@ Feature: Ich bin etwas
             Given qwe
                 ```
                 Hier ist ein DocString
+                Der auch etwas länger ist
                 ```
             And qweqwe
             When qwe
@@ -27,6 +28,13 @@ Feature: Ich bin etwas
             When I eat <eat> cucumbers
             Then I should have <left> cucumbers
             
+            @test1
+            Examples:
+            | start | eat | left |
+            |    12 |   5 |    7 |
+            |    20 |   5 |   15 |
+            
+            @test2
             Examples:
             | start | eat | left |
             |    12 |   5 |    7 |
@@ -49,14 +57,25 @@ Feature: asd
         Scenario: qwe
 """
 
+test = """
+Feature: asd
+
+    qweqwe
+    qwe
+    
+    # asasdda
+    
+    Scenario: asd
+"""
+
 
 if __name__ == '__main__':
     """
     Können leider nicht die Library verwenden, weil sie scheinbar Probleme hat und weil wir sämtliche Informationen
     wie Kommentare behalten wollen, für weitere Informationen in der Zukunft.
     """
-    c = GherkinCompiler(feature_string)
-    a = c.compile()
-    # a = Feature(feature_string)
+    c = GherkinCompiler()
+    # a = c.compile_text(feature_string)
+    d = c.compile_file('test.feature')
     b = 1
 

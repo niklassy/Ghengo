@@ -1,5 +1,6 @@
 class _Settings(object):
-    language = 'en'
+    DEFAULT_LANGUAGE = 'en'
+    language = DEFAULT_LANGUAGE
 
 
 Settings = _Settings()

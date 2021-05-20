@@ -1,9 +1,11 @@
-@test
-Feature: a
-  Hier ist eine Beschreibung des Features
+Feature: qweqwe
+  ich bin eine Beschreibung
 
-  Rule: asd
-    Scenario:
-      Given {asd}
-      When wer
-      Then qws
+  Background:
+    Given qweq
+    And qweqq
+
+  Scenario: asasd
+    Ich bin eine Beschreibung
+
+    Given qweq
