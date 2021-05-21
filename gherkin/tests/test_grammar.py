@@ -12,7 +12,7 @@ from gherkin.token import EOFToken, DescriptionToken, EndOfLineToken, RuleToken,
     DataTableToken, AndToken, ButToken, ExamplesToken, GivenToken, WhenToken, ThenToken, ScenarioOutlineToken, \
     ScenarioToken, BackgroundToken, FeatureToken, LanguageToken
 from gherkin.ast import Description, DataTable, DocString, And, But, Given, When, Then, Background
-from settings import Settings
+from gherkin.settings import Settings
 from test_utils import assert_callable_raises
 
 

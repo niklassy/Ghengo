@@ -1,6 +1,6 @@
 import pytest
 
-from settings import Settings
+from gherkin.settings import Settings
 
 
 @pytest.fixture(autouse=True)

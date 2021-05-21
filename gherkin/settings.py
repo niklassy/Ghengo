@@ -1,6 +1,6 @@
-class _Settings(object):
+class _GherkinSettings(object):
     DEFAULT_LANGUAGE = 'en'
     language = DEFAULT_LANGUAGE
 
 
-Settings = _Settings()
+Settings = _GherkinSettings()

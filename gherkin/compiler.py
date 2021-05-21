@@ -5,9 +5,10 @@ from gherkin.compiler_base.exception import RuleNotFulfilled, GrammarInvalid, Gr
 from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
 from gherkin.grammar import GherkinDocumentGrammar
-from gherkin.token import FeatureToken, RuleToken, DescriptionToken, EOFToken, BackgroundToken, ScenarioToken, CommentToken, GivenToken, ThenToken, \
-    WhenToken, EmptyToken, AndToken, ButToken, TagsToken, LanguageToken, EndOfLineToken, ScenarioOutlineToken, DocStringToken, DataTableToken, ExamplesToken
-from settings import Settings
+from gherkin.token import FeatureToken, RuleToken, DescriptionToken, EOFToken, BackgroundToken, ScenarioToken, \
+    CommentToken, GivenToken, ThenToken, WhenToken, EmptyToken, AndToken, ButToken, TagsToken, LanguageToken, \
+    EndOfLineToken, ScenarioOutlineToken, DocStringToken, DataTableToken, ExamplesToken
+from gherkin.settings import Settings
 
 
 class GherkinLexer(Lexer):
@@ -33,6 +34,10 @@ class GherkinLexer(Lexer):
         EmptyToken,
         DescriptionToken,  # <-- keep at the end as fallback
     ]
+
+    def on_start_tokenize(self):
+        # in case this tokenizing is done multiple times, reset the value before starting again
+        Settings.language = Settings.DEFAULT_LANGUAGE
 
     def on_token_added(self, token):
         # the first line may contain the language, so if it is found, set it
