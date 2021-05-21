@@ -63,6 +63,8 @@ class Lexer(object):
         """
         self._tokens = []
 
+        self.on_start_tokenize()
+
         for index, line_text in enumerate(text.splitlines()):
             line = Line(line_text, index)
 
@@ -94,6 +96,10 @@ class Lexer(object):
         self.on_end_of_document()
 
         return self._tokens
+
+    def on_start_tokenize(self):
+        """Is called before starting to tokenize the text input."""
+        pass
 
     def on_token_added(self, token):
         """Called after a token was added to the list of tokens that will be returned by `tokenize`."""

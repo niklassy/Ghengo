@@ -1,6 +1,6 @@
 from gherkin.compiler import GherkinCompiler
 
-feature_string = """# language wqeqweqwe
+feature_string = """# language: en
 
 @tag1 @tag2
 Feature: Ich bin etwas
@@ -20,7 +20,7 @@ Feature: Ich bin etwas
                 Der auch etwas länger ist
                 ```
             And qweqwe
-            When qwe
+            When rewqq
             Then kjasd
             
         Scenario Outline: mal was anderes
@@ -75,7 +75,7 @@ if __name__ == '__main__':
     wie Kommentare behalten wollen, für weitere Informationen in der Zukunft.
     """
     c = GherkinCompiler()
-    # a = c.compile_text(feature_string)
-    d = c.compile_file('test.feature')
+    a = c.compile_text(feature_string)
+    # d = c.compile_file('test.feature')
     b = 1
 

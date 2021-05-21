@@ -4,12 +4,12 @@ from typing import Optional
 from gherkin.compiler_base.token import Token
 from gherkin.config import GHERKIN_CONFIG
 from gherkin.compiler_base.line import Line
-from settings import Settings
+from gherkin.settings import Settings
 
 
 class GherkinToken(Token):
     _json_id = None
-    
+
     @classmethod
     def get_keywords(cls):
         try:
