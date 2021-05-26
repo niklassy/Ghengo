@@ -35,7 +35,7 @@ class DjangoProject(object):
 
     def app_defined_by_third_party(self, app):
         """Check if a given app is coming from a third party library."""
-        return not self.app_defined_by_project(app)
+        return not self.app_defined_by_project(app) and not self.app_defined_by_django(app)
 
     def get_apps(self, include_django=False, include_third_party=False, include_project=True):
         # get all apps from application
@@ -47,21 +47,17 @@ class DjangoProject(object):
 
         output = []
 
-        # TODO: maybe remove from list afterwards for performance?
-        if include_django:
-            for app in all_apps:
-                if self.app_defined_by_django(app):
-                    output.append(app)
+        for app in all_apps:
+            if include_django and self.app_defined_by_django(app):
+                output.append(app)
+                continue
 
-        if include_third_party:
-            for app in all_apps:
-                if self.app_defined_by_third_party(app) and not self.app_defined_by_django(app) and app not in output:
-                    output.append(app)
+            if include_third_party and self.app_defined_by_third_party(app):
+                output.append(app)
+                continue
 
-        if include_project:
-            for app in all_apps:
-                if self.app_defined_by_project(app) and app not in output:
-                    output.append(app)
+            if include_project and self.app_defined_by_project(app):
+                output.append(app)
 
         return output
 
