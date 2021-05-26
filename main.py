@@ -1,5 +1,5 @@
 from django_meta.project import DjangoProject
-from gherkin.compiler import GherkinCompiler
+from gherkin.compiler import GherkinToPyTestCompiler
 
 feature_string = """# language: en
 
@@ -76,8 +76,10 @@ if __name__ == '__main__':
     wie Kommentare behalten wollen, für weitere Informationen in der Zukunft.
     """
     project = DjangoProject('django_sample_project.apps.config.settings')
+    a = project.get_models(include_django=True, as_interface=True)
+    b = 1
 
-    # c = GherkinCompiler()
+    # c = GherkinToPyTestCompiler()
     # a = c.compile_text(feature_string)
     # d = c.compile_file('test.feature')
     b = 1

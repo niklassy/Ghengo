@@ -7,27 +7,49 @@ from django.urls import URLPattern, URLResolver, get_resolver
 
 
 class ModelInterface(object):
-    def __init__(self, model):
+    def __init__(self, model, app):
         self.model = model
+        self.app = app
 
     @property
     def verbose_name(self):
         return self.model._meta.verbose_name
 
+    @property
+    def fields(self):
+        return list(self.model._meta.get_fields())
+
+    @property
+    def field_names(self):
+        return [field.name for field in self.fields]
+
 
 class AppInterface(object):
-    def __init__(self, app):
+    def __init__(self, app, project):
         self.app = app
+        self.project = project
 
     def get_models(self, as_interface=False):
         output = []
 
         for model in self.app.get_models():
             if as_interface:
-                model = ModelInterface(model)
+                model = ModelInterface(model, self)
             output.append(model)
 
         return output
+
+    @property
+    def defined_by_project(self):
+        return self.project.settings.BASE_DIR in self.app.path
+
+    @property
+    def defined_by_django(self):
+        return self.app.name.startswith('django.')
+
+    @property
+    def defined_by_third_party(self):
+        return not self.defined_by_django and not self.defined_by_project
 
 
 class DjangoProject(object):
@@ -37,18 +59,6 @@ class DjangoProject(object):
         # django needs to know where the settings are, so set it in the env and setup django afterwards
         os.environ['DJANGO_SETTINGS_MODULE'] = settings_path
         setup()
-
-    def app_defined_by_project(self, app):
-        """Check if a given app is defined by the project itself (not from django or third-party)"""
-        return self.settings.BASE_DIR in app.path
-
-    def app_defined_by_django(self, app):
-        """Check if a given app is from django."""
-        return app.name.startswith('django.')
-
-    def app_defined_by_third_party(self, app):
-        """Check if a given app is coming from a third party library."""
-        return not self.app_defined_by_project(app) and not self.app_defined_by_django(app)
 
     def get_reverse_keys(self):
         """Returns all keys that are used in the project that can be used via reverse"""
@@ -99,25 +109,34 @@ class DjangoProject(object):
         output = []
 
         for app in all_apps:
-            app_interface = AppInterface(app)
+            app_interface = AppInterface(app, self)
 
             # add django apps if wanted
-            if include_django and self.app_defined_by_django(app):
+            if include_django and app_interface.defined_by_django:
                 output.append(app_interface if as_interface else app)
                 continue
 
             # add third party apps if wanted
-            if include_third_party and self.app_defined_by_third_party(app):
+            if include_third_party and app_interface.defined_by_third_party:
                 output.append(app_interface if as_interface else app)
                 continue
 
             # add project apps if wanted
-            if include_project and self.app_defined_by_project(app):
+            if include_project and app_interface.defined_by_project:
                 output.append(app_interface if as_interface else app)
 
         return output
 
     def get_models(self, include_django=False, include_third_party=False, include_project=True, as_interface=False):
+        """
+        Returns all the models that are used in the project. The output can be filtered.
+
+        Arguments:
+            include_django (bool): include django models?
+            include_project (bool): include models from the project itself?
+            include_third_party (bool): include third party models?
+            as_interface (bool): return as [ModelInterface]?
+        """
         output = []
         project_apps = self.get_apps(
             include_django=include_django,
