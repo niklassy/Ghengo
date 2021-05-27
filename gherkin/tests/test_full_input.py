@@ -4,7 +4,7 @@ from os.path import isfile, join
 
 import pytest
 
-from gherkin.compiler import GherkinCompiler
+from gherkin.compiler import GherkinToPyTestCompiler
 from gherkin.exception import GherkinInvalid
 from test_utils import assert_callable_raises
 
@@ -27,7 +27,7 @@ FEATURE_PATHS_INVALID = get_feature_paths_in_folder(FOLDER_STR_INVALID)
 )
 def test_invalid_files(invalid_feature_path):
     assert_callable_raises(
-        GherkinCompiler().compile_file,
+        GherkinToPyTestCompiler().compile_file,
         GherkinInvalid,
         args=[invalid_feature_path]
     )
@@ -37,4 +37,4 @@ def test_invalid_files(invalid_feature_path):
     'valid_feature_path', FEATURE_PATHS_VALID
 )
 def test_valid_files(valid_feature_path):
-    GherkinCompiler().compile_file(valid_feature_path)
+    GherkinToPyTestCompiler().compile_file(valid_feature_path)

@@ -93,7 +93,7 @@ class GherkinParser(Parser):
         return ast
 
 
-class GherkinCompiler(Compiler):
+class GherkinToPyTestCompiler(Compiler):
     """Will parse a gherkin text and analyze line by line in order for easy transformation to an AST."""
     lexer = GherkinLexer
     parser = GherkinParser
