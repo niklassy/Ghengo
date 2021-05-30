@@ -1,5 +1,6 @@
 from django_meta.project import DjangoProject
 from gherkin.compiler import GherkinToPyTestCompiler
+from nlp.tokenize import tokenize
 
 feature_string = """# language: en
 
@@ -77,6 +78,7 @@ if __name__ == '__main__':
     """
     project = DjangoProject('django_sample_project.apps.config.settings')
     a = project.get_models(include_django=True, as_interface=True)
+    w = tokenize('Ich bin ein neuer Text, den ich überprüfe.')
     b = 1
 
     # c = GherkinToPyTestCompiler()
