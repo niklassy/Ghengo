@@ -183,8 +183,7 @@ class Parser(object):
 
 class CodeGenerator(object):
     """
-    In a normal compiler, it would create code for the machine. In our case it will create an intermediate
-    representation (IR). The IR is used later in other areas of the program. It is the internal structure of the code.
+    The code generator will perform operations to transform the tokens into some sort of code/ output.
     """
     pass
 
@@ -201,17 +200,22 @@ class Compiler(object):
             file_text = file.read()
         return self.compile_text(file_text)
 
-    def compile_text(self, text):
-        """Compiles a given text."""
+    def use_lexer(self, text):
         assert self.lexer
-        lexer = self.lexer(compiler=self)
-        tokens = lexer.tokenize(text)
 
-        if self.parser is None:
-            return tokens
+        lexer = self.lexer(compiler=self)
+        return lexer.tokenize(text)
+
+    def use_parser(self, tokens):
+        assert self.parser
 
         parser = self.parser(compiler=self)
-        ast = parser.parse(tokens)
+        return parser.parse(tokens)
+
+    def compile_text(self, text):
+        """Compiles a given text."""
+        tokens = self.use_lexer(text)
+        ast = self.use_parser(tokens)
 
         if self.code_generator is None:
             return ast

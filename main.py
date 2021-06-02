@@ -1,6 +1,7 @@
 from django_meta.project import DjangoProject
 from gherkin.compiler import GherkinToPyTestCompiler
-from nlp.tokenize import tokenize
+from nlp.tokenize import tokenize, de_nlp, en_nlp
+from nlp.utils import *
 
 feature_string = """# language: en
 
@@ -83,8 +84,13 @@ if __name__ == '__main__':
     w = tokenize('Ich bin ein neuer Text, den ich überprüfe.')
     b = 1
 
-    # c = GherkinToPyTestCompiler()
-    # a = c.compile_text(feature_string)
-    # d = c.compile_file('test.feature')
+    c = GherkinToPyTestCompiler()
+    a = c.compile_text(feature_string)
+    d = c.compile_file('django_sample_project/features/todo_crud.feature')
+    compiled = []
+
+    for scenario in d.feature.children:
+        for step in scenario.steps:
+            compiled.append(tokenize(str(step)))
     b = 1
 

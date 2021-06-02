@@ -72,10 +72,12 @@ class GherkinParser(Parser):
                 # Comment and Empty are always followed by an EndOfLine
                 try:
                     next_token = tokens[index + 1]
+                    previous_token = tokens[index - 1]
                 except IndexError:
                     continue
 
-                if isinstance(next_token, EndOfLineToken):
+                # remove the end of line token if the comment/ empty token is wrapped by EndOfLines
+                if isinstance(next_token, EndOfLineToken) and isinstance(previous_token, EndOfLineToken):
                     to_remove.append(index + 1)
 
         tokens_trimmed = tokens.copy()
@@ -98,8 +100,8 @@ class GherkinToPyTestCompiler(Compiler):
     lexer = GherkinLexer
     parser = GherkinParser
 
-    def compile_text(self, text):
+    def use_parser(self, tokens):
         try:
-            return super().compile_text(text)
+            return super().use_parser(tokens)
         except (RuleNotFulfilled, GrammarInvalid, GrammarNotUsed) as e:
             raise GherkinInvalid(str(e))

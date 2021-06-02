@@ -337,6 +337,9 @@ class Step(object):
     def __repr__(self):
         return '{} - {}{}'.format(self.__class__.__name__.upper(), self.keyword, self.text)
 
+    def __str__(self):
+        return '{}{}'.format(self.keyword, self.text)
+
 
 class ParentStep(Step):
     """
