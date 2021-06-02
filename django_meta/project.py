@@ -13,7 +13,14 @@ class ModelInterface(object):
 
     @property
     def verbose_name(self):
-        return str(self.model._meta.verbose_name) or self.model.__name__
+        try:
+            return str(self.model._meta.verbose_name)
+        except AttributeError:
+            return None
+
+    @property
+    def name(self):
+        return self.model.__name__
 
     @property
     def fields(self):
@@ -24,7 +31,7 @@ class ModelInterface(object):
 
     @property
     def field_names(self):
-        return [field.verbose_name or field.name for field in self.fields]
+        return [getattr(field, 'verbose_name', None) or field.name for field in self.fields]
 
 
 class AppInterface(object):

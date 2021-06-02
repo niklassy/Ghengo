@@ -24,7 +24,7 @@ Funktionalität: Erstellen, Löschen und Ändern von ToDos
   
   Szenario: Ändern von ToDo - anderer Nutzer
     Gegeben sei ein Benutzer Bob mit dem Benutzernamen Bob
-    Und ein To-Do AliceToDo mit dem Text todo1, das Alice zugeordnet ist
+    Und ein To-Do AliceToDo mit dem Text todo1, das Alice als Besitzer hat
     Wenn Bob eine Anfrage zum Ändern des To-Do AliceToDo mit dem Text todoBob macht
     Dann sollte die Antwort den status 400 haben
     Und das To-Do AliceToDo sollte den Text todo1 haben
@@ -43,7 +43,7 @@ Funktionalität: Erstellen, Löschen und Ändern von ToDos
 
   Szenario: Löschen eines ToDo - anderer Benutzer
     Gegeben sei ein Nutzer Bob mit dem Benutzernamen Bob
-    Und ein To-Do AliceToDo mit dem Text todo1, das Alice zugeordnet ist
+    Und ein To-Do AliceToDo mit dem Text todo1, das Alice als Besitzerin hat
     Wenn Bob eine Anfrage zum Löschen des To-Do AliceToDo macht
     Dann sollte die Antwort den Status 400 haben
     Und das To-Do AliceToDo sollte noch existieren
