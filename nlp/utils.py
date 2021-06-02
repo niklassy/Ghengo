@@ -1,6 +1,9 @@
-def are_synonyms(token_1, token_2):
+from nlp.settings import SIMILARITY_BENCHMARK
+
+
+def are_synonyms(input_1, input_2):
     """Check if two tokens are synonyms."""
-    return token_1.similarity(token_2) > 0.6
+    return input_1.similarity(input_2) > SIMILARITY_BENCHMARK
 
 
 def get_non_stop_tokens(doc):

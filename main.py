@@ -1,6 +1,10 @@
 from django_meta.project import DjangoProject
 from gherkin.compiler import GherkinToPyTestCompiler
-from nlp.tokenize import tokenize, de_nlp, en_nlp
+from nlp.django import get_model_field_by_text
+# from nlp.tokenize import tokenize, de_nlp, en_nlp
+from translate import Translator
+
+from nlp.setup import Nlp
 from nlp.utils import *
 
 feature_string = """# language: en
@@ -81,7 +85,7 @@ if __name__ == '__main__':
     """
     project = DjangoProject('django_sample_project.apps.config.settings')
     a = project.get_models(include_django=True, as_interface=True)
-    w = tokenize('Ich bin ein neuer Text, den ich überprüfe.')
+    # w = tokenize('Ich bin ein neuer Text, den ich überprüfe.')
     b = 1
 
     c = GherkinToPyTestCompiler()
@@ -89,8 +93,11 @@ if __name__ == '__main__':
     d = c.compile_file('django_sample_project/features/todo_crud.feature')
     compiled = []
 
+    p = get_model_field_by_text('de', 'Vorname', project.get_models(as_interface=True)[0])
+    p2 = get_model_field_by_text('de', 'Name', project.get_models(as_interface=True)[0])
+
     for scenario in d.feature.children:
         for step in scenario.steps:
-            compiled.append(tokenize(str(step)))
+            compiled.append(Nlp.for_language('de')(str(step)))
     b = 1
 

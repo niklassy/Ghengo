@@ -11,6 +11,7 @@ nltk = "*"
 setuptools = "*"
 wheel = "*"
 spacy = "*"
+translate = "*"
 
 [dev-packages]
 

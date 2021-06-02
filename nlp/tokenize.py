@@ -8,8 +8,8 @@ from spacy import displacy
 
 from nlp.setup import setup_nlp
 
-en_nlp, de_nlp = setup_nlp()
-this_dir = os.path.dirname(os.path.abspath(__file__))
+# en_nlp, de_nlp = setup_nlp()
+# this_dir = os.path.dirname(os.path.abspath(__file__))
 
 # TODO: this is very slow, it might work out better to start this seperately and use a local api:
 # start in background
@@ -33,14 +33,14 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 #   available for others to use, e.g. via a custom spaCy component.
 
 
-def tokenize(string):
+# def tokenize(string):
     # a = nltk_tokenize(string)
-    a = 1
-    options = {"compact": True, "bg": "#09a3d5", "color": "white", "font": "Source Sans Pro"}
+    # a = 1
+    # options = {"compact": True, "bg": "#09a3d5", "color": "white", "font": "Source Sans Pro"}
     # string = 'Es existiert ein Benutzer. Wenn er eine Anfrage gegen die Endroute /abc macht, dann ' \
     #          'sollte dies funktionieren. Account.'
     # doc = de_nlp(string)
     # displacy.serve(doc, style="dep")
     # b = tagger.tag(word_tokenize(string, language='german'))
     # tree = chunk.ne_chunk(b)
-    return de_nlp(string)
+    # return de_nlp(string)

@@ -13,15 +13,18 @@ class ModelInterface(object):
 
     @property
     def verbose_name(self):
-        return self.model._meta.verbose_name
+        return str(self.model._meta.verbose_name) or self.model.__name__
 
     @property
     def fields(self):
         return list(self.model._meta.get_fields())
 
+    def get_field(self, name):
+        return self.model._meta.get_field(name)
+
     @property
     def field_names(self):
-        return [field.name for field in self.fields]
+        return [field.verbose_name or field.name for field in self.fields]
 
 
 class AppInterface(object):
