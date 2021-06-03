@@ -1,4 +1,5 @@
 from generate.suite import TestSuite
+from generate.utils import to_function_name
 from gherkin.compiler_base.compiler import Lexer, Compiler, Parser, CodeGenerator
 
 from gherkin.ast import Comment as ASTComment, Scenario, ScenarioOutline, Rule
@@ -97,6 +98,8 @@ class GherkinParser(Parser):
 
 
 class GherkinToPyTestCodeGenerator(CodeGenerator):
+    file_extension = 'py'
+
     def scenario_to_test_case(self, scenario, suite):
         # TODO: handle scenario outline
         test_case = suite.add_test_case(scenario.name)
@@ -108,6 +111,9 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         #         break
 
         return test_case
+
+    def get_file_name(self, ast, path):
+        return 'test_{}'.format(to_function_name(ast.feature.name)) if ast.feature.name else 'test_generated'
 
     def generate(self, ast):
         # TODO: what to do here?
@@ -124,7 +130,7 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
                 for rule_child in child.scenario_definitions:
                     self.scenario_to_test_case(rule_child, suite)
 
-        return ast
+        return suite.to_template()
 
 
 class GherkinToPyTestCompiler(Compiler):

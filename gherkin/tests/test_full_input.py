@@ -27,7 +27,7 @@ FEATURE_PATHS_INVALID = get_feature_paths_in_folder(FOLDER_STR_INVALID)
 )
 def test_invalid_files(invalid_feature_path):
     assert_callable_raises(
-        GherkinToPyTestCompiler().compile_file,
+        GherkinToPyTestCompiler().compile_file_to_text,
         GherkinInvalid,
         args=[invalid_feature_path]
     )
@@ -37,4 +37,4 @@ def test_invalid_files(invalid_feature_path):
     'valid_feature_path', FEATURE_PATHS_VALID
 )
 def test_valid_files(valid_feature_path):
-    GherkinToPyTestCompiler().compile_file(valid_feature_path)
+    GherkinToPyTestCompiler().compile_file_to_text(valid_feature_path)

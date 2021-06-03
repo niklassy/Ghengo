@@ -185,11 +185,24 @@ class CodeGenerator(object):
     """
     The code generator will perform operations to transform the tokens into some sort of code/ output.
     """
+    file_extension = None
+
     def __init__(self, compiler):
         self.compiler = compiler
 
     def generate(self, ast):
         return ast
+
+    def get_file_name(self, ast, path):
+        return 'sample'
+
+    def generate_into_file(self, ast, output_directory):
+        code = self.generate(ast)
+        file = open(
+            '{}{}.{}'.format(output_directory, self.get_file_name(ast, output_directory), self.file_extension), "w")
+        file.write(code)
+        file.close()
+        return file
 
 
 class Compiler(object):
@@ -198,11 +211,17 @@ class Compiler(object):
     parser = None
     code_generator = None
 
-    def compile_file(self, path):
+    def compile_file_to_text(self, path):
         """Compiles the text inside of a given file."""
         with open(path) as file:
             file_text = file.read()
-        return self.compile_text(file_text)
+        return self.compile_text_to_string(file_text)
+
+    def compile_file_to_file(self, input_path, output_directory):
+        """Compiles the text inside of a given file."""
+        with open(input_path) as file:
+            file_text = file.read()
+        return self.compile_text_to_file(file_text, output_directory)
 
     def use_generator(self, ast):
         assert self.code_generator
@@ -221,9 +240,15 @@ class Compiler(object):
         parser = self.parser(compiler=self)
         return parser.parse(tokens)
 
-    def compile_text(self, text):
+    def compile_text_to_string(self, text):
         """Compiles a given text."""
         tokens = self.use_lexer(text)
         ast = self.use_parser(tokens)
         return self.use_generator(ast)
+
+    def compile_text_to_file(self, text, output_directory):
+        tokens = self.use_lexer(text)
+        ast = self.use_parser(tokens)
+        code_generator = self.code_generator(self)
+        return code_generator.generate_into_file(ast, output_directory)
 

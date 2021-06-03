@@ -1,9 +1,13 @@
 from typing import Iterable
 
-from generate.utils import camel_to_snake_case
+from generate.utils import camel_to_snake_case, to_function_name
 
 
 class TemplateMixin(object):
+    """
+    This mixin is used to convert any class into a template. The template is used for python code in this project.
+    But in theory, this mixin can be used anywhere.
+    """
     template = None
 
     def get_template(self):
@@ -22,11 +26,16 @@ class TemplateMixin(object):
 class Import(TemplateMixin):
     path = None
     variables = []
-    template = 'from {path} import {variables}'
 
     def __init__(self, path: str, variables: Iterable[str]):
         self.path = path
-        self.variables = variables
+        self.variables = variables or []
+
+    def get_template(self):
+        if not self.variables:
+            return 'import {path}'
+
+        return 'from {path} import {variables}'
 
     def get_template_context(self, intend):
         return {
@@ -63,31 +72,33 @@ class Variable(TemplateMixin):
 
 
 class Expresion(TemplateMixin):
-    @property
-    def return_value(self):
-        return None
-
     def on_add_to_test_case(self, test_case):
         pass
 
 
-class ModelFactoryExpression(Expresion):
-    template = '{factory_name}({kwargs})'
+class FunctionCallExpression(Expresion):
+    template = '{fn_name}({kwargs})'
 
+    def __init__(self, function_name, function_kwargs):
+        self.function_name = function_name
+        self.function_kwargs = function_kwargs
+
+    def get_template_context(self, intend):
+        return {
+            'fn_name': self.function_name,
+            'kwargs': ', '.join(['{}={}'.format(kwarg.name, kwarg.value) for kwarg in self.function_kwargs]),
+        }
+
+
+class ModelFactoryExpression(FunctionCallExpression):
     def __init__(self, model_interface, factory_kwargs):
         self.model_interface = model_interface
-        self.factory_kwargs = factory_kwargs
+        super().__init__(self.factory_name, factory_kwargs)
 
     @property
     def factory_name(self):
         model_in_snake_case = camel_to_snake_case(self.model_interface.name)
         return '{}_factory'.format(model_in_snake_case)
-
-    def get_template_context(self, intend):
-        return {
-            'factory_name': self.factory_name,
-            'kwargs': ', '.join(['{}={}'.format(kwarg.name, kwarg.value) for kwarg in self.factory_kwargs])
-        }
 
     def on_add_to_test_case(self, test_case):
         argument = TestCaseArgument(self.factory_name)
@@ -168,12 +179,8 @@ class TestCase(TemplateMixin):
         return 'def test_{name}({arguments}):\n{statements}'
 
     def get_template_context(self, intend):
-        # remove special characters and multiple spaces from name
-        no_special_char_name = ''.join(e if e.isalnum() else ' ' for e in self.name.lower())
-        clean_name = '_'.join(no_special_char_name.split())
-
         return {
-            'name': clean_name,
+            'name': to_function_name(self.name),
             'arguments': ', '.join(str(argument) for argument in self.arguments),
             'statements': '\n'.join(statement.to_template(intend + 4) for statement in self.statements),
         }
@@ -208,7 +215,7 @@ class TestSuite(TemplateMixin):
         return {
             'imports': '\n'.join(import_entry.to_template(intend) for import_entry in self.imports),
             'separator': '\n\n' if len(self.imports) > 0 else '',
-            'test_cases': '\n\n'.join(test_case.to_template(intend) for test_case in self.test_cases)
+            'test_cases': '\n\n\n'.join(test_case.to_template(intend) for test_case in self.test_cases)
         }
 
     def add_test_case(self, name):

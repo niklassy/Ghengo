@@ -90,23 +90,24 @@ if __name__ == '__main__':
     b = 1
 
     c = GherkinToPyTestCompiler()
-    a = c.compile_text(feature_string)
-    ast = c.compile_file('django_sample_project/features/todo_crud.feature')
+    a = c.compile_text_to_string(feature_string)
+    z = c.compile_text_to_file(feature_string, 'generated_tests/')
+    ast = c.compile_file_to_file('django_sample_project/features/todo_crud.feature', 'generated_tests/')
     compiled = []
 
     # p = get_model_field_by_text('de', 'Vorname', project.get_models(as_interface=True)[0])
     # p2 = get_model_field_by_text('de', 'Name', project.get_models(as_interface=True)[0])
     order_model = get_model_from_text('de', 'Auftrag', project)
 
-    asd = handle_given(project, 'de', ast.feature.children[6].steps[2])
+    # asd = handle_given(project, 'de', ast.feature.children[6].steps[2])
 
     # for scenario in d.feature.children:
     #     for step in scenario.steps:
     #         compiled.append(Nlp.for_language('de')(str(step)))
-    suite = TestSuite(ast.feature.name if ast.feature else '')
-    tc = suite.add_test_case('test')
-    factory_ex_2 = ModelFactoryExpression(order_model, [Kwarg('name', 'alice'), Kwarg('test', 'bob')])
-    tc.add_statement(AssignmentStatement(factory_ex_2, Variable('order_2')))
+    # suite = TestSuite(ast.feature.name if ast.feature else '')
+    # tc = suite.add_test_case('test')
+    # factory_ex_2 = ModelFactoryExpression(order_model, [Kwarg('name', 'alice'), Kwarg('test', 'bob')])
+    # tc.add_statement(AssignmentStatement(factory_ex_2, Variable('order_2')))
     b = 1
 
 

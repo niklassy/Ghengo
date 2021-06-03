@@ -12,6 +12,7 @@ setuptools = "*"
 wheel = "*"
 spacy = "*"
 deep-translator = "*"
+unidecode = "*"
 
 [dev-packages]
 
