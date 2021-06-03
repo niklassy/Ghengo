@@ -9,11 +9,11 @@ class TemplateMixin(object):
     def get_template(self):
         return self.template
 
-    def get_template_context(self):
+    def get_template_context(self, intend):
         return {}
 
-    def to_template(self):
-        return self.template.format(**self.get_template_context())
+    def to_template(self, intend=0):
+        return ' ' * intend + self.get_template().format(**self.get_template_context(intend))
 
     def __str__(self):
         return self.to_template()
@@ -28,16 +28,21 @@ class Import(TemplateMixin):
         self.path = path
         self.variables = variables
 
-    def get_template_context(self):
+    def get_template_context(self, intend):
         return {
             'path': self.path,
             'variables': ', '.join(self.variables),
         }
 
 
-class TestCaseArgument(object):
+class TestCaseArgument(TemplateMixin):
+    template = '{name}'
+
     def __init__(self, name):
         self.name = name
+
+    def get_template_context(self, intend):
+        return {'name': self.name}
 
 
 class Kwarg(object):
@@ -53,7 +58,7 @@ class Variable(TemplateMixin):
     def __init__(self, name):
         self.name = name
 
-    def get_template_context(self):
+    def get_template_context(self, intend):
         return {'name': self.name}
 
 
@@ -78,7 +83,7 @@ class ModelFactoryExpression(Expresion):
         model_in_snake_case = camel_to_snake_case(self.model_interface.name)
         return '{}_factory'.format(model_in_snake_case)
 
-    def get_template_context(self):
+    def get_template_context(self, intend):
         return {
             'factory_name': self.factory_name,
             'kwargs': ', '.join(['{}={}'.format(kwarg.name, kwarg.value) for kwarg in self.factory_kwargs])
@@ -111,11 +116,18 @@ class AssignmentStatement(Statement):
         super().__init__(expression)
         self.variable = variable
 
-    def get_template_context(self):
+    def get_template_context(self, intend):
         return {
             'variable': self.variable,
             'expression': self.expression,
         }
+
+
+class PassStatement(Statement):
+    template = 'pass'
+
+    def __init__(self):
+        super().__init__(None)
 
 
 class AssertStatement(Statement):
@@ -126,34 +138,65 @@ class RequestStatement(Statement):
     pass
 
 
-class TestCase(object):
+class TestCase(TemplateMixin):
     arguments = []
     decorators = []
-    statements = []
     test_suite = None
 
     def __init__(self, test_suite):
         self.arguments = []
         self.decorators = []
-        self.statements = []
+        self._statements = []
         self.test_suite = test_suite
+
+    @property
+    def statements(self):
+        if len(self._statements) == 0:
+            return [PassStatement()]
+        return self._statements
+
+    def get_template(self):
+        return 'def test_{name}({arguments}):\n{statements}'
+
+    def get_template_context(self, intend):
+        return {
+            'name': 'abc',
+            'arguments': ', '.join(str(argument) for argument in self.arguments),
+            'statements': '\n'.join(statement.to_template(intend + 4) for statement in self.statements),
+        }
 
     def get_value_for_variable(self, name):
         for statement in self.statements:
+            if not hasattr(statement, 'variable'):
+                continue
+
             if statement.variable and name == statement.variable.name:
                 return statement.expression
         return None
 
     def add_statement(self, statement):
-        self.statements.append(statement)
+        self._statements.append(statement)
+        statement.add_to_test_case(self)
 
 
-class TestSuite(object):
+class TestSuite(TemplateMixin):
     imports = []
     test_cases = []
 
     def __init__(self, name):
         self.name = name
+        self.imports = []
+        self.test_cases = []
+
+    def get_template(self):
+        return '{imports}{separator}{test_cases}\n'
+
+    def get_template_context(self, intend):
+        return {
+            'imports': '\n'.join(import_entry.to_template(intend) for import_entry in self.imports),
+            'separator': '\n\n' if len(self.imports) > 0 else '',
+            'test_cases': '\n\n'.join(test_case.to_template(intend) for test_case in self.test_cases)
+        }
 
     def add_test_case(self):
         test_case = TestCase(self)

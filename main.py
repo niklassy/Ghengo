@@ -105,6 +105,8 @@ if __name__ == '__main__':
     #         compiled.append(Nlp.for_language('de')(str(step)))
     suite = TestSuite(ast.feature.name if ast.feature else '')
     tc = suite.add_test_case()
+    tc_1 = suite.add_test_case()
+    tc_2 = suite.add_test_case()
     factory_ex = ModelFactoryExpression(order_model, [Kwarg('name', 'alice'), Kwarg('test', 'bob')])
     tc.add_statement(AssignmentStatement(factory_ex, Variable('order')))
     b = 1
