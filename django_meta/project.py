@@ -67,8 +67,10 @@ class DjangoProject(object):
         self.settings = importlib.import_module(settings_path)
 
         # django needs to know where the settings are, so set it in the env and setup django afterwards
+        print('Setting up Django....')
         os.environ['DJANGO_SETTINGS_MODULE'] = settings_path
         setup()
+        print('Finished setting up Django!')
 
     def get_reverse_keys(self):
         """Returns all keys that are used in the project that can be used via reverse"""

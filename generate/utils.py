@@ -9,6 +9,10 @@ def camel_to_snake_case(string):
 
 
 def to_function_name(string):
+    """
+    Pass in a string to return it into a function name in snake case. It will remove non-ascii characters, whitespaces
+    and transform everything into lower case.
+    """
     no_special = ''.join(e if e.isalnum() else ' ' for e in string.lower())
     non_ascii = remove_non_ascii(no_special)
     return '_'.join(non_ascii.split())

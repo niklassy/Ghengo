@@ -23,13 +23,17 @@ class _Nlp(object):
     @property
     def de_nlp(self):
         if self._de_nlp is None:
+            print('Setting up german nlp...')
             self._de_nlp = spacy.load('de_core_news_lg')
+            print('German nlp done!')
         return self._de_nlp
 
     @property
     def en_nlp(self):
         if self._en_nlp is None:
+            print('Setting up english nlp...')
             self._en_nlp = spacy.load('en_core_web_lg')
+            print('English nlp done!')
         return self._en_nlp
 
     def for_language(self, language):

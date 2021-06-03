@@ -240,15 +240,17 @@ class Compiler(object):
         parser = self.parser(compiler=self)
         return parser.parse(tokens)
 
+    def get_ast(self, text):
+        tokens = self.use_lexer(text)
+        return self.use_parser(tokens)
+
     def compile_text_to_string(self, text):
         """Compiles a given text."""
-        tokens = self.use_lexer(text)
-        ast = self.use_parser(tokens)
+        ast = self.get_ast(text)
         return self.use_generator(ast)
 
     def compile_text_to_file(self, text, output_directory):
-        tokens = self.use_lexer(text)
-        ast = self.use_parser(tokens)
+        ast = self.get_ast(text)
         code_generator = self.code_generator(self)
         return code_generator.generate_into_file(ast, output_directory)
 

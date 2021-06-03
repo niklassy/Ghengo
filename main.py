@@ -5,7 +5,6 @@ from nlp.django import get_model_field_by_text, get_model_from_text, handle_give
 # from nlp.tokenize import tokenize, de_nlp, en_nlp
 from translate import Translator
 
-from nlp.setup import Nlp
 from nlp.utils import *
 
 feature_string = """# language: en
@@ -81,8 +80,6 @@ if __name__ == '__main__':
     """
     Können leider nicht die Library verwenden, weil sie scheinbar Probleme hat und weil wir sämtliche Informationen
     wie Kommentare behalten wollen, für weitere Informationen in der Zukunft.
-    
-    Test
     """
     project = DjangoProject('django_sample_project.apps.config.settings')
     a = project.get_models(include_django=True, as_interface=True)
@@ -95,6 +92,8 @@ if __name__ == '__main__':
     ast = c.compile_file_to_file('django_sample_project/features/todo_crud.feature', 'generated_tests/')
     compiled = []
 
+    ast = c.get_ast(feature_string)
+
     # p = get_model_field_by_text('de', 'Vorname', project.get_models(as_interface=True)[0])
     # p2 = get_model_field_by_text('de', 'Name', project.get_models(as_interface=True)[0])
     order_model = get_model_from_text('de', 'Auftrag', project)
@@ -104,10 +103,16 @@ if __name__ == '__main__':
     # for scenario in d.feature.children:
     #     for step in scenario.steps:
     #         compiled.append(Nlp.for_language('de')(str(step)))
-    # suite = TestSuite(ast.feature.name if ast.feature else '')
-    # tc = suite.add_test_case('test')
-    # factory_ex_2 = ModelFactoryExpression(order_model, [Kwarg('name', 'alice'), Kwarg('test', 'bob')])
-    # tc.add_statement(AssignmentStatement(factory_ex_2, Variable('order_2')))
+    suite = TestSuite(ast.feature.name if ast.feature else '')
+    tc = suite.add_test_case('test')
+    factory_ex_2 = ModelFactoryExpression(order_model, [Kwarg('name', 'alice'), Kwarg('test', 'bob')])
+    tc.add_statement(AssignmentStatement(factory_ex_2, Variable('order_2')))
+    tc = suite.add_test_case('new')
+    factory_ex_2 = ModelFactoryExpression(order_model, [Kwarg('name', 'alice'), Kwarg('test', 'bob')])
+    tc.add_statement(AssignmentStatement(factory_ex_2, Variable('order_2')))
+    tc = suite.add_test_case('test4')
+    factory_ex_2 = ModelFactoryExpression(order_model, [Kwarg('name', 'alice'), Kwarg('test', 'bob')])
+    tc.add_statement(AssignmentStatement(factory_ex_2, Variable('order_2')))
     b = 1
 
 
