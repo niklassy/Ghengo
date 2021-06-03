@@ -191,15 +191,19 @@ class CodeGenerator(object):
         self.compiler = compiler
 
     def generate(self, ast):
+        """Must be implemented by children. It must return the code/ text that comes from the AST."""
         raise NotImplementedError()
 
     def get_file_extension(self):
+        """Returns the file extension for the file."""
         return self.file_extension
 
     def get_file_name(self, ast):
-        return 'sample'
+        """Should return the name of the file <THIS>.<extension>."""
+        raise NotImplementedError()
 
     def get_full_file_name(self, ast, output_directory):
+        """Returns the full path to the file."""
         return '{}{}.{}'.format(output_directory, self.get_file_name(ast), self.get_file_extension())
 
 
@@ -210,31 +214,10 @@ class Compiler(object):
     code_generator_class = None
 
     def __init__(self):
-        self._lexer = None
-        self._parser = None
-        self._code_generator = None
+        self.lexer = self.lexer_class(self)
+        self.parser = self.parser_class(self)
+        self.code_generator = self.code_generator_class(self)
         self.ast = None
-
-    @property
-    def lexer(self):
-        assert self.lexer_class is not None
-        if self._lexer is None:
-            self._lexer = self.lexer_class(self)
-        return self._lexer
-
-    @property
-    def parser(self):
-        assert self.parser_class is not None
-        if self._parser is None:
-            self._parser = self.parser_class(self)
-        return self._parser
-
-    @property
-    def code_generator(self):
-        assert self.code_generator_class is not None
-        if self._code_generator is None:
-            self._code_generator = self.code_generator_class(self)
-        return self._code_generator
 
     @classmethod
     def read_file(cls, path):
@@ -244,12 +227,18 @@ class Compiler(object):
         return file_text
 
     def use_lexer(self, text):
+        """A wrapper around the tokenization of a text. It can be used by children to do something."""
         return self.lexer.tokenize(text)
 
     def use_parser(self, tokens):
+        """A wrapper around the validation and creation of the AST. It can be used by children to do something."""
         return self.parser.parse(tokens)
 
     def compile_text(self, text):
+        """
+        Compiles a given text by using the Lexer and the Parser. It will return and save the resulting AST.
+        To use the code generator, you must call `export_as_text` or `export_as_file` afterwards.
+        """
         self.ast = None
         tokens = self.use_lexer(text)
         self.ast = self.use_parser(tokens)
@@ -257,10 +246,19 @@ class Compiler(object):
         return self.ast
 
     def compile_file(self, path):
+        """
+        Works exactly like `compile_text` but this will compile a file as an input instead. For more information look
+        at the doc of `compile_text`.
+        """
         file_text = self.read_file(path)
         return self.compile_text(file_text)
 
     def export_as_text(self, ast=None):
+        """
+        Exports an AST to text/ code. It will either use the AST from `compile_text` or the provided AST as an
+        argument. If this compiler has not previously compiled text, you MUST pass an AST. Otherwise this will
+        raise a ValueError.
+        """
         if self.ast is None and ast is None:
             raise ValueError('You must call either compile_text or compile_file before exporting the AST.')
 
@@ -268,7 +266,10 @@ class Compiler(object):
         return self.code_generator.generate(ast)
 
     def export_as_file(self, directory_path, ast=None):
-        ast = ast or self.ast
+        """
+        Works exactly the same as `export_as_text` except that the output is written into a file at a given directory
+        path. The name of the file is determined by the CodeGenerator.
+        """
         code = self.export_as_text(ast)
 
         file = open(self.code_generator.get_full_file_name(ast, directory_path), 'w')
