@@ -191,66 +191,88 @@ class CodeGenerator(object):
         self.compiler = compiler
 
     def generate(self, ast):
-        return ast
+        raise NotImplementedError()
 
-    def get_file_name(self, ast, path):
+    def get_file_extension(self):
+        return self.file_extension
+
+    def get_file_name(self, ast):
         return 'sample'
 
-    def generate_into_file(self, ast, output_directory):
-        code = self.generate(ast)
-        file = open(
-            '{}{}.{}'.format(output_directory, self.get_file_name(ast, output_directory), self.file_extension), "w")
-        file.write(code)
-        file.close()
-        return file
+    def get_full_file_name(self, ast, output_directory):
+        return '{}{}.{}'.format(output_directory, self.get_file_name(ast), self.get_file_extension())
 
 
 class Compiler(object):
     """Base class to create a compiler that will call a lexer, a parser and a code_generator."""
-    lexer = None
-    parser = None
-    code_generator = None
+    lexer_class = None
+    parser_class = None
+    code_generator_class = None
 
-    def compile_file_to_text(self, path):
-        """Compiles the text inside of a given file."""
+    def __init__(self):
+        self._lexer = None
+        self._parser = None
+        self._code_generator = None
+        self.ast = None
+
+    @property
+    def lexer(self):
+        assert self.lexer_class is not None
+        if self._lexer is None:
+            self._lexer = self.lexer_class(self)
+        return self._lexer
+
+    @property
+    def parser(self):
+        assert self.parser_class is not None
+        if self._parser is None:
+            self._parser = self.parser_class(self)
+        return self._parser
+
+    @property
+    def code_generator(self):
+        assert self.code_generator_class is not None
+        if self._code_generator is None:
+            self._code_generator = self.code_generator_class(self)
+        return self._code_generator
+
+    @classmethod
+    def read_file(cls, path):
+        """Reads a the file at given path."""
         with open(path) as file:
             file_text = file.read()
-        return self.compile_text_to_string(file_text)
-
-    def compile_file_to_file(self, input_path, output_directory):
-        """Compiles the text inside of a given file."""
-        with open(input_path) as file:
-            file_text = file.read()
-        return self.compile_text_to_file(file_text, output_directory)
-
-    def use_generator(self, ast):
-        assert self.code_generator
-        generator = self.code_generator(compiler=self)
-        return generator.generate(ast)
+        return file_text
 
     def use_lexer(self, text):
-        assert self.lexer
-
-        lexer = self.lexer(compiler=self)
-        return lexer.tokenize(text)
+        return self.lexer.tokenize(text)
 
     def use_parser(self, tokens):
-        assert self.parser
+        return self.parser.parse(tokens)
 
-        parser = self.parser(compiler=self)
-        return parser.parse(tokens)
-
-    def get_ast(self, text):
+    def compile_text(self, text):
+        self.ast = None
         tokens = self.use_lexer(text)
-        return self.use_parser(tokens)
+        self.ast = self.use_parser(tokens)
 
-    def compile_text_to_string(self, text):
-        """Compiles a given text."""
-        ast = self.get_ast(text)
-        return self.use_generator(ast)
+        return self.ast
 
-    def compile_text_to_file(self, text, output_directory):
-        ast = self.get_ast(text)
-        code_generator = self.code_generator(self)
-        return code_generator.generate_into_file(ast, output_directory)
+    def compile_file(self, path):
+        file_text = self.read_file(path)
+        return self.compile_text(file_text)
 
+    def export_as_text(self, ast=None):
+        if self.ast is None and ast is None:
+            raise ValueError('You must call either compile_text or compile_file before exporting the AST.')
+
+        ast = ast or self.ast
+        return self.code_generator.generate(ast)
+
+    def export_as_file(self, directory_path, ast=None):
+        ast = ast or self.ast
+        code = self.export_as_text(ast)
+
+        file = open(self.code_generator.get_full_file_name(ast, directory_path), 'w')
+        file.write(code)
+        file.close()
+
+        return file

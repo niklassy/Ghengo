@@ -112,7 +112,7 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
 
         return test_case
 
-    def get_file_name(self, ast, path):
+    def get_file_name(self, ast):
         return 'test_{}'.format(to_function_name(ast.feature.name)) if ast.feature.name else 'test_generated'
 
     def generate(self, ast):
@@ -135,9 +135,9 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
 
 class GherkinToPyTestCompiler(Compiler):
     """Will parse a gherkin text and analyze line by line in order for easy transformation to an AST."""
-    lexer = GherkinLexer
-    parser = GherkinParser
-    code_generator = GherkinToPyTestCodeGenerator
+    lexer_class = GherkinLexer
+    parser_class = GherkinParser
+    code_generator_class = GherkinToPyTestCodeGenerator
 
     def use_parser(self, tokens):
         try:
