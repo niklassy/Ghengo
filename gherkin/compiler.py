@@ -116,9 +116,8 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         return 'test_{}'.format(to_function_name(ast.feature.name)) if ast.feature.name else 'test_generated'
 
     def generate(self, ast):
-        # TODO: what to do here?
         if not ast.feature:
-            return ast
+            return ''
 
         suite = TestSuite(ast.feature.name if ast.feature else '')
         for child in ast.feature.children:

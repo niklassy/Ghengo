@@ -1,5 +1,3 @@
-from typing import Iterable
-
 from generate.utils import camel_to_snake_case, to_function_name
 
 
@@ -13,7 +11,7 @@ class TemplateMixin(object):
     This mixin is used to convert any class into a template. The template is used for python code in this project.
     But in theory, this mixin can be used anywhere.
     """
-    template = None
+    template = ''
 
     def get_template(self):
         return self.template
@@ -82,10 +80,15 @@ class TestCaseArgument(TemplateMixin):
         return {'name': self.name}
 
 
-class Kwarg(object):
+class Kwarg(TemplateMixin):
+    template = '{name}={value}'
+
     def __init__(self, name, value):
         self.name = name
         self.value = value
+
+    def get_template_context(self, indent):
+        return {'name': self.name, 'value': self.value}
 
 
 class Variable(TemplateMixin):
@@ -113,7 +116,7 @@ class FunctionCallExpression(Expresion):
     def get_template_context(self, indent):
         return {
             'fn_name': self.function_name,
-            'kwargs': ', '.join(['{}={}'.format(kwarg.name, kwarg.value) for kwarg in self.function_kwargs]),
+            'kwargs': ', '.join([kwarg.to_template(indent) for kwarg in self.function_kwargs]),
         }
 
 
@@ -220,10 +223,9 @@ class TestCase(TemplateMixin):
 
     def get_value_for_variable(self, name):
         for statement in self.statements:
-            if not hasattr(statement, 'variable'):
-                continue
+            variable = getattr(statement, 'variable', None)
 
-            if statement.variable and name == statement.variable.name:
+            if variable and name == variable.name:
                 return statement.expression
         return None
 
