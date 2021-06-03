@@ -1,7 +1,7 @@
-from generate.suite import TestSuite, TestCase, Import, ModelFactoryExpression, Kwarg
+from generate.suite import TestSuite
 from gherkin.compiler_base.compiler import Lexer, Compiler, Parser, CodeGenerator
 
-from gherkin.ast import Comment as ASTComment, Scenario, ScenarioOutline, Rule, Then, When
+from gherkin.ast import Comment as ASTComment, Scenario, ScenarioOutline, Rule
 from gherkin.compiler_base.exception import RuleNotFulfilled, GrammarInvalid, GrammarNotUsed
 from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
@@ -98,12 +98,14 @@ class GherkinParser(Parser):
 
 class GherkinToPyTestCodeGenerator(CodeGenerator):
     def scenario_to_test_case(self, scenario, suite):
-        test_case = TestCase(suite)
+        # TODO: handle scenario outline
+        test_case = suite.add_test_case(scenario.name)
 
         # first phase: GIVEN clauses
-        for step in scenario.steps:
-            if isinstance(step, (When, Then)):
-                break
+        # TODO: implement
+        # for step in scenario.steps:
+        #     if isinstance(step, (When, Then)):
+        #         break
 
         return test_case
 
@@ -121,8 +123,6 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
             if isinstance(child, Rule):
                 for rule_child in child.scenario_definitions:
                     self.scenario_to_test_case(rule_child, suite)
-
-        a = Import('gherkin.compiler_base.compiler', ['Lexer'])
 
         return ast
 

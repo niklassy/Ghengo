@@ -143,11 +143,20 @@ class TestCase(TemplateMixin):
     decorators = []
     test_suite = None
 
-    def __init__(self, test_suite):
+    def __init__(self, name, test_suite):
+        self._name = name
         self.arguments = []
         self.decorators = []
         self._statements = []
         self.test_suite = test_suite
+
+    @property
+    def name(self):
+        if self._name is not None:
+            return self._name
+
+        index_in_test_suite = self.test_suite.test_cases.index(self)
+        return str(index_in_test_suite)
 
     @property
     def statements(self):
@@ -159,8 +168,12 @@ class TestCase(TemplateMixin):
         return 'def test_{name}({arguments}):\n{statements}'
 
     def get_template_context(self, intend):
+        # remove special characters and multiple spaces from name
+        no_special_char_name = ''.join(e if e.isalnum() else ' ' for e in self.name.lower())
+        clean_name = '_'.join(no_special_char_name.split())
+
         return {
-            'name': 'abc',
+            'name': clean_name,
             'arguments': ', '.join(str(argument) for argument in self.arguments),
             'statements': '\n'.join(statement.to_template(intend + 4) for statement in self.statements),
         }
@@ -198,7 +211,7 @@ class TestSuite(TemplateMixin):
             'test_cases': '\n\n'.join(test_case.to_template(intend) for test_case in self.test_cases)
         }
 
-    def add_test_case(self):
-        test_case = TestCase(self)
+    def add_test_case(self, name):
+        test_case = TestCase(name, self)
         self.test_cases.append(test_case)
         return test_case
