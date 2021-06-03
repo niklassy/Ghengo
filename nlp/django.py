@@ -1,11 +1,12 @@
 from deep_translator import GoogleTranslator
 
+from nlp.clause import ClausedSentence
 from nlp.settings import SIMILARITY_BENCHMARK
 from nlp.setup import Nlp
-from nlp.utils import get_non_stop_tokens, get_nouns_chunks, get_named_entities
+from nlp.utils import get_non_stop_tokens, get_nouns_chunks, get_named_entities, are_synonyms
 
 
-def get_model_field_by_text(language, text, model_interface):
+def get_model_field_by_text(language, text, model_interface, related_field=False):
     """
     This function can be used to find a field in a model that fits a given string in a given language.
     Example:
@@ -57,7 +58,7 @@ def get_model_field_by_text(language, text, model_interface):
 
 
 def get_model_from_text(language, text, project_interface, **kwargs):
-    """"""
+    """Find a model from a given text."""
     models = project_interface.get_models(as_interface=True, include_django=True, **kwargs)
     translator = GoogleTranslator(source=language, target='en')
     en_word = translator.translate(text)
@@ -112,13 +113,28 @@ def handle_given(project, language, given):
             continue
 
         # handle normal fields
-        field = get_model_field_by_text(language, str(span.root), model)
+        try:
+            field = get_model_field_by_text(language, str(span.root), model)
+        except ValueError:
+            continue
+
         value = None
         for token in span:
             if token.head == span.root:
-                value = str(token)
+                value = token
+
+        if value is None:
+            continue
 
         field_values.append((field, value))
-        # TODO: handle fk fields
+
+    # TODO: handle fk fields
+    # for token in get_non_stop_tokens(doc):
+    #     # TODO: how to handle different languages
+    #     if are_synonyms(token, Nlp.for_language('de')('Zuordnung')):
+    #         current_head = token.head
+    #         while current_head not in [t for _, t in field_values]:
+    #             current_head = current_head.head
+    #         # TODO: find field somehow
 
     return model, field_values

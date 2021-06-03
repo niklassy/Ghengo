@@ -3,6 +3,9 @@ from nlp.settings import SIMILARITY_BENCHMARK
 
 def are_synonyms(input_1, input_2):
     """Check if two tokens are synonyms."""
+    if not input_1.vector_norm or not input_2.vector_norm:
+        return False
+
     return input_1.similarity(input_2) > SIMILARITY_BENCHMARK
 
 

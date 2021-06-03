@@ -1,4 +1,5 @@
 from django_meta.project import DjangoProject
+from generate.suite import TestCase, ModelFactoryExpression, Kwarg, AssignmentStatement, Variable, TestSuite
 from gherkin.compiler import GherkinToPyTestCompiler
 from nlp.django import get_model_field_by_text, get_model_from_text, handle_given
 # from nlp.tokenize import tokenize, de_nlp, en_nlp
@@ -90,17 +91,22 @@ if __name__ == '__main__':
 
     c = GherkinToPyTestCompiler()
     a = c.compile_text(feature_string)
-    d = c.compile_file('django_sample_project/features/todo_crud.feature')
+    ast = c.compile_file('django_sample_project/features/todo_crud.feature')
     compiled = []
 
     # p = get_model_field_by_text('de', 'Vorname', project.get_models(as_interface=True)[0])
     # p2 = get_model_field_by_text('de', 'Name', project.get_models(as_interface=True)[0])
-    # p3 = get_model_from_text('de', 'Auftrag', project)
+    order_model = get_model_from_text('de', 'Auftrag', project)
 
-    asd = handle_given(project, 'de', d.feature.children[6].steps[2])
+    asd = handle_given(project, 'de', ast.feature.children[6].steps[2])
 
     # for scenario in d.feature.children:
     #     for step in scenario.steps:
     #         compiled.append(Nlp.for_language('de')(str(step)))
+    suite = TestSuite(ast.feature.name if ast.feature else '')
+    tc = suite.add_test_case()
+    factory_ex = ModelFactoryExpression(order_model, [Kwarg('name', 'alice'), Kwarg('test', 'bob')])
+    tc.add_statement(AssignmentStatement(factory_ex, Variable('order')))
     b = 1
+
 

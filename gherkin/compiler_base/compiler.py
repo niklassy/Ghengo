@@ -185,7 +185,11 @@ class CodeGenerator(object):
     """
     The code generator will perform operations to transform the tokens into some sort of code/ output.
     """
-    pass
+    def __init__(self, compiler):
+        self.compiler = compiler
+
+    def generate(self, ast):
+        return ast
 
 
 class Compiler(object):
@@ -199,6 +203,11 @@ class Compiler(object):
         with open(path) as file:
             file_text = file.read()
         return self.compile_text(file_text)
+
+    def use_generator(self, ast):
+        assert self.code_generator
+        generator = self.code_generator(compiler=self)
+        return generator.generate(ast)
 
     def use_lexer(self, text):
         assert self.lexer
@@ -216,10 +225,5 @@ class Compiler(object):
         """Compiles a given text."""
         tokens = self.use_lexer(text)
         ast = self.use_parser(tokens)
-
-        if self.code_generator is None:
-            return ast
-
-        # TODO: code generator
-        return None
+        return self.use_generator(ast)
 

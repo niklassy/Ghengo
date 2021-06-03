@@ -1,6 +1,7 @@
-from gherkin.compiler_base.compiler import Lexer, Compiler, Parser
+from generate.suite import TestSuite, TestCase, Import, ModelFactoryExpression, Kwarg
+from gherkin.compiler_base.compiler import Lexer, Compiler, Parser, CodeGenerator
 
-from gherkin.ast import Comment as ASTComment
+from gherkin.ast import Comment as ASTComment, Scenario, ScenarioOutline, Rule, Then, When
 from gherkin.compiler_base.exception import RuleNotFulfilled, GrammarInvalid, GrammarNotUsed
 from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
@@ -95,10 +96,42 @@ class GherkinParser(Parser):
         return ast
 
 
+class GherkinToPyTestCodeGenerator(CodeGenerator):
+    def scenario_to_test_case(self, scenario, suite):
+        test_case = TestCase(suite)
+
+        # first phase: GIVEN clauses
+        for step in scenario.steps:
+            if isinstance(step, (When, Then)):
+                break
+
+        return test_case
+
+    def generate(self, ast):
+        # TODO: what to do here?
+        if not ast.feature:
+            return ast
+
+        suite = TestSuite(ast.feature.name if ast.feature else '')
+        for child in ast.feature.children:
+            if isinstance(child, (Scenario, ScenarioOutline)):
+                self.scenario_to_test_case(child, suite)
+                continue
+
+            if isinstance(child, Rule):
+                for rule_child in child.scenario_definitions:
+                    self.scenario_to_test_case(rule_child, suite)
+
+        a = Import('gherkin.compiler_base.compiler', ['Lexer'])
+
+        return ast
+
+
 class GherkinToPyTestCompiler(Compiler):
     """Will parse a gherkin text and analyze line by line in order for easy transformation to an AST."""
     lexer = GherkinLexer
     parser = GherkinParser
+    code_generator = GherkinToPyTestCodeGenerator
 
     def use_parser(self, tokens):
         try:

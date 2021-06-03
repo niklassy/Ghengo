@@ -43,7 +43,7 @@ Funktionalität: Erstellen, Löschen und Ändern von ToDos
 
   Szenario: Löschen eines ToDo - anderer Benutzer
     Gegeben sei ein Nutzer Bob mit dem Benutzernamen Bob
-    Und ein To-Do AliceToDo mit dem Text todo1, das Alice als Besitzerin hat
+    Und ein Auftrag Order1 mit dem Namen hi123, der einem Benutzer Alice zugewiesen ist
     Wenn Bob eine Anfrage zum Löschen des To-Do AliceToDo macht
     Dann sollte die Antwort den Status 400 haben
     Und das To-Do AliceToDo sollte noch existieren
