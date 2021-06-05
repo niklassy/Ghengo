@@ -213,6 +213,9 @@ class TableRow(object):
     def get_value_at(self, index):
         return self.cells[index].value
 
+    def get_values(self):
+        return [cell.value for cell in self.cells]
+
     def __repr__(self):
         return 'TableRow - {}'.format(' | '.join([str(c) for c in self.cells]))
 
@@ -239,6 +242,14 @@ class DataTable(StepArgument):
     def get_row_at(self, index):
         """Returns a specific row (not the header)."""
         return self.rows[index]
+
+    def get_values_as_list(self):
+        output = []
+
+        for row in self.rows:
+            output.append(tuple(cell.value for cell in row.cells))
+
+        return output
 
     def get_values(self):
         """Returns all the values in the format: {<column_name_1>: [str], ...}"""

@@ -1,4 +1,4 @@
-from generate.suite import TestSuite, PyTestMarkDecorator
+from generate.suite import TestSuite, PyTestMarkDecorator, PyTestParametrizeDecorator
 from generate.utils import to_function_name
 from gherkin.compiler_base.compiler import Lexer, Compiler, Parser, CodeGenerator
 
@@ -101,11 +101,20 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
     file_extension = 'py'
 
     def scenario_to_test_case(self, scenario, suite):
-        # TODO: handle scenario outline
         test_case = suite.create_and_add_test_case(scenario.name)
 
         for tag in scenario.tags:
             test_case.add_decorator(PyTestMarkDecorator(tag.name))
+
+        # TODO: handle scenario outline
+        # for a scenario outline, pytest offers the parametrize mark that we can add here to simplify everything
+        if isinstance(scenario, ScenarioOutline):
+            for example in scenario.examples:
+                decorator = PyTestParametrizeDecorator(
+                    example.datatable.header.get_values(),
+                    example.datatable.get_values_as_list(),
+                )
+                test_case.add_decorator(decorator)
 
         # first phase: GIVEN clauses
         # TODO: implement

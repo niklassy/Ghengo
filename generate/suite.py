@@ -19,21 +19,104 @@ class TemplateMixin(object):
     def get_template_context(self, indent):
         return {}
 
+    @classmethod
+    def get_indent_string(cls, indent):
+        return ' ' * indent
+
     def to_template(self, indent=0):
-        return ' ' * indent + self.get_template().format(**self.get_template_context(indent))
+        return self.get_indent_string(indent) + self.get_template().format(**self.get_template_context(indent))
 
     def __str__(self):
         return self.to_template()
 
 
-class Decorator(TemplateMixin, OnAddToTestCaseListenerMixin):
-    template = '@{decorator_name}'
+class Argument(TemplateMixin):
+    """
+    Class that represents the values that are passed to a function during runtime.
+
+    foo(a, "b", 1)
+    => a, "b" and 1 are arguments.
+    """
+    template = '{value}'
+
+    def __init__(self, value, as_variable=False):
+        self.value = value
+        self.as_variable = as_variable
+
+    @classmethod
+    def get_string_for_template(cls, string):
+        return '\'{}\''.format(string) if isinstance(string, str) else str(string)
+
+    def get_template_context(self, indent):
+        if self.as_variable:
+            value = str(self.value)
+        elif isinstance(self.value, (list, tuple, set)) and len(str(self.value)) > 100:
+            if isinstance(self.value, list):
+                start_symbol = '['
+                end_symbol = ']'
+            elif isinstance(self.value, tuple):
+                start_symbol = '('
+                end_symbol = ')'
+            else:
+                start_symbol = '{'
+                end_symbol = '}'
+
+            # TODO: let child Argument handle further?
+            child_template = ',\n'.join('{indent}{value}'.format(
+                indent=self.get_indent_string(indent + 4),
+                value=self.get_string_for_template(value)
+            ) for value in self.value)
+
+            value = '{start_symbol}\n{child}\n{base_indent}{end_symbol}'.format(
+                start_symbol=start_symbol,
+                end_symbol=end_symbol,
+                base_indent=self.get_indent_string(indent),
+                child=child_template,
+            )
+        else:
+            value = self.get_string_for_template(self.value)
+
+        return {'value': value}
+
+
+class Parameter(TemplateMixin):
+    """
+    Class that represents the values that are defined by the function that it gets passed.
+
+    Example: def foo(a, b)
+    => a and b are parameters.
+    """
+    template = '{name}'
 
     def __init__(self, name):
         self.name = name
 
     def get_template_context(self, indent):
-        return {'decorator_name': self.name}
+        return {'name': self.name}
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.name == other.name
+
+
+class Decorator(TemplateMixin, OnAddToTestCaseListenerMixin):
+    template = '@{decorator_name}{arguments}'
+
+    def __init__(self, name, arguments=None):
+        self.name = name
+        self.arguments = arguments or []
+
+    def get_template_context(self, indent):
+        if len(self.arguments) > 0:
+            arguments = '({})'.format(', '.join([argument.to_template(indent) for argument in self.arguments]))
+        else:
+            arguments = ''
+
+        return {
+            'decorator_name': self.name,
+            'arguments': arguments,
+        }
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -43,11 +126,38 @@ class Decorator(TemplateMixin, OnAddToTestCaseListenerMixin):
 
 class PyTestMarkDecorator(Decorator):
     """A Pytest mark decorator (pytest.mark.XXX)."""
-    def __init__(self, name):
-        super().__init__('pytest.mark.{}'.format(name))
+    def __init__(self, name, arguments=None):
+        super().__init__('pytest.mark.{}'.format(name), arguments)
 
     def on_add_to_test_case(self, test_case):
         test_case.test_suite.add_import(Import('pytest'))
+
+
+class PyTestParametrizeDecorator(PyTestMarkDecorator):
+    def __init__(self, argument_names, argument_values):
+        self.argument_names_raw = argument_names
+        self.argument_names = Argument(', '.join(argument_names))
+        self.argument_values = Argument(argument_values)
+
+        super().__init__('parametrize', [self.argument_names, self.argument_values])
+
+    def get_template_context(self, indent):
+        context = super().get_template_context(indent)
+        # since parametrize decorators can be quite long, add some line breaks here
+        if len(self.arguments) > 0:
+            argument_values = [argument.to_template(indent + 4) for argument in self.arguments]
+            arguments = '(\n{}\n)'.format(',\n'.join(argument_values))
+        else:
+            arguments = ''
+
+        context['arguments'] = arguments
+        return context
+
+    def on_add_to_test_case(self, test_case):
+        super().on_add_to_test_case(test_case)
+
+        for argument_name in self.argument_names_raw:
+            test_case.add_parameter(Parameter(argument_name))
 
 
 class DjangoDBDecorator(PyTestMarkDecorator):
@@ -76,16 +186,6 @@ class Import(TemplateMixin):
             'path': self.path,
             'variables': ', '.join(self.variables),
         }
-
-
-class TestCaseArgument(TemplateMixin):
-    template = '{name}'
-
-    def __init__(self, name):
-        self.name = name
-
-    def get_template_context(self, indent):
-        return {'name': self.name}
 
 
 class Kwarg(TemplateMixin):
@@ -139,8 +239,10 @@ class ModelFactoryExpression(FunctionCallExpression):
         return '{}_factory'.format(model_in_snake_case)
 
     def on_add_to_test_case(self, test_case):
-        argument = TestCaseArgument(self.factory_name)
-        test_case.arguments.append(argument)
+        parameter = Parameter(self.factory_name)
+        test_case.add_parameter(parameter)
+
+        # when a factory is used, there needs to be a mark for DjangoDB
         test_case.add_decorator(DjangoDBDecorator())
 
 
@@ -195,7 +297,7 @@ class TestCase(TemplateMixin):
 
     def __init__(self, name, test_suite):
         self._name = name
-        self.arguments = []
+        self.parameters = []
         self.decorators = []
         self._statements = []
         self.test_suite = test_suite
@@ -226,7 +328,7 @@ class TestCase(TemplateMixin):
             'decorators': '\n'.join(decorator.to_template(indent) for decorator in self.decorators),
             'decorator_separator': '\n' if len(self.decorators) > 0 else '',
             'name': to_function_name(self.name),
-            'arguments': ', '.join(argument.to_template(indent) for argument in self.arguments),
+            'arguments': ', '.join(argument.to_template(indent) for argument in self.parameters),
             'statements': '\n'.join(statement.to_template(indent + 4) for statement in self.statements),
         }
 
@@ -255,6 +357,13 @@ class TestCase(TemplateMixin):
 
         self._statements.append(statement)
         statement.add_to_test_case(self)
+
+    def add_parameter(self, parameter):
+        if not isinstance(parameter, Parameter):
+            raise ValueError('You can only add Parameter instances.')
+
+        if parameter not in self.parameters:
+            self.parameters.append(parameter)
 
 
 class TestSuite(TemplateMixin):
