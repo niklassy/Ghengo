@@ -270,6 +270,7 @@ class Compiler(object):
         Works exactly the same as `export_as_text` except that the output is written into a file at a given directory
         path. The name of the file is determined by the CodeGenerator.
         """
+        ast = ast or self.ast
         code = self.export_as_text(ast)
 
         file = open(self.code_generator.get_full_file_name(ast, directory_path), 'w')

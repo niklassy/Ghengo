@@ -35,13 +35,24 @@ class Decorator(TemplateMixin, OnAddToTestCaseListenerMixin):
     def get_template_context(self, indent):
         return {'decorator_name': self.name}
 
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.name == other.name
 
-class DjangoDBDecorator(Decorator):
-    def __init__(self):
-        super().__init__('pytest.mark.django_db')
+
+class PyTestMarkDecorator(Decorator):
+    """A Pytest mark decorator (pytest.mark.XXX)."""
+    def __init__(self, name):
+        super().__init__('pytest.mark.{}'.format(name))
 
     def on_add_to_test_case(self, test_case):
         test_case.test_suite.add_import(Import('pytest'))
+
+
+class DjangoDBDecorator(PyTestMarkDecorator):
+    def __init__(self):
+        super().__init__('django_db')
 
 
 class Import(TemplateMixin):
@@ -137,8 +148,6 @@ class ModelFactoryExpression(FunctionCallExpression):
 
 
 class Statement(TemplateMixin):
-    expression = None
-
     def __init__(self, expression):
         self.expression = expression
         self.test_case = None
@@ -172,6 +181,7 @@ class PassStatement(Statement):
     template = 'pass'
 
     def __init__(self):
+        # there is no expression in a pass statement
         super().__init__(None)
 
 
@@ -184,9 +194,7 @@ class RequestStatement(Statement):
 
 
 class TestCase(TemplateMixin):
-    arguments = []
-    decorators = []
-    test_suite = None
+    template = '{decorators}{decorator_separator}def test_{name}({arguments}):\n{statements}'
 
     def __init__(self, name, test_suite):
         self._name = name
@@ -197,6 +205,9 @@ class TestCase(TemplateMixin):
 
     @property
     def name(self):
+        """
+        If there was a name passed, use it as a function name. If not, use the index instead.
+        """
         if self._name is not None:
             return self._name
 
@@ -205,23 +216,25 @@ class TestCase(TemplateMixin):
 
     @property
     def statements(self):
+        """
+        Returns all statements of the test case. If there are none, a pass statement is given instead to make
+        the test valid.
+        """
         if len(self._statements) == 0:
             return [PassStatement()]
         return self._statements
 
-    def get_template(self):
-        return '{decorators}{deco_sep}def test_{name}({arguments}):\n{statements}'
-
     def get_template_context(self, indent):
         return {
             'decorators': '\n'.join(decorator.to_template(indent) for decorator in self.decorators),
-            'deco_sep': '\n' if len(self.decorators) > 0 else '',
+            'decorator_separator': '\n' if len(self.decorators) > 0 else '',
             'name': to_function_name(self.name),
             'arguments': ', '.join(argument.to_template(indent) for argument in self.arguments),
             'statements': '\n'.join(statement.to_template(indent + 4) for statement in self.statements),
         }
 
     def get_value_for_variable(self, name):
+        """Returns the value for a given variable in the test case."""
         for statement in self.statements:
             variable = getattr(statement, 'variable', None)
 
@@ -230,25 +243,30 @@ class TestCase(TemplateMixin):
         return None
 
     def add_decorator(self, decorator):
-        self.decorators.append(decorator)
-        decorator.on_add_to_test_case(self)
+        """Add a decorator to a test case."""
+        # only add a decorator if it is not already present
+        if not isinstance(decorator, Decorator):
+            raise ValueError('You can only add Decorator instances.')
+
+        if decorator not in self.decorators:
+            self.decorators.append(decorator)
+            decorator.on_add_to_test_case(self)
 
     def add_statement(self, statement):
+        if not isinstance(statement, Statement):
+            raise ValueError('You can only add Statement instances.')
+
         self._statements.append(statement)
         statement.add_to_test_case(self)
 
 
 class TestSuite(TemplateMixin):
-    imports = []
-    test_cases = []
+    template = '{imports}{separator}{test_cases}\n'
 
     def __init__(self, name):
         self.name = name
         self.imports = []
         self.test_cases = []
-
-    def get_template(self):
-        return '{imports}{separator}{test_cases}\n'
 
     def get_template_context(self, indent):
         return {
@@ -257,11 +275,12 @@ class TestSuite(TemplateMixin):
             'test_cases': '\n\n\n'.join(test_case.to_template(indent) for test_case in self.test_cases)
         }
 
-    def add_test_case(self, name):
+    def create_and_add_test_case(self, name):
         test_case = TestCase(name, self)
         self.test_cases.append(test_case)
         return test_case
 
     def add_import(self, import_instance):
+        """Add an import to the test suite/ the test file."""
         if import_instance not in self.imports:
             self.imports.append(import_instance)

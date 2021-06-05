@@ -1,4 +1,4 @@
-from generate.suite import TestSuite
+from generate.suite import TestSuite, PyTestMarkDecorator
 from generate.utils import to_function_name
 from gherkin.compiler_base.compiler import Lexer, Compiler, Parser, CodeGenerator
 
@@ -102,7 +102,10 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
 
     def scenario_to_test_case(self, scenario, suite):
         # TODO: handle scenario outline
-        test_case = suite.add_test_case(scenario.name)
+        test_case = suite.create_and_add_test_case(scenario.name)
+
+        for tag in scenario.tags:
+            test_case.add_decorator(PyTestMarkDecorator(tag.name))
 
         # first phase: GIVEN clauses
         # TODO: implement

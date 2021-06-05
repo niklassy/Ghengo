@@ -98,13 +98,13 @@ if __name__ == '__main__':
     order_model = get_model_from_text('de', 'Auftrag', project)
 
     suite = TestSuite(feature_ast.feature.name if feature_ast.feature else '')
-    tc = suite.add_test_case('test')
+    tc = suite.create_and_add_test_case('test')
     factory_ex_2 = ModelFactoryExpression(order_model, [Kwarg('name', 'alice'), Kwarg('test', 'bob')])
     tc.add_statement(AssignmentStatement(factory_ex_2, Variable('order_2')))
-    tc = suite.add_test_case('new')
+    tc = suite.create_and_add_test_case('new')
     factory_ex_2 = ModelFactoryExpression(order_model, [Kwarg('name', 'alice'), Kwarg('test', 'bob')])
     tc.add_statement(AssignmentStatement(factory_ex_2, Variable('order_2')))
-    tc = suite.add_test_case('test4')
+    tc = suite.create_and_add_test_case('test4')
     factory_ex_2 = ModelFactoryExpression(order_model, [Kwarg('name', 'alice'), Kwarg('test', 'bob')])
     tc.add_statement(AssignmentStatement(factory_ex_2, Variable('order_2')))
     b = 1
