@@ -1,3 +1,4 @@
+from generate.settings import INDENT_SPACES
 from generate.utils import camel_to_snake_case, to_function_name
 
 
@@ -62,7 +63,7 @@ class Argument(TemplateMixin):
                 end_symbol = '}'
 
             children = [Argument(value) for value in self.value]
-            child_template = ',\n'.join(argument.to_template(indent + 4) for argument in children)
+            child_template = ',\n'.join(argument.to_template(indent + INDENT_SPACES) for argument in children)
 
             value = '{start_symbol}\n{child}\n{base_indent}{end_symbol}'.format(
                 start_symbol=start_symbol,
@@ -142,7 +143,7 @@ class PyTestParametrizeDecorator(PyTestMarkDecorator):
         context = super().get_template_context(indent)
         # since parametrize decorators can be quite long, add some line breaks here
         if len(self.arguments) > 0:
-            argument_values = [argument.to_template(indent + 4) for argument in self.arguments]
+            argument_values = [argument.to_template(indent + INDENT_SPACES) for argument in self.arguments]
             arguments = '(\n{}\n)'.format(',\n'.join(argument_values))
         else:
             arguments = ''
@@ -326,7 +327,7 @@ class TestCase(TemplateMixin):
             'decorator_separator': '\n' if len(self.decorators) > 0 else '',
             'name': to_function_name(self.name),
             'arguments': ', '.join(argument.to_template(indent) for argument in self.parameters),
-            'statements': '\n'.join(statement.to_template(indent + 4) for statement in self.statements),
+            'statements': '\n'.join(statement.to_template(indent + INDENT_SPACES) for statement in self.statements),
         }
 
     def get_value_for_variable(self, name):
