@@ -61,11 +61,8 @@ class Argument(TemplateMixin):
                 start_symbol = '{'
                 end_symbol = '}'
 
-            # TODO: let child Argument handle further?
-            child_template = ',\n'.join('{indent}{value}'.format(
-                indent=self.get_indent_string(indent + 4),
-                value=self.get_string_for_template(value)
-            ) for value in self.value)
+            children = [Argument(value) for value in self.value]
+            child_template = ',\n'.join(argument.to_template(indent + 4) for argument in children)
 
             value = '{start_symbol}\n{child}\n{base_indent}{end_symbol}'.format(
                 start_symbol=start_symbol,
