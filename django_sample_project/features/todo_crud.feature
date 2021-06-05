@@ -53,3 +53,14 @@ Funktionalität: Erstellen, Löschen und Ändern von ToDos
     Wenn ein anonymer Benutzer eine Anfrage zum Löschen des To-Do AliceToDo macht
     Dann sollte die Antwort den Status 400 haben
     Und das To-Do AliceToDo sollte noch existieren
+
+  Szenariogrundriss: Das ist ein Test
+    Gegeben sei ein Nutzer Bob mit dem Benutzernamen <test1> und der Email <test2>
+    Wenn Alice eine Anfrage zum Erstellen eines To-Do mit dem Text todo1 macht
+    Dann sollte die Antwort den Status 200 haben
+    Und es sollte ein ToDo-Objekt existieren mit dem Text todo1, das Alice zugeordnet ist
+
+    Beispiele:
+      |test1|test2|
+      |  12   |  23  |
+      |  23   |  43  |

@@ -56,9 +56,6 @@ class DjangoDBDecorator(PyTestMarkDecorator):
 
 
 class Import(TemplateMixin):
-    path = None
-    variables = []
-
     def __init__(self, path: str, variables=None):
         self.path = path
         self.variables = variables or []
