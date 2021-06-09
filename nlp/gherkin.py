@@ -41,13 +41,16 @@ class GivenToCodeConverter(GherkinToCodeConverter):
         factory_statement = ModelFactoryExpression(model, factory_kwargs)
         return AssignmentStatement(factory_statement, self.get_assignment_text(model_noun_token))
 
+    def token_references_noun(self, token, noun):
+        return token_references(token, noun) and token.pos_ == 'PROPN'
+
     def get_assignment_text(self, root_noun):
         try:
             next_token = self.document[root_noun.i + 1]
         except IndexError:
             return None
 
-        if token_references(next_token, root_noun) and next_token.pos_ == 'PROPN':
+        if self.token_references_noun(next_token, root_noun):
             return to_function_name(str(next_token))
 
         for named_entity in self.document.ents:
@@ -58,14 +61,12 @@ class GivenToCodeConverter(GherkinToCodeConverter):
         return None
 
     def get_statements(self, test_case):
-        noun_chunks = get_noun_chunks(self.document)
         model = None
         model_noun_token = None
         field_values = []
-        handled_chunks = []
         unhandled_propn = None
 
-        for index, noun_chunk in enumerate(noun_chunks):
+        for index, noun_chunk in enumerate(get_noun_chunks(self.document)):
             root_noun = str(noun_chunk.root)
 
             # first the model for an object is defined
@@ -73,11 +74,11 @@ class GivenToCodeConverter(GherkinToCodeConverter):
                 model_noun_token = noun_chunk.root
                 model_converter = TextToModelConverter(text=root_noun, src_language=self.language)
                 model = model_converter.convert(project_interface=self.django_project)
-                handled_chunks.append(noun_chunk)
                 continue
 
             # filter out any noun chunks without a noun
             if noun_chunk.root.pos_ != 'NOUN':
+                # if it is a proper noun, it will be handled later
                 if noun_chunk.root.pos_ == 'PROPN':
                     unhandled_propn = noun_chunk.root
                 continue
@@ -99,7 +100,7 @@ class GivenToCodeConverter(GherkinToCodeConverter):
             # that field
             field_value = None
             for token in noun_chunk:
-                if token_references(token, noun_chunk.root) and token.tag_ in ['NN', 'NE']:
+                if self.token_references_noun(token, noun_chunk.root):
                     field_value = token
                     break
 
