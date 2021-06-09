@@ -4,8 +4,9 @@ from unidecode import unidecode
 
 def camel_to_snake_case(string):
     """Transform camel case to snake case."""
+    no_special = ''.join(e if e.isalnum() else '' for e in string.lower())
     reg_ex = re.compile('((?<=[a-z0-9])[A-Z]|(?!^)[A-Z](?=[a-z]))')
-    return reg_ex.sub(r'_\1', string).lower()
+    return reg_ex.sub(r'_\1', no_special).lower()
 
 
 def to_function_name(string):

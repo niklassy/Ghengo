@@ -19,6 +19,6 @@ def get_named_entities(doc):
     return doc.ents
 
 
-def get_nouns_chunks(doc):
+def get_noun_chunks(doc):
     """Get all chunks of the doc that are nouns."""
     return [n for n in doc.noun_chunks]

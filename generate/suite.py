@@ -189,9 +189,9 @@ class Import(TemplateMixin):
 class Kwarg(TemplateMixin):
     template = '{name}={value}'
 
-    def __init__(self, name, value):
+    def __init__(self, name, value, as_variable=False):
         self.name = name
-        self.value = value
+        self.value = Argument(value, as_variable=as_variable)
 
     def get_template_context(self, indent):
         return {'name': self.name, 'value': self.value}
@@ -330,14 +330,18 @@ class TestCase(TemplateMixin):
             'statements': '\n'.join(statement.to_template(indent + INDENT_SPACES) for statement in self.statements),
         }
 
-    def get_value_for_variable(self, name):
-        """Returns the value for a given variable in the test case."""
+    def variable_defined(self, name):
         for statement in self.statements:
             variable = getattr(statement, 'variable', None)
 
-            if variable and name == variable.name:
-                return statement.expression
-        return None
+            if variable and name == variable:
+                return True
+
+        for parameter in self.parameters:
+            if name == parameter.name:
+                return True
+
+        return False
 
     def add_decorator(self, decorator):
         """Add a decorator to a test case."""

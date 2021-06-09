@@ -34,6 +34,20 @@ class ModelInterface(object):
         return [getattr(field, 'verbose_name', None) or field.name for field in self.fields]
 
 
+class AbstractModelInterface(ModelInterface):
+    def __init__(self, name):
+        # convert to pascal case
+        class_name = ''.join(x for x in name.title() if not x.isspace())
+        super().__init__(type(class_name, (), {}), None)
+
+    def get_field(self, name):
+        return None
+
+    @property
+    def fields(self):
+        return []
+
+
 class AppInterface(object):
     def __init__(self, app, project):
         self.app = app

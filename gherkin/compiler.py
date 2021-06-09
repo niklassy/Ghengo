@@ -1,8 +1,9 @@
+from django_meta.project import DjangoProject
 from generate.suite import TestSuite, PyTestMarkDecorator, PyTestParametrizeDecorator
 from generate.utils import to_function_name
 from gherkin.compiler_base.compiler import Lexer, Compiler, Parser, CodeGenerator
 
-from gherkin.ast import Comment as ASTComment, Scenario, ScenarioOutline, Rule
+from gherkin.ast import Comment as ASTComment, Scenario, ScenarioOutline, Rule, Given
 from gherkin.compiler_base.exception import RuleNotFulfilled, GrammarInvalid, GrammarNotUsed
 from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
@@ -11,6 +12,7 @@ from gherkin.token import FeatureToken, RuleToken, DescriptionToken, EOFToken, B
     CommentToken, GivenToken, ThenToken, WhenToken, EmptyToken, AndToken, ButToken, TagsToken, LanguageToken, \
     EndOfLineToken, ScenarioOutlineToken, DocStringToken, DataTableToken, ExamplesToken
 from gherkin.settings import Settings
+from nlp.gherkin import GivenToCodeConverter
 
 
 class GherkinLexer(Lexer):
@@ -100,7 +102,7 @@ class GherkinParser(Parser):
 class GherkinToPyTestCodeGenerator(CodeGenerator):
     file_extension = 'py'
 
-    def scenario_to_test_case(self, scenario, suite):
+    def scenario_to_test_case(self, scenario, suite, project):
         test_case = suite.create_and_add_test_case(scenario.name)
 
         for tag in scenario.tags:
@@ -118,6 +120,13 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
 
         # first phase: GIVEN clauses
         # TODO: implement
+        for step in scenario.steps:
+            if not isinstance(step, Given):
+                continue
+            converter = GivenToCodeConverter(ast_object=step, language=Settings.language, django_project=project)
+            statements = converter.get_statements(test_case)
+            for statement in statements:
+                test_case.add_statement(statement)
         # for step in scenario.steps:
         #     if isinstance(step, (When, Then)):
         #         break
@@ -131,15 +140,18 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         if not ast.feature:
             return ''
 
+        # TODO: extract django project path from input
+        project = DjangoProject('django_sample_project.apps.config.settings')
+
         suite = TestSuite(ast.feature.name if ast.feature else '')
         for child in ast.feature.children:
             if isinstance(child, (Scenario, ScenarioOutline)):
-                self.scenario_to_test_case(child, suite)
+                self.scenario_to_test_case(child, suite, project)
                 continue
 
             if isinstance(child, Rule):
                 for rule_child in child.scenario_definitions:
-                    self.scenario_to_test_case(rule_child, suite)
+                    self.scenario_to_test_case(rule_child, suite, project)
 
         return suite.to_template()
 
