@@ -22,3 +22,21 @@ def get_named_entities(doc):
 def get_noun_chunks(doc):
     """Get all chunks of the doc that are nouns."""
     return [n for n in doc.noun_chunks]
+
+
+def token_references(token, target):
+    """Check if a token references another token."""
+    return token.head == target
+
+
+def token_in_span(token, span):
+    return token in span
+
+
+def get_referenced_entity(token):
+    if not bool(token.ent_type_):
+        if token == token.head or not token.head:
+            return None
+
+        return get_referenced_entity(token.head)
+    return token

@@ -33,6 +33,9 @@ class ModelInterface(object):
     def field_names(self):
         return [getattr(field, 'verbose_name', None) or field.name for field in self.fields]
 
+    def __repr__(self):
+        return 'ModelInterface - {}'.format(self.name)
+
 
 class AbstractModelInterface(ModelInterface):
     def __init__(self, name):

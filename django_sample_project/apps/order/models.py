@@ -10,3 +10,8 @@ class Order(models.Model):
 
     class Meta:
         verbose_name = 'Auftrag'
+
+
+class ToDo(models.Model):
+    system = models.CharField(max_length=255)
+    from_other_system = models.BooleanField()
