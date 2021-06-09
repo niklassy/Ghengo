@@ -239,6 +239,9 @@ class DataTable(StepArgument):
     def __repr__(self):
         return 'DataTable - {}'.format(str(self.header))
 
+    def get_column_names(self):
+        return self.header.get_values()
+
     def get_row_at(self, index):
         """Returns a specific row (not the header)."""
         return self.rows[index]
@@ -344,6 +347,10 @@ class Step(object):
             self.argument_names = [name.replace(' ', '') for name in re.findall('<(.*?)>', self.text)]
         else:
             self.argument_names = []
+
+    @property
+    def has_datatable(self):
+        return self.argument and isinstance(self.argument, DataTable)
 
     def __repr__(self):
         return '{} - {}{}'.format(self.__class__.__name__.upper(), self.keyword, self.text)

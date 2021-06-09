@@ -267,6 +267,11 @@ class AssignmentStatement(Statement):
         super().__init__(expression)
         self.variable = variable
 
+    def get_template(self):
+        if self.variable:
+            return self.template
+        return '{expression}'
+
     def get_template_context(self, indent):
         context = super().get_template_context(indent)
         context['variable'] = self.variable

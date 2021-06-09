@@ -102,6 +102,17 @@ class GherkinParser(Parser):
 class GherkinToPyTestCodeGenerator(CodeGenerator):
     file_extension = 'py'
 
+    def step_to_statements(self, step, test_case, converter):
+        statements = []
+        statements += converter.get_statements(test_case)
+
+        for sub_step in step.sub_steps:
+            converter.ast_object = sub_step
+            converter._document = None
+            statements += converter.get_statements(test_case)
+
+        return statements
+
     def scenario_to_test_case(self, scenario, suite, project):
         test_case = suite.create_and_add_test_case(scenario.name)
 
@@ -119,17 +130,15 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
                 test_case.add_decorator(decorator)
 
         # first phase: GIVEN clauses
-        # TODO: implement
         for step in scenario.steps:
-            if not isinstance(step, Given):
+            if isinstance(step, Given):
+                converter = GivenToCodeConverter(ast_object=step, language=Settings.language, django_project=project)
+            else:
                 continue
-            converter = GivenToCodeConverter(ast_object=step, language=Settings.language, django_project=project)
-            statements = converter.get_statements(test_case)
+
+            statements = self.step_to_statements(step, test_case, converter)
             for statement in statements:
                 test_case.add_statement(statement)
-        # for step in scenario.steps:
-        #     if isinstance(step, (When, Then)):
-        #         break
 
         return test_case
 
