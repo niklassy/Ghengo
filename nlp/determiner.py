@@ -1,7 +1,7 @@
 from django.db.models import BooleanField, IntegerField
 from spacy.tokens import Token, Span
 
-from nlp.utils import token_references, is_proper_noun_of
+from nlp.utils import is_proper_noun_of, get_verb_for_token
 
 
 class FieldValueDeterminer(object):
@@ -74,17 +74,8 @@ class SpanFieldValueDeterminer(FieldValueDeterminer):
         return str(determined_value)
 
     def value_source_is_negated(self):
-        verb = self.get_verb_for_token(self.value_source.root)
+        verb = get_verb_for_token(self.value_source.root)
         if verb is None:
             return False
 
         return any([child for child in verb.children if child.lemma_ in ['kein', 'nicht']])
-
-    def get_verb_for_token(self, token):
-        if token.pos_ == 'VERB':
-            return token
-
-        if token.head is None or token.head == token:
-            return None
-
-        return self.get_verb_for_token(token.head)

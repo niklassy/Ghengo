@@ -52,3 +52,13 @@ def get_referenced_entity(token):
 
         return get_referenced_entity(token.head)
     return token
+
+
+def get_verb_for_token(token):
+    if token.pos_ == 'VERB':
+        return token
+
+    if token.head is None or token.head == token:
+        return None
+
+    return get_verb_for_token(token.head)

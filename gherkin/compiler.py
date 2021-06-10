@@ -12,7 +12,7 @@ from gherkin.token import FeatureToken, RuleToken, DescriptionToken, EOFToken, B
     CommentToken, GivenToken, ThenToken, WhenToken, EmptyToken, AndToken, ButToken, TagsToken, LanguageToken, \
     EndOfLineToken, ScenarioOutlineToken, DocStringToken, DataTableToken, ExamplesToken
 from gherkin.settings import Settings
-from nlp.gherkin import GivenToCodeConverter
+from nlp.tiler import GivenTiler
 
 
 class GherkinLexer(Lexer):
@@ -132,13 +132,10 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         # first phase: GIVEN clauses
         for step in scenario.steps:
             if isinstance(step, Given):
-                converter = GivenToCodeConverter(ast_object=step, language=Settings.language, django_project=project)
+                tiler = GivenTiler(ast_object=step, django_project=project, language=Settings.language)
+                tiler.add_statements_to_test_case(test_case)
             else:
                 continue
-
-            statements = self.step_to_statements(step, test_case, converter)
-            for statement in statements:
-                test_case.add_statement(statement)
 
         return test_case
 
