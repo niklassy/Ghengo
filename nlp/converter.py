@@ -50,7 +50,6 @@ class ModelFactoryConverter(Converter):
         super().__init__(document, related_object, django_project)
         self._model = None
         self._extractors = []
-        self._statements = []
 
     def create_statement(self, extractors, test_case):
         """
@@ -105,9 +104,12 @@ class ModelFactoryConverter(Converter):
         """For now, this is only used as the single converter in GIVEN. So just return 1."""
         return 1
 
-    def _initialize_datatable(self, test_case):
-        # if the given has a datatable, it is assumed that it contains data to create model entries
-        # if this is the case, add more field values to the model creation
+    def _get_statements_with_datatable(self, test_case):
+        """
+        If a there is a data table on the step, it is assumed that it contains data to create the model entry.
+        In that case, use the extractors that already exist and append the ones that are defined in the table.
+        """
+        statements = []
         datatable = self.related_object.argument
         column_names = datatable.get_column_names()
 
@@ -119,7 +121,9 @@ class ModelFactoryConverter(Converter):
                 field = field_searcher.search(model_interface=self._model)
                 extractors_copy.append(ModelFieldExtractor(self._model, cell.value, field))
 
-            self._statements.append(self.create_statement(extractors_copy, test_case))
+            statements.append(self.create_statement(extractors_copy, test_case))
+
+        return statements
 
     def _initialize_model(self):
         """
@@ -136,7 +140,7 @@ class ModelFactoryConverter(Converter):
         model_searcher = ModelSearcher(text=str(self.model_noun_token), src_language=self.language)
         self._model = model_searcher.search(project_interface=self.django_project)
 
-    def _initialize_fields(self, test_case):
+    def _initialize_fields(self):
         self._extractors = []
         noun_chunks = self.get_noun_chunks()
         unhandled_propn = None
@@ -179,18 +183,13 @@ class ModelFactoryConverter(Converter):
                 self._extractors.append(SpanModelFieldExtractor(self._model, noun_chunk, field))
 
     def convert_to_statements(self, test_case):
-        # a single statement needs the model, the kwarg_names and the kwarg_values for the factory
-        self._statements = []
-
         # first get the model
         self._initialize_model()
 
         # get the fields afterwards, which will initialize a statement
-        self._initialize_fields(test_case)
+        self._initialize_fields()
 
         if not self.related_object.has_datatable:
             return [self.create_statement(self._extractors, test_case)]
 
-        self._initialize_datatable(test_case)
-
-        return self._statements
+        return self._get_statements_with_datatable(test_case)
