@@ -22,12 +22,12 @@ Funktionalität: Erstellen, Löschen und Ändern von ToDos
     Dann sollte die Antwort den Status 200 haben
     Und das To-Do AliceToDo sollte den Text todo2 haben
 
-#  Szenario: Ändern von ToDo - anderer Nutzer
-#    Gegeben sei ein Benutzer Bob mit dem Benutzernamen Bob
-#    Und folgende To-Dos
-#      | text | number | owner |
-#      | qwe  | 123    | alice |
-#      | qwe  | tre    | alice |
+  Szenario: Ändern von ToDo - anderer Nutzer
+    Gegeben sei ein Benutzer Bob mit dem Benutzernamen Bob
+    Und folgende To-Dos
+      | text | number | owner |
+      | qwe  | 123    | alice |
+      | qwe  | tre    | alice |
 #    Wenn Bob eine Anfrage zum Ändern des To-Do AliceToDo mit dem Text todoBob macht
 #    Dann sollte die Antwort den status 400 haben
 #    Und das To-Do AliceToDo sollte den Text todo1 haben

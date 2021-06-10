@@ -1,7 +1,6 @@
 from generate.suite import ModelFactoryExpression, AssignmentStatement, Kwarg
 from generate.utils import to_function_name
-from nlp.determiner import TokenFieldValueDeterminer, SpanFieldValueDeterminer, FieldValueDeterminer, \
-    StringFieldValueDeterminer
+from nlp.extractor import ModelFieldExtractor, SpanModelFieldExtractor
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher
 from nlp.utils import get_noun_chunks, is_proper_noun_of, token_references
 
@@ -11,6 +10,11 @@ class Converter(object):
     A converter is a class that converts a given document to code.
 
     You have to pass a spacy document and it will convert it into code.
+
+    It most likely will do the following:
+        1) Find elements/ django classes etc. that match the document
+        2) Extract the data to use that class/ element from the text
+        3) Create the statements that will become templates sooner or later
     """
     def __init__(self, document, related_object, django_project):
         self.document = document
@@ -19,6 +23,7 @@ class Converter(object):
         self.language = document.lang_
 
     def get_noun_chunks(self):
+        """Returns all the noun chunks from the document."""
         return get_noun_chunks(self.document)
 
     def convert_to_statements(self, test_case):
@@ -44,12 +49,10 @@ class ModelFactoryConverter(Converter):
     def __init__(self, document, related_object, django_project):
         super().__init__(document, related_object, django_project)
         self._model = None
-        self._field_values = []
+        self._extractors = []
+        self._statements = []
 
-        self._field_names = []
-        self._field_values = []
-
-    def create_statement(self, determiners: [FieldValueDeterminer], test_case):
+    def create_statement(self, extractors, test_case):
         """
         Creates a statement for a test case.
 
@@ -60,13 +63,21 @@ class ModelFactoryConverter(Converter):
         """
         factory_kwargs = []
 
-        # TODO: separate the names from the values somehow...
-        for determiner in determiners:
-            valid_fn = determiner.value_can_be_function_name()
-            python_value = determiner.value_to_python()
+        for extractor in extractors:
+            # check if the value could be a function
+            valid_fn = extractor.value_can_be_function_name()
+            # grab the value for python
+            python_value = extractor.extract_python_value()
+            # check if the value should be a variable (currently determined by checking if that value already exists)
             as_variable = valid_fn and test_case.variable_defined(to_function_name(python_value))
-            value = to_function_name(python_value) if as_variable else python_value
-            factory_kwargs.append(Kwarg(determiner.field_name, value, as_variable=as_variable))
+
+            # convert to a function name if it is defined as a variable
+            if as_variable:
+                value = to_function_name(python_value)
+            else:
+                value = python_value
+
+            factory_kwargs.append(Kwarg(extractor.field_name, value, as_variable=as_variable))
 
         factory_statement = ModelFactoryExpression(self._model, factory_kwargs)
         return AssignmentStatement(expression=factory_statement, variable=self.get_variable_text(self.model_noun_token))
@@ -94,30 +105,21 @@ class ModelFactoryConverter(Converter):
         """For now, this is only used as the single converter in GIVEN. So just return 1."""
         return 1
 
-    def convert_to_statements(self, test_case):
-        self._initialize_model()
-        self._initialize_fields()
-
-        if not self.related_object.has_datatable:
-            return [self.create_statement(self._field_values, test_case)]
-
+    def _initialize_datatable(self, test_case):
         # if the given has a datatable, it is assumed that it contains data to create model entries
         # if this is the case, add more field values to the model creation
         datatable = self.related_object.argument
         column_names = datatable.get_column_names()
-        statements = []
 
         for row in datatable.rows:
-            field_values_copy = self._field_values.copy()
+            extractors_copy = self._extractors.copy()
 
             for index, cell in enumerate(row.cells):
                 field_searcher = ModelFieldSearcher(column_names[index], src_language=self.language)
                 field = field_searcher.search(model_interface=self._model)
-                field_values_copy.append(StringFieldValueDeterminer(self._model, cell.value, field))
+                extractors_copy.append(ModelFieldExtractor(self._model, cell.value, field))
 
-            statements.append(self.create_statement(field_values_copy, test_case))
-
-        return statements
+            self._statements.append(self.create_statement(extractors_copy, test_case))
 
     def _initialize_model(self):
         """
@@ -134,8 +136,8 @@ class ModelFactoryConverter(Converter):
         model_searcher = ModelSearcher(text=str(self.model_noun_token), src_language=self.language)
         self._model = model_searcher.search(project_interface=self.django_project)
 
-    def _initialize_fields(self):
-        self._field_values = []
+    def _initialize_fields(self, test_case):
+        self._extractors = []
         noun_chunks = self.get_noun_chunks()
         unhandled_propn = None
 
@@ -172,6 +174,23 @@ class ModelFactoryConverter(Converter):
             # if the current noun_chunk does not contain a PROPN that references the root, grab the one that was
             # not handled yet
             if field_value_token is None and unhandled_propn is not None:
-                self._field_values.append(TokenFieldValueDeterminer(self._model, unhandled_propn, field))
+                self._extractors.append(ModelFieldExtractor(self._model, unhandled_propn, field))
             else:
-                self._field_values.append(SpanFieldValueDeterminer(self._model, noun_chunk, field))
+                self._extractors.append(SpanModelFieldExtractor(self._model, noun_chunk, field))
+
+    def convert_to_statements(self, test_case):
+        # a single statement needs the model, the kwarg_names and the kwarg_values for the factory
+        self._statements = []
+
+        # first get the model
+        self._initialize_model()
+
+        # get the fields afterwards, which will initialize a statement
+        self._initialize_fields(test_case)
+
+        if not self.related_object.has_datatable:
+            return [self.create_statement(self._extractors, test_case)]
+
+        self._initialize_datatable(test_case)
+
+        return self._statements

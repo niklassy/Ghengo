@@ -3,7 +3,7 @@ from generate.suite import TestSuite, PyTestMarkDecorator, PyTestParametrizeDeco
 from generate.utils import to_function_name
 from gherkin.compiler_base.compiler import Lexer, Compiler, Parser, CodeGenerator
 
-from gherkin.ast import Comment as ASTComment, Scenario, ScenarioOutline, Rule, Given
+from gherkin.ast import Comment as ASTComment, Scenario, ScenarioOutline, Rule, Given, Then, When
 from gherkin.compiler_base.exception import RuleNotFulfilled, GrammarInvalid, GrammarNotUsed
 from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
@@ -119,7 +119,6 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         for tag in scenario.tags:
             test_case.add_decorator(PyTestMarkDecorator(tag.name))
 
-        # TODO: handle scenario outline
         # for a scenario outline, pytest offers the parametrize mark that we can add here to simplify everything
         if isinstance(scenario, ScenarioOutline):
             for example in scenario.examples:
@@ -130,12 +129,15 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
                 test_case.add_decorator(decorator)
 
         # first phase: GIVEN clauses
+        in_given_steps = True
         for step in scenario.steps:
-            if isinstance(step, Given):
+            if isinstance(step, (When, Then)) and in_given_steps:
+                in_given_steps = False
+                continue
+
+            if in_given_steps:
                 tiler = GivenTiler(ast_object=step, django_project=project, language=Settings.language)
                 tiler.add_statements_to_test_case(test_case)
-            else:
-                continue
 
         return test_case
 

@@ -350,7 +350,7 @@ class Step(object):
 
     @property
     def has_datatable(self):
-        return self.argument and isinstance(self.argument, DataTable)
+        return bool(self.argument and isinstance(self.argument, DataTable))
 
     def __repr__(self):
         return '{} - {}{}'.format(self.__class__.__name__.upper(), self.keyword, self.text)
