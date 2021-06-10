@@ -1,5 +1,4 @@
 from django_meta.project import AbstractModelInterface, AbstractModelField
-from generate.utils import to_function_name
 from nlp.settings import SIMILARITY_BENCHMARK
 from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity
@@ -10,7 +9,7 @@ class NoConversionFound(Exception):
     pass
 
 
-class TextConverter(object):
+class Searcher(object):
     def __init__(self, text, src_language):
         self.text = text
         self.src_language = src_language
@@ -82,9 +81,9 @@ class TextConverter(object):
         """Returns a fallback in case no match has been found."""
         return self.text
 
-    def convert(self, *args, raise_exception=False, **kwargs):
+    def search(self, *args, raise_exception=False, **kwargs):
         """
-        Converts the text that was given and finds a object that represents the text. If none is found,
+        Search an object that represents the text that was given on init.  If none is found,
         this will either return a fallback (see `get_convert_fallback`) or raises an exception if `raise_exception`
         is true.
         """
@@ -110,7 +109,7 @@ class TextConverter(object):
         return fittest_conversion
 
 
-class TextToModelFieldConverter(TextConverter):
+class ModelFieldSearcher(Searcher):
     def get_convert_fallback(self):
         return AbstractModelField(name=self.translator.translate(self.text))
 
@@ -121,7 +120,7 @@ class TextToModelFieldConverter(TextConverter):
         return model_interface.fields
 
 
-class TextToModelConverter(TextConverter):
+class ModelSearcher(Searcher):
     def get_convert_fallback(self):
         return AbstractModelInterface(name=self.text)
 

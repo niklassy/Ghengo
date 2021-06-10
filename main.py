@@ -1,11 +1,4 @@
-from django_meta.project import DjangoProject
-from generate.suite import TestCase, ModelFactoryExpression, Kwarg, AssignmentStatement, Variable, TestSuite
 from gherkin.compiler import GherkinToPyTestCompiler
-from nlp.django import TextToModelConverter
-# from nlp.tokenize import tokenize, de_nlp, en_nlp
-from translate import Translator
-
-from nlp.utils import *
 
 feature_string = """# language: en
 
