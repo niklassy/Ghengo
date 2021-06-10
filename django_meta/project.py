@@ -5,6 +5,8 @@ from django.apps import apps
 from django import setup
 from django.urls import URLPattern, URLResolver, get_resolver
 
+from generate.utils import to_function_name
+
 
 class ModelInterface(object):
     def __init__(self, model, app):
@@ -49,6 +51,12 @@ class AbstractModelInterface(ModelInterface):
     @property
     def fields(self):
         return []
+
+
+class AbstractModelField(object):
+    def __init__(self, name):
+        self.name = to_function_name(name)
+        self.verbose_name = self.name
 
 
 class AppInterface(object):

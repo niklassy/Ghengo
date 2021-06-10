@@ -1,4 +1,4 @@
-from django_meta.project import AbstractModelInterface
+from django_meta.project import AbstractModelInterface, AbstractModelField
 from generate.utils import to_function_name
 from nlp.settings import SIMILARITY_BENCHMARK
 from nlp.setup import Nlp
@@ -51,6 +51,8 @@ class TextConverter(object):
         """
         Returns a list of 2-tuples [(a, b)] with values that will be compared for similarity.
 
+        The values will be compared in all languages.
+
         Arguments:
             conversion_object: one object that was returned from `get_possible_conversions`
         """
@@ -73,12 +75,19 @@ class TextConverter(object):
         return CosineSimilarity(input_doc, target_doc).get_similarity()
 
     def get_keywords(self, conversion_object):
+        """Returns all they keywords that this class should look for in the conversion object."""
         return []
 
     def get_convert_fallback(self):
+        """Returns a fallback in case no match has been found."""
         return self.text
 
     def convert(self, *args, raise_exception=False, **kwargs):
+        """
+        Converts the text that was given and finds a object that represents the text. If none is found,
+        this will either return a fallback (see `get_convert_fallback`) or raises an exception if `raise_exception`
+        is true.
+        """
         highest_similarity = 0
         fittest_conversion = None
 
@@ -103,11 +112,7 @@ class TextConverter(object):
 
 class TextToModelFieldConverter(TextConverter):
     def get_convert_fallback(self):
-        class FieldFallback:
-            name = to_function_name(self.translator.translate(self.text))
-            verbose_name = name
-
-        return FieldFallback()
+        return AbstractModelField(name=self.translator.translate(self.text))
 
     def get_keywords(self, field):
         return [field.name, getattr(field, 'verbose_name', None)]

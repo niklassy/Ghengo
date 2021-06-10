@@ -1,10 +1,15 @@
-from django.forms import CharField, IntegerField, BooleanField
+import spacy
+from django.db.models import BooleanField, IntegerField
+from spacy.tokens import Span
+from spacy.tokens.token import Token
 
 from generate.suite import AssignmentStatement, ModelFactoryExpression, Kwarg
 from generate.utils import to_function_name
+from nlp.determiner import FieldValueDeterminer, SpanFieldValueDeterminer, TokenFieldValueDeterminer, \
+    StringFieldValueDeterminer
 from nlp.django import TextToModelConverter, TextToModelFieldConverter, NoConversionFound
 from nlp.setup import Nlp
-from nlp.utils import get_noun_chunks, token_references, get_referenced_entity
+from nlp.utils import get_noun_chunks, token_references, get_referenced_entity, is_proper_noun_of
 
 
 class GherkinToCodeConverter(object):
@@ -29,20 +34,23 @@ class GherkinToCodeConverter(object):
 
 
 class GivenToCodeConverter(GherkinToCodeConverter):
-    def create_statement(self, field_values, test_case, model, model_noun_token):
+    def __init__(self, ast_object, language, django_project):
+        super().__init__(ast_object, language, django_project)
+        self.model = None
+        self._field_values = []
+
+    def create_statement(self, determiners: [FieldValueDeterminer], test_case):
         factory_kwargs = []
 
-        # TODO: handle other fields than CharField
-        for field_name, token, field in field_values:
-            as_variable = test_case.variable_defined(to_function_name(str(token)))
-            value = to_function_name(str(token)) if as_variable else str(token)
-            factory_kwargs.append(Kwarg(field_name, value, as_variable=as_variable))
+        for determiner in determiners:
+            valid_fn = determiner.value_can_be_function_name()
+            python_value = determiner.value_to_python()
+            as_variable = valid_fn and test_case.variable_defined(to_function_name(python_value))
+            value = to_function_name(python_value) if as_variable else python_value
+            factory_kwargs.append(Kwarg(determiner.field_name, value, as_variable=as_variable))
 
-        factory_statement = ModelFactoryExpression(model, factory_kwargs)
-        return AssignmentStatement(factory_statement, self.get_assignment_text(model_noun_token))
-
-    def token_references_noun(self, token, noun):
-        return token_references(token, noun) and token.pos_ == 'PROPN'
+        factory_statement = ModelFactoryExpression(self.model, factory_kwargs)
+        return AssignmentStatement(factory_statement, self.get_assignment_text(self.model_noun_token))
 
     def get_assignment_text(self, root_noun):
         try:
@@ -50,7 +58,7 @@ class GivenToCodeConverter(GherkinToCodeConverter):
         except IndexError:
             return None
 
-        if self.token_references_noun(next_token, root_noun):
+        if is_proper_noun_of(next_token, root_noun):
             return to_function_name(str(next_token))
 
         for named_entity in self.document.ents:
@@ -60,25 +68,36 @@ class GivenToCodeConverter(GherkinToCodeConverter):
 
         return None
 
-    def get_statements(self, test_case):
-        model = None
-        model_noun_token = None
-        field_values = []
+    def get_noun_chunks(self):
+        return get_noun_chunks(self.document)
+
+    def _initialize_model(self):
+        """
+        Find the model for the given statement and save data so that it can be accessed later.
+
+        The model can be found in the first chunk:
+            => Gegeben sei ein Benutzer ...
+            => Given a user ...
+        """
+        self.model = None
+        noun_chunks = self.get_noun_chunks()
+        model_noun_chunk = noun_chunks[0]
+        self.model_noun_token = model_noun_chunk.root
+        model_converter = TextToModelConverter(text=str(self.model_noun_token), src_language=self.language)
+        self.model = model_converter.convert(project_interface=self.django_project)
+
+    def _initialize_fields(self):
+        self._field_values = []
+        noun_chunks = self.get_noun_chunks()
         unhandled_propn = None
 
-        for index, noun_chunk in enumerate(get_noun_chunks(self.document)):
-            root_noun = str(noun_chunk.root)
-
-            # first the model for an object is defined
-            if index == 0:
-                model_noun_token = noun_chunk.root
-                model_converter = TextToModelConverter(text=root_noun, src_language=self.language)
-                model = model_converter.convert(project_interface=self.django_project)
-                continue
-
+        # first entry will contain the model, so skip it
+        for index, noun_chunk in enumerate(noun_chunks[1:]):
             # filter out any noun chunks without a noun
             if noun_chunk.root.pos_ != 'NOUN':
                 # if it is a proper noun, it will be handled later
+                # Proper nouns represent names like "Alice" "todo1" and so on. They describe other nouns in detail
+                # If one is found here, it will probably be used in a later noun chunk
                 if noun_chunk.root.pos_ == 'PROPN':
                     unhandled_propn = noun_chunk.root
                 continue
@@ -88,33 +107,33 @@ class GivenToCodeConverter(GherkinToCodeConverter):
 
             # try to find something for whole span first
             try:
-                field = field_converter_span.convert(model_interface=model, raise_exception=True)
+                field = field_converter_span.convert(model_interface=self.model, raise_exception=True)
             # if nothing is found, try the root instead
             except NoConversionFound:
-                field_converter_root = TextToModelFieldConverter(text=root_noun, src_language=self.language)
-                field = field_converter_root.convert(model_interface=model)
-
-            field_name = field.name
+                field_converter_root = TextToModelFieldConverter(text=str(noun_chunk.root), src_language=self.language)
+                field = field_converter_root.convert(model_interface=self.model)
 
             # search for any tokens that reference the root element - which means that they contain the value for
             # that field
-            field_value = None
+            field_value_token = None
             for token in noun_chunk:
-                if self.token_references_noun(token, noun_chunk.root):
-                    field_value = token
+                if is_proper_noun_of(token, noun_chunk.root):
+                    field_value_token = token
                     break
 
-            if field_value is None and unhandled_propn is None:
-                continue
+            # if the current noun_chunk does not contain a PROPN that references the root, grab the one that was
+            # not handled yet
+            if field_value_token is None and unhandled_propn is not None:
+                self._field_values.append(TokenFieldValueDeterminer(self.model, unhandled_propn, field))
+            else:
+                self._field_values.append(SpanFieldValueDeterminer(self.model, noun_chunk, field))
 
-            if field_value is None:
-                field_value = unhandled_propn
-                unhandled_propn = None
-
-            field_values.append((field_name, field_value, field))
+    def get_statements(self, test_case):
+        self._initialize_model()
+        self._initialize_fields()
 
         if not self.ast_object.has_datatable:
-            return [self.create_statement(field_values, test_case, model, model_noun_token)]
+            return [self.create_statement(self._field_values, test_case)]
 
         # if the given has a datatable, it is assumed that it contains data to create model entries
         # if this is the case, add more field values to the model creation
@@ -123,14 +142,13 @@ class GivenToCodeConverter(GherkinToCodeConverter):
         statements = []
 
         for row in datatable.rows:
-            field_values_copy = field_values.copy()
+            field_values_copy = self._field_values.copy()
 
             for index, cell in enumerate(row.cells):
                 field_converter = TextToModelFieldConverter(column_names[index], src_language=self.language)
-                field = field_converter.convert(model_interface=model)
-                field_name = field.name
-                field_values_copy.append((field_name, cell.value, field))
+                field = field_converter.convert(model_interface=self.model)
+                field_values_copy.append(StringFieldValueDeterminer(self.model, cell.value, field))
 
-            statements.append(self.create_statement(field_values_copy, test_case, model, model_noun_token))
+            statements.append(self.create_statement(field_values_copy, test_case))
 
         return statements

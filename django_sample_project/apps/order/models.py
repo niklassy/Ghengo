@@ -13,5 +13,6 @@ class Order(models.Model):
 
 
 class ToDo(models.Model):
-    system = models.CharField(max_length=255)
+    system = models.IntegerField()
+    entries = models.IntegerField()
     from_other_system = models.BooleanField()

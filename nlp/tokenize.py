@@ -6,7 +6,6 @@ from nltk.tag import StanfordPOSTagger
 import nltk
 from spacy import displacy
 
-from nlp.setup import setup_nlp
 
 # en_nlp, de_nlp = setup_nlp()
 # this_dir = os.path.dirname(os.path.abspath(__file__))

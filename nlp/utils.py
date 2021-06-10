@@ -25,8 +25,20 @@ def get_noun_chunks(doc):
 
 
 def token_references(token, target):
-    """Check if a token references another token."""
+    """
+    Check if a token references another token.
+    """
     return token.head == target
+
+
+def is_proper_noun_of(token, target):
+    """
+    Check if a given token references another noun. These tokens are called proper nouns and are things like:
+    `alice` or `todo1`.
+
+    => Given a user alice.
+    """
+    return token_references(token, target) and token.pos_ == 'PROPN'
 
 
 def token_in_span(token, span):
