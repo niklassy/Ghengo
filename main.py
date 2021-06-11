@@ -1,4 +1,3 @@
-from django_meta.project import DjangoProject
 from gherkin.compiler import GherkinToPyTestCompiler
 
 feature_string = """# language: en
@@ -75,12 +74,6 @@ if __name__ == '__main__':
     Können leider nicht die Library verwenden, weil sie scheinbar Probleme hat und weil wir sämtliche Informationen
     wie Kommentare behalten wollen, für weitere Informationen in der Zukunft.
     """
-    project = DjangoProject('django_sample_project.apps.config.settings')
-    a = project.get_models(include_django=True, as_interface=True)
-    b = 1
-
-    # c = GherkinToPyTestCompiler()
-    # a = c.compile_text(feature_string)
-    # d = c.compile_file('test.feature')
-    b = 1
-
+    c = GherkinToPyTestCompiler()
+    file_ast = c.compile_file('django_sample_project/features/todo_crud.feature')
+    c.export_as_file('generated_tests/')

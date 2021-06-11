@@ -7,8 +7,14 @@ name = "pypi"
 pytest = "*"
 django = "*"
 djangorestframework = "*"
+nltk = "*"
+setuptools = "*"
+wheel = "*"
+spacy = "*"
+deep-translator = "*"
+unidecode = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.9"
+python_version = "3.8"

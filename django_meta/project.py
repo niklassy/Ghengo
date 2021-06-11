@@ -5,6 +5,8 @@ from django.apps import apps
 from django import setup
 from django.urls import URLPattern, URLResolver, get_resolver
 
+from generate.utils import to_function_name
+
 
 class ModelInterface(object):
     def __init__(self, model, app):
@@ -13,15 +15,48 @@ class ModelInterface(object):
 
     @property
     def verbose_name(self):
-        return self.model._meta.verbose_name
+        try:
+            return str(self.model._meta.verbose_name)
+        except AttributeError:
+            return None
+
+    @property
+    def name(self):
+        return self.model.__name__
 
     @property
     def fields(self):
         return list(self.model._meta.get_fields())
 
+    def get_field(self, name):
+        return self.model._meta.get_field(name)
+
     @property
     def field_names(self):
-        return [field.name for field in self.fields]
+        return [getattr(field, 'verbose_name', None) or field.name for field in self.fields]
+
+    def __repr__(self):
+        return 'ModelInterface - {}'.format(self.name)
+
+
+class AbstractModelInterface(ModelInterface):
+    def __init__(self, name):
+        # convert to pascal case
+        class_name = ''.join(x for x in name.title() if not x.isspace())
+        super().__init__(type(class_name, (), {}), None)
+
+    def get_field(self, name):
+        return None
+
+    @property
+    def fields(self):
+        return []
+
+
+class AbstractModelField(object):
+    def __init__(self, name):
+        self.name = to_function_name(name)
+        self.verbose_name = self.name
 
 
 class AppInterface(object):
@@ -57,8 +92,10 @@ class DjangoProject(object):
         self.settings = importlib.import_module(settings_path)
 
         # django needs to know where the settings are, so set it in the env and setup django afterwards
+        print('Setting up Django....')
         os.environ['DJANGO_SETTINGS_MODULE'] = settings_path
         setup()
+        print('Finished setting up Django!')
 
     def get_reverse_keys(self):
         """Returns all keys that are used in the project that can be used via reverse"""

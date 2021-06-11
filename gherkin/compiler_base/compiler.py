@@ -183,39 +183,98 @@ class Parser(object):
 
 class CodeGenerator(object):
     """
-    In a normal compiler, it would create code for the machine. In our case it will create an intermediate
-    representation (IR). The IR is used later in other areas of the program. It is the internal structure of the code.
+    The code generator will perform operations to transform the tokens into some sort of code/ output.
     """
-    pass
+    file_extension = None
+
+    def __init__(self, compiler):
+        self.compiler = compiler
+
+    def generate(self, ast):
+        """Must be implemented by children. It must return the code/ text that comes from the AST."""
+        raise NotImplementedError()
+
+    def get_file_extension(self):
+        """Returns the file extension for the file."""
+        return self.file_extension
+
+    def get_file_name(self, ast):
+        """Should return the name of the file <THIS>.<extension>."""
+        raise NotImplementedError()
+
+    def get_full_file_name(self, ast, output_directory):
+        """Returns the full path to the file."""
+        return '{}{}.{}'.format(output_directory, self.get_file_name(ast), self.get_file_extension())
 
 
 class Compiler(object):
     """Base class to create a compiler that will call a lexer, a parser and a code_generator."""
-    lexer = None
-    parser = None
-    code_generator = None
+    lexer_class = None
+    parser_class = None
+    code_generator_class = None
 
-    def compile_file(self, path):
-        """Compiles the text inside of a given file."""
+    def __init__(self):
+        self.lexer = self.lexer_class(self)
+        self.parser = self.parser_class(self)
+        self.code_generator = self.code_generator_class(self)
+        self.ast = None
+
+    @classmethod
+    def read_file(cls, path):
+        """Reads a the file at given path."""
         with open(path) as file:
             file_text = file.read()
-        return self.compile_text(file_text)
+        return file_text
+
+    def use_lexer(self, text):
+        """A wrapper around the tokenization of a text. It can be used by children to do something."""
+        return self.lexer.tokenize(text)
+
+    def use_parser(self, tokens):
+        """A wrapper around the validation and creation of the AST. It can be used by children to do something."""
+        return self.parser.parse(tokens)
 
     def compile_text(self, text):
-        """Compiles a given text."""
-        assert self.lexer
-        lexer = self.lexer(compiler=self)
-        tokens = lexer.tokenize(text)
+        """
+        Compiles a given text by using the Lexer and the Parser. It will return and save the resulting AST.
+        To use the code generator, you must call `export_as_text` or `export_as_file` afterwards.
+        """
+        self.ast = None
+        tokens = self.use_lexer(text)
+        self.ast = self.use_parser(tokens)
 
-        if self.parser is None:
-            return tokens
+        return self.ast
 
-        parser = self.parser(compiler=self)
-        ast = parser.parse(tokens)
+    def compile_file(self, path):
+        """
+        Works exactly like `compile_text` but this will compile a file as an input instead. For more information look
+        at the doc of `compile_text`.
+        """
+        file_text = self.read_file(path)
+        return self.compile_text(file_text)
 
-        if self.code_generator is None:
-            return ast
+    def export_as_text(self, ast=None):
+        """
+        Exports an AST to text/ code. It will either use the AST from `compile_text` or the provided AST as an
+        argument. If this compiler has not previously compiled text, you MUST pass an AST. Otherwise this will
+        raise a ValueError.
+        """
+        if self.ast is None and ast is None:
+            raise ValueError('You must call either compile_text or compile_file before exporting the AST.')
 
-        # TODO: code generator
-        return None
+        ast = ast or self.ast
+        return self.code_generator.generate(ast)
 
+    def export_as_file(self, directory_path, ast=None):
+        """
+        Works exactly the same as `export_as_text` except that the output is written into a file at a given directory
+        path. The name of the file is determined by the CodeGenerator.
+        """
+        ast = ast or self.ast
+        code = self.export_as_text(ast)
+
+        file = open(self.code_generator.get_full_file_name(ast, directory_path), 'w')
+        file.write(code)
+        file.close()
+
+        return file
