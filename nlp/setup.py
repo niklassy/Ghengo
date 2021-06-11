@@ -1,4 +1,6 @@
 import spacy
+from spacy import Language
+from spacy.matcher import Matcher
 
 
 class _Nlp(object):
@@ -6,11 +8,39 @@ class _Nlp(object):
         self._de_nlp = None
         self._en_nlp = None
 
+    @classmethod
+    def add_quotation_matcher(cls, nlp):
+        matcher = Matcher(nlp.vocab)
+        matcher.add(
+            'QUOTED',
+            [
+               [{'ORTH': {'IN': ['"', "'"]}}, {'OP': '+', 'LENGTH': {'>': 0}}, {'ORTH': {'IN': ['"', "'"]}}],
+            ]
+        )
+
+        @Language.component("QUOTE_MERGER")
+        def quote_merger(doc):
+            # this will be called on the Doc object in the pipeline
+            matched_spans = []
+            matches = matcher(doc)
+            for match_id, start, end in matches:
+                span = doc[start:end]
+                matched_spans.append(span)
+            for span in matched_spans:
+                with doc.retokenize() as retokenizer:
+                    # merge into one token after collecting all matches
+                    retokenizer.merge(span)
+
+            return doc
+
+        nlp.add_pipe('QUOTE_MERGER', first=True)
+
     @property
     def de_nlp(self):
         if self._de_nlp is None:
             print('Setting up german nlp...')
             self._de_nlp = spacy.load('de_core_news_lg')
+            self.add_quotation_matcher(self._de_nlp)
             print('German nlp done!')
         return self._de_nlp
 
@@ -19,6 +49,7 @@ class _Nlp(object):
         if self._en_nlp is None:
             print('Setting up english nlp...')
             self._en_nlp = spacy.load('en_core_web_lg')
+            self.add_quotation_matcher(self._en_nlp)
             print('English nlp done!')
         return self._en_nlp
 

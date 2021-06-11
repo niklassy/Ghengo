@@ -58,6 +58,11 @@ class AbstractModelField(object):
         self.name = to_function_name(name)
         self.verbose_name = self.name
 
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.name == other.name
+
 
 class AppInterface(object):
     def __init__(self, app, project):

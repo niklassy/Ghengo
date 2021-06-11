@@ -81,7 +81,12 @@ class ModelFieldExtractor(Extractor):
         return self.source_as_str
 
     def get_value_for_boolean_field(self):
-        return self.source_as_str in ['1', 'True', 'true']
+        verb = get_verb_for_token(self.source)
+
+        if verb is None:
+            return self.source_as_str in ['1', 'True', 'true']
+
+        return not any([child for child in verb.children if child.lemma_ in ['kein', 'nicht']])
 
     def get_value_for_integer_field(self):
         return int(self.source_as_str)

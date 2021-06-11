@@ -1,7 +1,7 @@
 # language: de
 Funktionalität: Erstellen, Löschen und Ändern von ToDos
-  Grundlage:
-    Gegeben sei ein Benutzer Alice mit dem Benutzernamen alice, der Email a@local.local und dem Passwort Haus1234
+#  Grundlage:
+#    Gegeben sei ein Benutzer Alice mit dem Benutzernamen alice, der Email a@local.local und dem Passwort Haus1234
 
   # TODO: add permissions??
   # TODO: add list call?
@@ -16,8 +16,8 @@ Funktionalität: Erstellen, Löschen und Ändern von ToDos
 #    Dann sollte die Antwort den Status 400 haben
 #    Und es sollte kein To-Do Objekt existieren
 
-#  Szenario: Ändern von ToDo - Erfolg
-#    Gegeben sei ein To-Do AliceToDo mit dem Text todo1, mit 4 Einträgen und Alice als Besitzerin hat
+  Szenario: Ändern von ToDo - Erfolg
+    Gegeben sei ein To-Do AliceToDo mit dem Text todo1, das nicht aus dem anderen System kommt und Alice als Besitzerin hat
 #    Wenn Alice eine Anfrage zum Ändern des To-Do AliceToDo mit dem Text todo2 macht
 #    Dann sollte die Antwort den Status 200 haben
 #    Und das To-Do AliceToDo sollte den Text todo2 haben
@@ -32,10 +32,10 @@ Funktionalität: Erstellen, Löschen und Ändern von ToDos
 #  Szenario: Mein neuer Test
 #    Gegeben sei ein Benutzer 1 mit dem Benutzernamen test
 
-  Szenario: Aufträge und Todos
-    Gegeben sei ein Auftrag 1 mit dem Namen "Auftrag 123"
-    Und ein Auftrag 2
-    Und ein To-Do mit den Aufträgen 1 und 2
+#  Szenario: Aufträge und Todos
+#    Gegeben sei ein Auftrag 1 mit dem Namen "Auftrag 123"
+#    Und ein Auftrag 2
+#    Und ein To-Do mit den Aufträgen 1 und 2
 #    Wenn Bob eine Anfrage zum Ändern des To-Do AliceToDo mit dem Text todoBob macht
 #    Dann sollte die Antwort den status 400 haben
 #    Und das To-Do AliceToDo sollte den Text todo1 haben
