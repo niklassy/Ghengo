@@ -1,4 +1,4 @@
-from generate.suite import ModelFactoryExpression, AssignmentStatement, Kwarg
+from generate.suite import ModelFactoryExpression, AssignmentStatement, Kwarg, Variable
 from generate.utils import to_function_name
 from nlp.extractor import ModelFieldExtractor, SpanModelFieldExtractor
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher
@@ -79,7 +79,11 @@ class ModelFactoryConverter(Converter):
             factory_kwargs.append(Kwarg(extractor.field_name, value, as_variable=as_variable))
 
         factory_statement = ModelFactoryExpression(self._model, factory_kwargs)
-        return AssignmentStatement(expression=factory_statement, variable=self.get_variable_text(self.model_noun_token))
+        variable_name = Variable.get_as_variable_name(
+            self.get_variable_text(self.model_noun_token),
+            factory_statement.to_template(),
+        )
+        return AssignmentStatement(expression=factory_statement, variable=variable_name)
 
     def get_variable_text(self, root_noun):
         """
@@ -87,16 +91,23 @@ class ModelFactoryConverter(Converter):
         """
         try:
             next_token = self.document[root_noun.i + 1]
+
+            # check for any Proper Nouns (nouns that describe/ give a name to a noun)
+            if is_proper_noun_of(next_token, root_noun):
+                return to_function_name(str(next_token))
         except IndexError:
-            return None
+            pass
 
-        if is_proper_noun_of(next_token, root_noun):
-            return to_function_name(str(next_token))
-
+        # search for real names like 'Alice'
         for named_entity in self.document.ents:
             for token in named_entity:
                 if token_references(token, root_noun):
                     return to_function_name(str(token))
+
+        # sometimes the variable can be defined as '1', e.g. order 1
+        for child in root_noun.children:
+            if child.is_digit:
+                return str(child)
 
         return None
 

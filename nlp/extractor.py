@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from django.db.models import IntegerField, FloatField, BooleanField, DecimalField
+from django.db.models import IntegerField, FloatField, BooleanField, DecimalField, ManyToManyField, ManyToManyRel
 from spacy.tokens import Token, Span
 
 from nlp.utils import is_proper_noun_of, get_verb_for_token
@@ -68,11 +68,17 @@ class ModelFieldExtractor(Extractor):
         if isinstance(self.field, DecimalField):
             return self.get_value_for_decimal_field()
 
+        if isinstance(self.field, (ManyToManyField, ManyToManyRel)):
+            return self.get_value_for_m2m()
+
         default_value = self.get_default_value()
         if default_value is not None:
             return str(default_value)
 
         return None
+
+    def get_value_for_m2m(self):
+        return self.source_as_str
 
     def get_value_for_boolean_field(self):
         return self.source_as_str in ['1', 'True', 'true']

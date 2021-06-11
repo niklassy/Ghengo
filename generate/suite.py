@@ -1,5 +1,5 @@
 from generate.settings import INDENT_SPACES
-from generate.utils import camel_to_snake_case, to_function_name
+from generate.utils import camel_to_snake_case, to_function_name, remove_non_alnum
 
 
 class OnAddToTestCaseListenerMixin(object):
@@ -204,15 +204,28 @@ class Variable(TemplateMixin):
     def __init__(self, name):
         self.name = name
 
+    @classmethod
+    def get_as_variable_name(cls, name, reference_string):
+        clean_name = remove_non_alnum(name) if name else ''
+
+        if not clean_name:
+            return ''
+
+        if clean_name[0].isalpha():
+            return to_function_name(name)
+
+        # must be number
+        return '{}_{}'.format(reference_string[0], clean_name[0])
+
     def get_template_context(self, indent):
         return {'name': self.name}
 
 
-class Expresion(TemplateMixin, OnAddToTestCaseListenerMixin):
+class Expression(TemplateMixin, OnAddToTestCaseListenerMixin):
     pass
 
 
-class FunctionCallExpression(Expresion):
+class FunctionCallExpression(Expression):
     template = '{fn_name}({kwargs})'
 
     def __init__(self, function_name, function_kwargs):
@@ -338,8 +351,9 @@ class TestCase(TemplateMixin):
     def variable_defined(self, name):
         for statement in self.statements:
             variable = getattr(statement, 'variable', None)
+            expression = statement.expression
 
-            if variable and name == variable:
+            if variable and Variable.get_as_variable_name(name, expression.to_template()) == variable:
                 return True
 
         for parameter in self.parameters:
