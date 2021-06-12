@@ -122,7 +122,7 @@ class ModelFieldSearcher(Searcher):
 
 class ModelSearcher(Searcher):
     def get_convert_fallback(self):
-        return AbstractModelInterface(name=self.text)
+        return AbstractModelInterface(name=self.translator.translate(self.text))
 
     def get_keywords(self, model):
         return [model.name, model.verbose_name]

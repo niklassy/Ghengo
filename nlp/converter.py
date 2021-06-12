@@ -4,6 +4,7 @@ from generate.suite import ModelFactoryExpression, AssignmentStatement, Kwarg, V
 from generate.utils import to_function_name
 from nlp.extractor import ModelFieldExtractor, SpanModelFieldExtractor
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher
+from nlp.translator import ModelFieldTranslator
 from nlp.utils import get_noun_chunks, is_proper_noun_of, token_references, get_non_stop_tokens
 
 
@@ -54,6 +55,25 @@ class ModelFactoryConverter(Converter):
         self.model_noun_token = None
         self._extractors = []
 
+    def get_statements(self, extractors):
+        factory_kwargs = []
+        statements = []
+
+        factory_statement = ModelFactoryExpression(self._model, factory_kwargs)
+        variable_name = Variable.get_as_variable_name(
+            self.get_variable_text(self.model_noun_token),
+            factory_statement.to_template(),
+        )
+        statements.append(AssignmentStatement(expression=factory_statement, variable=variable_name))
+
+        for translator in extractors:
+            kwargs = translator.get_kwarg()
+            if kwargs:
+                factory_kwargs.append(kwargs)
+            translator.append_side_effect_statements(statements)
+
+        return statements
+
     def create_statement(self, extractors, test_case):
         """
         Creates a statement for a test case.
@@ -65,6 +85,7 @@ class ModelFactoryConverter(Converter):
         """
         factory_kwargs = []
 
+        # ====== OLD =======
         for extractor in extractors:
             # check if the value could be a function
             valid_fn = extractor.value_can_be_function_name()
@@ -154,7 +175,8 @@ class ModelFactoryConverter(Converter):
         model_searcher = ModelSearcher(text=str(self.model_noun_token), src_language=self.language)
         self._model = model_searcher.search(project_interface=self.django_project)
 
-    def get_field_with_span(self, span):
+    def get_field_with_span(self, span, token=None):
+        # TODO: clean - search span and token
         # all the following nouns will reference fields of that model, so find a field
         field_searcher_span = ModelFieldSearcher(text=str(span), src_language=self.language)
 
@@ -163,7 +185,8 @@ class ModelFactoryConverter(Converter):
             return field_searcher_span.search(raise_exception=True, model_interface=self._model)
         # if nothing is found, try the root instead
         except NoConversionFound:
-            field_searcher_root = ModelFieldSearcher(text=str(span.root), src_language=self.language)
+            token = span.root if span.root.pos_ == 'NOUN' else token
+            field_searcher_root = ModelFieldSearcher(text=str(token), src_language=self.language)
             return field_searcher_root.search(model_interface=self._model)
 
     def get_noun_chunk_of_token(self, token):
@@ -172,7 +195,16 @@ class ModelFactoryConverter(Converter):
                 return chunk
         return None
 
-    def get_fields(self):
+    def get_fields(self, test_case):
+        """
+        Main points to improve everything:
+            - more reliable way of handling variables in the test generation
+                - is a variable already defined?
+                - find a variable for a given context
+                - have only one point to create variable names
+            - improve the extraction of fields and data
+        """
+
         fields = []
         non_stop_tokens = get_non_stop_tokens(self.document)
 
@@ -190,8 +222,12 @@ class ModelFactoryConverter(Converter):
             #       a token references another which can be extracted by the `head` attribute
 
             head = non_stop_token.head
-            current_noun_chunk = unhandled_noun_chunks[0]
+            try:
+                current_noun_chunk = unhandled_noun_chunks[0]
+            except IndexError:
+                continue
 
+            # clean the noun chunks
             if non_stop_token in current_noun_chunk:
                 if non_stop_token == current_noun_chunk[-1]:
                     unhandled_noun_chunks.remove(current_noun_chunk)
@@ -223,7 +259,7 @@ class ModelFactoryConverter(Converter):
                 continue
 
             noun_chunk = self.get_noun_chunk_of_token(field_token)
-            field = self.get_field_with_span(noun_chunk)
+            field = self.get_field_with_span(noun_chunk, field_token)
 
             handled_non_stop.append(head)
             handled_non_stop.append(non_stop_token)
@@ -234,8 +270,7 @@ class ModelFactoryConverter(Converter):
 
             fields.append((field, field_token, field_value_token))
 
-        # TODO: extractor should get predetermined value and field source
-        return [ModelFieldExtractor(self._model, field_token, field) for field, field_token, value_token in fields]
+        return [ModelFieldTranslator(test_case, value_token, field_token, self._model, field) for field, field_token, value_token in fields]
 
     def _initialize_fields(self):
         self._extractors = []
@@ -274,12 +309,15 @@ class ModelFactoryConverter(Converter):
         # first get the model
         self._initialize_model()
 
-        self._extractors = self.get_fields()
+        self._extractors = self.get_fields(test_case)
 
         # get the fields afterwards, which will initialize a statement
         # self._initialize_fields()
 
-        if not self.related_object.has_datatable:
-            return [self.create_statement(self._extractors, test_case)]
+        s = self.get_statements(self._extractors)
+        return s
 
-        return self._get_statements_with_datatable(test_case)
+        # if not self.related_object.has_datatable:
+        #     return [self.create_statement(self._extractors, test_case)]
+
+        # return self._get_statements_with_datatable(test_case)

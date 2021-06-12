@@ -205,7 +205,7 @@ class Variable(TemplateMixin):
         self.name = name
 
     @classmethod
-    def get_as_variable_name(cls, name, reference_string):
+    def get_as_variable_name(cls, name, reference_string=None):
         clean_name = remove_non_alnum(name) if name else ''
 
         if not clean_name:
@@ -215,7 +215,7 @@ class Variable(TemplateMixin):
             return to_function_name(name)
 
         # must be number
-        return '{}_{}'.format(reference_string[0], clean_name[0])
+        return '{}_{}'.format(reference_string[0].lower(), clean_name[0])
 
     def get_template_context(self, indent):
         return {'name': self.name}
@@ -246,8 +246,10 @@ class ModelFactoryExpression(FunctionCallExpression):
 
     @property
     def factory_name(self):
-        model_in_snake_case = camel_to_snake_case(self.model_interface.name)
-        return '{}_factory'.format(model_in_snake_case)
+        return '{}_factory'.format(self.get_model_in_snake_case())
+
+    def get_model_in_snake_case(self):
+        return camel_to_snake_case(self.model_interface.name)
 
     def on_add_to_test_case(self, test_case):
         parameter = Parameter(self.factory_name)
@@ -257,7 +259,25 @@ class ModelFactoryExpression(FunctionCallExpression):
         test_case.add_decorator(DjangoDBDecorator())
 
 
+class ModelM2MAddExpression(Expression):
+    template = '{model_instance}.{field}.add({variable})'
+
+    def __init__(self, model, field, variable):
+        self.model = model
+        self.field = field
+        self.variable = variable
+
+    def get_template_context(self, indent):
+        return {
+            'model_instance': self.model,
+            'field': self.field,
+            'variable': self.variable.to_template(),
+        }
+
+
 class Statement(TemplateMixin):
+    template = '{expression}'
+
     def __init__(self, expression):
         self.expression = expression
         self.test_case = None
@@ -279,6 +299,9 @@ class AssignmentStatement(Statement):
     def __init__(self, expression, variable):
         super().__init__(expression)
         self.variable = variable
+
+    def generate_variable(self):
+        self.variable = Variable.get_as_variable_name('1', self.expression.to_template())
 
     def get_template(self):
         if self.variable:

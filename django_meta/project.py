@@ -6,6 +6,7 @@ from django import setup
 from django.urls import URLPattern, URLResolver, get_resolver
 
 from generate.utils import to_function_name
+from nlp.lan_translator import CacheTranslator
 
 
 class ModelInterface(object):
