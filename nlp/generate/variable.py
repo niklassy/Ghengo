@@ -21,10 +21,13 @@ class Variable(object):
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
-        return other.name == self.name
+        return other.name == self.name and self.value == other.value
 
     def __str__(self):
         return self.name
+
+    def copy(self):
+        return self.__copy__()
 
     def has_similar_reference_string(self, variable):
         return variable.clean_reference_string == self.clean_reference_string

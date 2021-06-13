@@ -138,22 +138,21 @@ class ModelFieldTranslator(Translator):
             for child in [value] + self.get_all_children(value):
                 if child.is_digit or child.pos_ == 'PROPN':
                     related_model = self.field.related_model
-                    reference_string = related_model.__name__
+                    variable = Variable(
+                        name_predetermined=str(child),
+                        reference_string=related_model.__name__,
+                    )
 
                     for statement in self.test_case.statements:
                         expression = statement.expression
                         if not isinstance(expression, ModelFactoryExpression):
                             continue
 
+                        # check if the value can become the variable and if the expression has the same model
                         expression_model = expression.model_interface.model
                         if statement.string_matches_variable(str(child)) and expression_model == related_model:
-                            reference_string = statement.variable.reference_string
+                            variable = statement.variable.copy()
                             break
-
-                    variable = Variable(
-                        name_predetermined=str(child),
-                        reference_string=reference_string,
-                    )
 
                     expression = ModelM2MAddExpression(
                         model=factory_statement.variable,

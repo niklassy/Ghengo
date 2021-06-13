@@ -277,6 +277,7 @@ class AssignmentStatement(Statement):
     def __init__(self, expression, variable):
         super().__init__(expression)
         self.variable = variable
+        variable.set_value(self.expression)
 
     def string_matches_variable(self, string):
         if not self.variable:
