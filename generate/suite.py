@@ -392,9 +392,7 @@ class TestCase(TemplateMixin):
 
     def variable_defined(self, name):
         for statement in self.statements:
-            variable_context = getattr(statement, 'variable_context', None)
-
-            if variable_context.uses_variable(name):
+            if statement.uses_variable(name):
                 return True
 
         for parameter in self.parameters:

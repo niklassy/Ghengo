@@ -75,41 +75,6 @@ class ModelFactoryConverter(Converter):
 
         return statements
 
-    def create_statement(self, extractors, test_case):
-        """
-        Creates a statement for a test case.
-
-        To do that, we need the field name, the value of the field and the model.
-        The model was already determined.
-        The fields were also already determined.
-        Now, we need to get the values of these fields.
-        """
-        factory_kwargs = []
-
-        # ====== OLD =======
-        for extractor in extractors:
-            # check if the value could be a function
-            valid_fn = extractor.value_can_be_function_name()
-            # grab the value for python
-            python_value = extractor.extract_python_value()
-            # check if the value should be a variable (currently determined by checking if that value already exists)
-            as_variable = valid_fn and test_case.variable_defined(to_function_name(python_value))
-
-            # convert to a function name if it is defined as a variable
-            if as_variable:
-                value = to_function_name(python_value)
-            else:
-                value = python_value
-
-            factory_kwargs.append(Kwarg(extractor.field_name, value, as_variable=as_variable))
-
-        factory_statement = ModelFactoryExpression(self._model, factory_kwargs)
-        variable_name = Variable.get_as_variable_name(
-            self.get_variable_text(self.model_noun_token),
-            factory_statement.to_template(),
-        )
-        return AssignmentStatement(expression=factory_statement, variable=variable_name)
-
     def get_variable_text(self, root_noun):
         """
         Returns the text that will be the variable of the model factory.
@@ -155,9 +120,17 @@ class ModelFactoryConverter(Converter):
             for index, cell in enumerate(row.cells):
                 field_searcher = ModelFieldSearcher(column_names[index], src_language=self.language)
                 field = field_searcher.search(model_interface=self._model)
-                extractors_copy.append(ModelFieldExtractor(self._model, cell.value, field))
+                extractors_copy.append(
+                    ModelFieldTranslator(
+                        test_case=test_case,
+                        predetermined_value=cell.value,
+                        model=self._model,
+                        field=field,
+                        source=None,
+                    )
+                )
 
-            statements.append(self.create_statement(extractors_copy, test_case))
+            statements += self.get_statements(extractors_copy)
 
         return statements
 
@@ -312,13 +285,7 @@ class ModelFactoryConverter(Converter):
 
         self._extractors = self.get_fields(test_case)
 
-        # get the fields afterwards, which will initialize a statement
-        # self._initialize_fields()
+        if not self.related_object.has_datatable:
+            return self.get_statements(self._extractors)
 
-        s = self.get_statements(self._extractors)
-        return s
-
-        # if not self.related_object.has_datatable:
-        #     return [self.create_statement(self._extractors, test_case)]
-
-        # return self._get_statements_with_datatable(test_case)
+        return self._get_statements_with_datatable(test_case)

@@ -1,6 +1,7 @@
 from decimal import Decimal
 
-from django.db.models import IntegerField, FloatField, BooleanField, DecimalField, ManyToManyField, ManyToManyRel
+from django.db.models import IntegerField, FloatField, BooleanField, DecimalField, ManyToManyField, ManyToManyRel, \
+    ForeignKey
 
 from django_meta.project import AbstractModelField
 from generate.suite import Statement, ModelM2MAddExpression, Variable, Kwarg, ModelFactoryExpression
@@ -43,6 +44,9 @@ class ModelFieldTranslator(Translator):
         self.field_name = field.name
 
     def extract_number_for_field(self):
+        if not self.source:
+            return str(self.get_default_value())
+
         root = self.source
         for child in self.get_all_children(root):
             if child.is_digit:
@@ -69,11 +73,18 @@ class ModelFieldTranslator(Translator):
         if isinstance(self.field, DecimalField):
             return self.get_value_for_decimal_field()
 
+        if isinstance(self.field, ForeignKey):
+            return self.get_value_for_fk_field()
+
         default_value = self.get_default_value()
         if default_value is not None:
             return str(default_value)
 
         return None
+
+    def get_value_for_fk_field(self):
+        # TODO: maybe handle in the future??
+        return str(self.get_default_value())
 
     def get_default_value(self):
         value = str(self.predetermined_value)
@@ -85,7 +96,7 @@ class ModelFieldTranslator(Translator):
         return value
 
     def get_value_for_boolean_field(self):
-        verb = get_verb_for_token(self.source)
+        verb = get_verb_for_token(self.source) if self.source else None
 
         if verb is None:
             return self.get_default_value() in ['1', 'True', 'true']
