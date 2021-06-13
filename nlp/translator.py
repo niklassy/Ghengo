@@ -4,9 +4,9 @@ from django.db.models import IntegerField, FloatField, BooleanField, DecimalFiel
     ForeignKey
 
 from django_meta.project import AbstractModelField
-from generate.suite import Statement, ModelM2MAddExpression, Variable, Kwarg, ModelFactoryExpression
+from generate.suite import Statement, ModelM2MAddExpression, Kwarg, ModelFactoryExpression
 from generate.utils import to_function_name
-from nlp.generate.context import VariableContext
+from nlp.generate.variable import Variable
 from nlp.utils import get_verb_for_token
 
 
@@ -145,20 +145,20 @@ class ModelFieldTranslator(Translator):
                         if not isinstance(expression, ModelFactoryExpression):
                             continue
 
-                        if statement.uses_variable(str(child)) and expression.model_interface.model == related_model:
-                            reference_string = statement.variable_context.reference_string
+                        expression_model = expression.model_interface.model
+                        if statement.string_matches_variable(str(child)) and expression_model == related_model:
+                            reference_string = statement.variable.reference_string
                             break
 
-                    variable_context = VariableContext(
-                        source_token=child,
-                        variable_name_predetermined=str(child),
+                    variable = Variable(
+                        name_predetermined=str(child),
                         reference_string=reference_string,
                     )
 
                     expression = ModelM2MAddExpression(
                         model=factory_statement.variable,
                         field=self.field_name,
-                        variable_context=variable_context,
+                        variable=variable,
                     )
                     statement = Statement(expression)
                     statements.append(statement)

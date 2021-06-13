@@ -197,30 +197,6 @@ class Kwarg(TemplateMixin):
         return {'name': self.name, 'value': self.value}
 
 
-class Variable(TemplateMixin):
-    name = None
-    template = '{name}'
-
-    def __init__(self, name):
-        self.name = name
-
-    @classmethod
-    def get_as_variable_name(cls, name, reference_string=None):
-        clean_name = remove_non_alnum(name) if name else ''
-
-        if not clean_name:
-            return ''
-
-        if clean_name[0].isalpha():
-            return to_function_name(name)
-
-        # must be number
-        return '{}_{}'.format(reference_string[0].lower(), clean_name[0])
-
-    def get_template_context(self, indent):
-        return {'name': self.name}
-
-
 class Expression(TemplateMixin, OnAddToTestCaseListenerMixin):
     pass
 
@@ -262,16 +238,16 @@ class ModelFactoryExpression(FunctionCallExpression):
 class ModelM2MAddExpression(Expression):
     template = '{model_instance}.{field}.add({variable})'
 
-    def __init__(self, model, field, variable_context):
+    def __init__(self, model, field, variable):
         self.model = model
         self.field = field
-        self.variable_context = variable_context
+        self.variable = variable
 
     def get_template_context(self, indent):
         return {
             'model_instance': self.model,
             'field': self.field,
-            'variable': self.variable_context.variable_name,
+            'variable': self.variable,
         }
 
 
@@ -291,36 +267,35 @@ class Statement(TemplateMixin):
         if self.expression is not None:
             self.expression.on_add_to_test_case(test_case)
 
-    def uses_variable(self, predetermined_value):
+    def string_matches_variable(self, string):
         return False
 
 
 class AssignmentStatement(Statement):
     template = '{variable} = {expression}'
 
-    def __init__(self, expression, variable_context):
+    def __init__(self, expression, variable):
         super().__init__(expression)
-        self.variable_context = variable_context
+        self.variable = variable
 
-    def uses_variable(self, predetermined_value):
-        return self.variable_context.name_matches_variable(predetermined_value)
+    def string_matches_variable(self, string):
+        if not self.variable:
+            return False
 
-    @property
-    def variable(self):
-        return self.variable_context.variable_name
+        return self.variable.string_matches_variable(string)
 
     def generate_variable(self, test_case):
-        if not self.variable_context.variable_name_predetermined:
+        if not self.variable.name_predetermined:
             similar_statements = []
 
             for statement in test_case.statements:
                 if not isinstance(statement, AssignmentStatement):
                     continue
 
-                if statement.variable_context.clean_reference_string == self.variable_context.clean_reference_string:
+                if self.variable.has_similar_reference_string(statement.variable):
                     similar_statements.append(statement)
 
-            self.variable_context.variable_name_predetermined = str(len(similar_statements) + 1)
+            self.variable.name_predetermined = str(len(similar_statements) + 1)
 
     def get_template(self):
         if self.variable:
@@ -392,7 +367,7 @@ class TestCase(TemplateMixin):
 
     def variable_defined(self, name):
         for statement in self.statements:
-            if statement.uses_variable(name):
+            if statement.string_matches_variable(name):
                 return True
 
         for parameter in self.parameters:

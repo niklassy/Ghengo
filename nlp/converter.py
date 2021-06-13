@@ -1,7 +1,7 @@
-from generate.suite import ModelFactoryExpression, AssignmentStatement, Kwarg, Variable
+from generate.suite import ModelFactoryExpression, AssignmentStatement
 from generate.utils import to_function_name
 from nlp.extractor import ModelFieldExtractor, SpanModelFieldExtractor
-from nlp.generate.context import VariableContext
+from nlp.generate.variable import Variable
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher
 from nlp.translator import ModelFieldTranslator
 from nlp.utils import get_noun_chunks, is_proper_noun_of, token_references, get_non_stop_tokens
@@ -59,12 +59,11 @@ class ModelFactoryConverter(Converter):
         statements = []
 
         factory_statement = ModelFactoryExpression(self._model, factory_kwargs)
-        variable_context = VariableContext(
-            source_token=self.model_noun_token,
-            variable_name_predetermined=self.get_variable_text(self.model_noun_token),
+        variable = Variable(
+            name_predetermined=self.get_variable_text(self.model_noun_token),
             reference_string=factory_statement.to_template(),
         )
-        statement = AssignmentStatement(expression=factory_statement, variable_context=variable_context)
+        statement = AssignmentStatement(expression=factory_statement, variable=variable)
         statements.append(statement)
 
         for translator in extractors:
