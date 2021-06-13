@@ -16,23 +16,10 @@ class Translator(object):
         self.predetermined_value = predetermined_value
         self.source = source
 
-    def value_is_variable(self):
-        return self.test_case.variable_defined(self.get_value_as_function_name())
-
-    def get_value_as_function_name(self):
-        value = self.get_determined_value()
-        if isinstance(value, bool):
-            return ''
-
-        return to_function_name(str(self.get_determined_value()))
-
     def get_determined_value(self):
         raise NotImplementedError()
 
     def translate(self):
-        if self.value_is_variable():
-            return self.get_value_as_function_name()
-
         return self.get_determined_value()
 
 
@@ -83,8 +70,19 @@ class ModelFieldTranslator(Translator):
         return None
 
     def get_value_for_fk_field(self):
-        # TODO: maybe handle in the future??
-        return str(self.get_default_value())
+        value = to_function_name(self.get_default_value())
+        related_model = self.field.related_model
+
+        # search for a previous statement where an entry of that model was created and use its variable
+        for statement in self.test_case.statements:
+            if not isinstance(statement.expression, ModelFactoryExpression) or not statement.variable:
+                continue
+
+            expression_model = statement.expression.model_interface.model
+            if statement.string_matches_variable(value) and expression_model == related_model:
+                return statement.variable.copy()
+
+        return value
 
     def get_default_value(self):
         value = str(self.predetermined_value)
@@ -125,7 +123,7 @@ class ModelFieldTranslator(Translator):
         if isinstance(self.field, (ManyToManyField, ManyToManyRel)):
             return None
 
-        return Kwarg(self.field_name, self.translate(), as_variable=self.value_is_variable())
+        return Kwarg(self.field_name, self.translate())
 
     def append_side_effect_statements(self, statements):
         if isinstance(self.field, (ManyToManyField, ManyToManyRel)) and len(statements) > 0:

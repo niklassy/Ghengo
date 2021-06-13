@@ -1,5 +1,6 @@
 from generate.settings import INDENT_SPACES
 from generate.utils import camel_to_snake_case, to_function_name, remove_non_alnum
+from nlp.generate.variable import Variable
 
 
 class OnAddToTestCaseListenerMixin(object):
@@ -40,16 +41,15 @@ class Argument(TemplateMixin):
     """
     template = '{value}'
 
-    def __init__(self, value, as_variable=False):
+    def __init__(self, value):
         self.value = value
-        self.as_variable = as_variable
 
     @classmethod
     def get_string_for_template(cls, string):
         return '\'{}\''.format(string) if isinstance(string, str) else str(string)
 
     def get_template_context(self, indent):
-        if self.as_variable:
+        if isinstance(self.value, Variable):
             value = str(self.value)
         elif isinstance(self.value, (list, tuple, set)) and len(str(self.value)) > 100:
             if isinstance(self.value, list):
@@ -189,9 +189,9 @@ class Import(TemplateMixin):
 class Kwarg(TemplateMixin):
     template = '{name}={value}'
 
-    def __init__(self, name, value, as_variable=False):
+    def __init__(self, name, value):
         self.name = name
-        self.value = Argument(value, as_variable=as_variable)
+        self.value = Argument(value)
 
     def get_template_context(self, indent):
         return {'name': self.name, 'value': self.value}
@@ -366,10 +366,19 @@ class TestCase(TemplateMixin):
             'statements': '\n'.join(statement.to_template(indent + INDENT_SPACES) for statement in self.statements),
         }
 
-    def variable_defined(self, name):
+    def get_variable_by_string(self, string):
         for statement in self.statements:
-            if statement.string_matches_variable(name):
-                return True
+            variable = getattr(statement, 'variable', None)
+
+            if statement.string_matches_variable(string):
+                return variable
+
+        return None
+
+    def variable_defined(self, name):
+        variable_statement = self.get_variable_by_string(name)
+        if variable_statement is not None:
+            return variable_statement
 
         for parameter in self.parameters:
             if name == parameter.name:

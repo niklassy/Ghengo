@@ -14,6 +14,9 @@ def to_function_name(string):
     Pass in a string to return it into a function name in snake case. It will remove non-ascii characters, whitespaces
     and transform everything into lower case.
     """
+    if not isinstance(string, str):
+        return ''
+
     no_special = remove_non_alnum(string)
     non_ascii = remove_non_ascii(no_special)
     return '_'.join(non_ascii.split())
