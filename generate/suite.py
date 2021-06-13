@@ -262,16 +262,16 @@ class ModelFactoryExpression(FunctionCallExpression):
 class ModelM2MAddExpression(Expression):
     template = '{model_instance}.{field}.add({variable})'
 
-    def __init__(self, model, field, variable):
+    def __init__(self, model, field, variable_context):
         self.model = model
         self.field = field
-        self.variable = variable
+        self.variable_context = variable_context
 
     def get_template_context(self, indent):
         return {
             'model_instance': self.model,
             'field': self.field,
-            'variable': self.variable.to_template(),
+            'variable': self.variable_context.variable_name,
         }
 
 
@@ -291,17 +291,36 @@ class Statement(TemplateMixin):
         if self.expression is not None:
             self.expression.on_add_to_test_case(test_case)
 
+    def uses_variable(self, predetermined_value):
+        return False
+
 
 class AssignmentStatement(Statement):
-    variable = None
     template = '{variable} = {expression}'
 
-    def __init__(self, expression, variable):
+    def __init__(self, expression, variable_context):
         super().__init__(expression)
-        self.variable = variable
+        self.variable_context = variable_context
 
-    def generate_variable(self):
-        self.variable = Variable.get_as_variable_name('1', self.expression.to_template())
+    def uses_variable(self, predetermined_value):
+        return self.variable_context.name_matches_variable(predetermined_value)
+
+    @property
+    def variable(self):
+        return self.variable_context.variable_name
+
+    def generate_variable(self, test_case):
+        if not self.variable_context.variable_name_predetermined:
+            similar_statements = []
+
+            for statement in test_case.statements:
+                if not isinstance(statement, AssignmentStatement):
+                    continue
+
+                if statement.variable_context.clean_reference_string == self.variable_context.clean_reference_string:
+                    similar_statements.append(statement)
+
+            self.variable_context.variable_name_predetermined = str(len(similar_statements) + 1)
 
     def get_template(self):
         if self.variable:
@@ -373,10 +392,9 @@ class TestCase(TemplateMixin):
 
     def variable_defined(self, name):
         for statement in self.statements:
-            variable = getattr(statement, 'variable', None)
-            expression = statement.expression
+            variable_context = getattr(statement, 'variable_context', None)
 
-            if variable and Variable.get_as_variable_name(name, expression.to_template()) == variable:
+            if variable_context.uses_variable(name):
                 return True
 
         for parameter in self.parameters:

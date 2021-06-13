@@ -3,8 +3,9 @@ from decimal import Decimal
 from django.db.models import IntegerField, FloatField, BooleanField, DecimalField, ManyToManyField, ManyToManyRel
 
 from django_meta.project import AbstractModelField
-from generate.suite import Statement, ModelM2MAddExpression, Variable, Kwarg
+from generate.suite import Statement, ModelM2MAddExpression, Variable, Kwarg, ModelFactoryExpression
 from generate.utils import to_function_name
+from nlp.generate.context import VariableContext
 from nlp.utils import get_verb_for_token
 
 
@@ -120,18 +121,33 @@ class ModelFieldTranslator(Translator):
             factory_statement = statements[0]
 
             if not factory_statement.variable:
-                factory_statement.generate_variable()
+                factory_statement.generate_variable(self.test_case)
 
             value = self.predetermined_value
             for child in [value] + self.get_all_children(value):
-                # this isnt really true since there can be variables that numbers and some are propn
                 if child.is_digit or child.pos_ == 'PROPN':
-                    variable = Variable(Variable.get_as_variable_name(str(child), self.field.related_model.__name__))
+                    related_model = self.field.related_model
+                    reference_string = related_model.__name__
+
+                    for statement in self.test_case.statements:
+                        expression = statement.expression
+                        if not isinstance(expression, ModelFactoryExpression):
+                            continue
+
+                        if statement.uses_variable(str(child)) and expression.model_interface.model == related_model:
+                            reference_string = statement.variable_context.reference_string
+                            break
+
+                    variable_context = VariableContext(
+                        source_token=child,
+                        variable_name_predetermined=str(child),
+                        reference_string=reference_string,
+                    )
 
                     expression = ModelM2MAddExpression(
                         model=factory_statement.variable,
                         field=self.field_name,
-                        variable=variable,
+                        variable_context=variable_context,
                     )
                     statement = Statement(expression)
                     statements.append(statement)
