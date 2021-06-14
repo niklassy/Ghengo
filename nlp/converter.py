@@ -61,7 +61,7 @@ class ModelFactoryConverter(Converter):
         factory_statement = ModelFactoryExpression(self._model, factory_kwargs)
         variable = Variable(
             name_predetermined=self.get_variable_text(self.model_noun_token),
-            reference_string=factory_statement.to_template(),
+            reference_string=self._model.model.__name__,
         )
         statement = AssignmentStatement(expression=factory_statement, variable=variable)
         statements.append(statement)

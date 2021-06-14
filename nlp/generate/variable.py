@@ -52,6 +52,10 @@ class Variable(object):
 
     @property
     def clean_reference_string(self):
+        first_underscore_index = self.reference_string.find('_')
+        if first_underscore_index < 0:
+            return self.reference_string
+
         return self.reference_string[:self.reference_string.find('_')]
 
     @property

@@ -49,9 +49,7 @@ class Argument(TemplateMixin):
         return '\'{}\''.format(string) if isinstance(string, str) else str(string)
 
     def get_template_context(self, indent):
-        if isinstance(self.value, Variable):
-            value = str(self.value)
-        elif isinstance(self.value, (list, tuple, set)) and len(str(self.value)) > 100:
+        if isinstance(self.value, (list, tuple, set)) and len(str(self.value)) > 100:
             if isinstance(self.value, list):
                 start_symbol = '['
                 end_symbol = ']'
