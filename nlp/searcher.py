@@ -2,7 +2,7 @@ from django_meta.project import AbstractModelInterface, AbstractModelField
 from nlp.settings import SIMILARITY_BENCHMARK
 from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity
-from nlp.lan_translator import CacheTranslator
+from nlp.translator import CacheTranslator
 
 
 class NoConversionFound(Exception):

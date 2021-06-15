@@ -62,3 +62,10 @@ def get_verb_for_token(token):
         return None
 
     return get_verb_for_token(token.head)
+
+
+def get_noun_chunk_of_token(token, document):
+    for chunk in get_noun_chunks(document):
+        if token in chunk:
+            return chunk
+    return None

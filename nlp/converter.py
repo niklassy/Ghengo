@@ -2,8 +2,8 @@ from generate.suite import ModelFactoryExpression, AssignmentStatement
 from generate.utils import to_function_name
 from nlp.generate.variable import Variable
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher
-from nlp.translator import ModelFieldExtractor
-from nlp.utils import get_noun_chunks, is_proper_noun_of, token_references, get_non_stop_tokens
+from nlp.extractor import ModelFieldExtractor
+from nlp.utils import get_noun_chunks, is_proper_noun_of, token_references, get_non_stop_tokens, get_noun_chunk_of_token
 
 
 class Converter(object):
@@ -47,10 +47,14 @@ class Converter(object):
 
 
 class ModelFactoryConverter(Converter):
+    """
+    This converter will convert a document into a model factory statement and everything that belongs to it.
+    """
     def __init__(self, document, related_object, django_project):
         super().__init__(document, related_object, django_project)
         self._model = None
-        self.model_noun_token = None
+        self._model_token = None
+        self._variable_name = None
         self._extractors = []
 
     def get_statements(self, extractors):
@@ -59,7 +63,7 @@ class ModelFactoryConverter(Converter):
 
         factory_statement = ModelFactoryExpression(self._model, factory_kwargs)
         variable = Variable(
-            name_predetermined=self.get_variable_text(self.model_noun_token),
+            name_predetermined=self.variable_name,
             reference_string=self._model.model.__name__,
         )
         statement = AssignmentStatement(expression=factory_statement, variable=variable)
@@ -72,32 +76,6 @@ class ModelFactoryConverter(Converter):
             translator.append_side_effect_statements(statements)
 
         return statements
-
-    def get_variable_text(self, root_noun):
-        """
-        Returns the text that will be the variable of the model factory.
-        """
-        try:
-            next_token = self.document[root_noun.i + 1]
-
-            # check for any Proper Nouns (nouns that describe/ give a name to a noun)
-            if is_proper_noun_of(next_token, root_noun):
-                return to_function_name(str(next_token))
-        except IndexError:
-            pass
-
-        # search for real names like 'Alice'
-        for named_entity in self.document.ents:
-            for token in named_entity:
-                if token_references(token, root_noun):
-                    return to_function_name(str(token))
-
-        # sometimes the variable can be defined as '1', e.g. order 1
-        for child in root_noun.children:
-            if child.is_digit:
-                return str(child)
-
-        return None
 
     def get_document_fitness(self):
         """For now, this is only used as the single converter in GIVEN. So just return 1."""
@@ -117,12 +95,12 @@ class ModelFactoryConverter(Converter):
 
             for index, cell in enumerate(row.cells):
                 field_searcher = ModelFieldSearcher(column_names[index], src_language=self.language)
-                field = field_searcher.search(model_interface=self._model)
+                field = field_searcher.search(model_interface=self.model_interface)
                 extractors_copy.append(
                     ModelFieldExtractor(
                         test_case=test_case,
                         predetermined_value=cell.value,
-                        model=self._model,
+                        model_interface=self.model_interface,
                         field=field,
                         source=None,
                     )
@@ -132,39 +110,71 @@ class ModelFactoryConverter(Converter):
 
         return statements
 
-    def _initialize_model(self):
-        """
-        Find the model for the given statement and save data so that it can be accessed later.
+    @property
+    def variable_name(self):
+        if self._variable_name is None:
+            try:
+                next_token = self.document[self.model_token.i + 1]
 
-        The model can be found in the first chunk:
-            => Gegeben sei ein Benutzer ...
-            => Given a user ...
-        """
-        self._model = None
-        noun_chunks = self.get_noun_chunks()
-        model_noun_chunk = noun_chunks[0]
-        self.model_noun_token = model_noun_chunk.root
-        model_searcher = ModelSearcher(text=str(self.model_noun_token), src_language=self.language)
-        self._model = model_searcher.search(project_interface=self.django_project)
+                # check for any Proper Nouns (nouns that describe/ give a name to a noun)
+                if is_proper_noun_of(next_token, self.model_token):
+                    self._variable_name = to_function_name(str(next_token))
+                    return self._variable_name
+            except IndexError:
+                pass
 
-    def get_field_with_span(self, span, token=None):
+            # search for real names like 'Alice'
+            for named_entity in self.document.ents:
+                for token in named_entity:
+                    if token_references(token, self.model_token):
+                        self._variable_name = to_function_name(str(token))
+                    return self._variable_name
+
+            # sometimes the variable can be defined as '1', e.g. order 1
+            for child in self.model_token.children:
+                if child.is_digit:
+                    self._variable_name = str(child)
+                    return self._variable_name
+
+            self._variable_name = ''
+        return self._variable_name
+
+    @property
+    def model_token(self):
+        """
+        Returns the token that represents the model
+        """
+        if self._model_token is None:
+            noun_chunks = self.get_noun_chunks()
+            model_noun_chunk = noun_chunks[0]
+            self._model_token = model_noun_chunk.root
+        return self._model_token
+
+    @property
+    def model_interface(self):
+        """
+        Returns the model interface that represents the model.
+        """
+        if self._model is None:
+            model_searcher = ModelSearcher(text=str(self.model_token.lemma_), src_language=self.language)
+            self._model = model_searcher.search(project_interface=self.django_project)
+        return self._model
+
+    def _search_for_field(self, span, token):
+        """
+        Searches for a field with a given span and token inside the self.model_interface
+        """
         # all the following nouns will reference fields of that model, so find a field
         field_searcher_span = ModelFieldSearcher(text=str(span), src_language=self.language)
 
         # try to find something for whole span first
         try:
-            return field_searcher_span.search(raise_exception=True, model_interface=self._model)
+            return field_searcher_span.search(raise_exception=True, model_interface=self.model_interface)
         # if nothing is found, try the root instead
         except NoConversionFound:
             token = span.root if span.root.pos_ == 'NOUN' else token
             field_searcher_root = ModelFieldSearcher(text=str(token.lemma_), src_language=self.language)
-            return field_searcher_root.search(model_interface=self._model)
-
-    def get_noun_chunk_of_token(self, token):
-        for chunk in self.get_noun_chunks():
-            if token in chunk:
-                return chunk
-        return None
+            return field_searcher_root.search(model_interface=self.model_interface)
 
     def get_fields(self, test_case):
         """
@@ -183,7 +193,7 @@ class ModelFactoryConverter(Converter):
         unhandled_noun_chunks = self.get_noun_chunks()[1:].copy()
         unhandled_propn_chunk = None
         for non_stop_token in non_stop_tokens:
-            if non_stop_token.i < self.get_noun_chunks()[0].end or non_stop_token.head == self.model_noun_token:
+            if non_stop_token.i < self.get_noun_chunks()[0].end or non_stop_token.head == self.model_token:
                 handled_non_stop.append(non_stop_token)
                 continue
 
@@ -229,8 +239,8 @@ class ModelFactoryConverter(Converter):
             else:
                 continue
 
-            noun_chunk = self.get_noun_chunk_of_token(field_token)
-            field = self.get_field_with_span(noun_chunk, field_token)
+            noun_chunk = get_noun_chunk_of_token(field_token, self.document)
+            field = self._search_for_field(span=noun_chunk, token=field_token)
 
             handled_non_stop.append(head)
             handled_non_stop.append(non_stop_token)
@@ -243,14 +253,11 @@ class ModelFactoryConverter(Converter):
 
         output = []
         for field, field_token, value_token in fields:
-            output.append(ModelFieldExtractor(test_case, value_token, field_token, self._model, field))
+            output.append(ModelFieldExtractor(test_case, value_token, field_token, self.model_interface, field))
 
         return output
 
     def convert_to_statements(self, test_case):
-        # first get the model
-        self._initialize_model()
-
         self._extractors = self.get_fields(test_case)
 
         if not self.related_object.has_datatable:

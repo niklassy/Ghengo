@@ -24,9 +24,9 @@ class Extractor(object):
 
 
 class ModelFieldExtractor(Extractor):
-    def __init__(self, test_case, predetermined_value, source, model, field):
+    def __init__(self, test_case, predetermined_value, source, model_interface, field):
         super().__init__(test_case, predetermined_value, source)
-        self.model = model
+        self.model_interface = model_interface
         self.field = field
         self.field_name = field.name
 
