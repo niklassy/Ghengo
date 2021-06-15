@@ -1,6 +1,8 @@
 from nlp.generate.expression import ModelFactoryExpression
+from nlp.generate.importer import Importer
 from nlp.generate.parameter import Parameter
 from nlp.generate.pytest.decorator import DjangoDBDecorator
+from nlp.generate.pytest.suite import PY_TEST
 
 
 class PyTestModelFactoryExpression(ModelFactoryExpression):
@@ -10,3 +12,6 @@ class PyTestModelFactoryExpression(ModelFactoryExpression):
 
         # when a factory is used, there needs to be a mark for DjangoDB
         test_case.add_decorator(DjangoDBDecorator())
+
+
+Importer.register(PyTestModelFactoryExpression, ModelFactoryExpression, PY_TEST)

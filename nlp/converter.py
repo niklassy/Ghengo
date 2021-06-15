@@ -1,4 +1,6 @@
 from django_meta.project import AbstractModelInterface
+from nlp.generate.expression import ModelFactoryExpression
+from nlp.generate.importer import Importer
 from nlp.generate.pytest.expression import PyTestModelFactoryExpression
 from nlp.generate.statement import AssignmentStatement
 from nlp.generate.utils import to_function_name
@@ -74,8 +76,8 @@ class ModelFactoryConverter(Converter):
         self._extractors = None
 
     def get_statement_kwargs(self, *args, **kwargs):
-        # TODO: implement way to change for different testing types
-        factory_statement = PyTestModelFactoryExpression(*args, **kwargs)
+        factory_statement_class = Importer.get_class(ModelFactoryExpression, self.test_case)
+        factory_statement = factory_statement_class(*args, **kwargs)
         variable = Variable(
             name_predetermined=self.variable_name,
             reference_string=self._model.model.__name__,

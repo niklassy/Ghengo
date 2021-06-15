@@ -153,7 +153,6 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         # TODO: extract django project path from input
         project = DjangoProject('django_sample_project.apps.config.settings')
 
-        # TODO: implement way to handle different testing forms
         suite = PyTestTestSuite(ast.feature.name if ast.feature else '')
         for child in ast.feature.children:
             if isinstance(child, (Scenario, ScenarioOutline)):

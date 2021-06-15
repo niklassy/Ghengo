@@ -5,10 +5,10 @@ from django.db.models import IntegerField, FloatField, BooleanField, DecimalFiel
 
 from django_meta.project import AbstractModelField
 from nlp.generate.argument import Kwarg
-from nlp.generate.expression import ModelM2MAddExpression
-from nlp.generate.pytest.expression import PyTestModelFactoryExpression
+from nlp.generate.expression import ModelM2MAddExpression, ModelFactoryExpression
 from nlp.generate.utils import to_function_name
 from nlp.generate.variable import Variable
+from nlp.generate.vocab import NEGATIONS, POSITIVE_BOOLEAN_INDICATORS
 from nlp.utils import get_verb_for_token
 
 
@@ -77,8 +77,7 @@ class ModelFieldExtractor(Extractor):
 
         # search for a previous statement where an entry of that model was created and use its variable
         for statement in self.test_case.statements:
-            # TODO: implement way to handle different testing libraries
-            if not isinstance(statement.expression, PyTestModelFactoryExpression) or not statement.variable:
+            if not isinstance(statement.expression, ModelFactoryExpression) or not statement.variable:
                 continue
 
             expression_model = statement.expression.model_interface.model
@@ -100,9 +99,9 @@ class ModelFieldExtractor(Extractor):
         verb = get_verb_for_token(self.source) if self.source else None
 
         if verb is None:
-            return self.get_default_value() in ['1', 'True', 'true']
+            return self.get_default_value() in POSITIVE_BOOLEAN_INDICATORS[self.source.lang_]
 
-        return not any([child for child in verb.children if child.lemma_ in ['kein', 'nicht']])
+        return not any([child for child in verb.children if child.lemma_ in NEGATIONS[self.source.lang_]])
 
     def get_value_for_integer_field(self):
         return int(self.extract_number_for_field())
@@ -146,7 +145,7 @@ class ModelFieldExtractor(Extractor):
 
                     for statement in self.test_case.statements:
                         expression = statement.expression
-                        if not isinstance(expression, PyTestModelFactoryExpression):
+                        if not isinstance(expression, ModelFactoryExpression):
                             continue
 
                         # check if the value can become the variable and if the expression has the same model

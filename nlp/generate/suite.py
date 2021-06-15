@@ -30,6 +30,8 @@ class Import(TemplateMixin):
 
 
 class TestCaseBase(TemplateMixin):
+    type = None
+
     def __init__(self, name, test_suite):
         self._name = name
         self.parameters = []
@@ -114,6 +116,7 @@ class TestCaseBase(TemplateMixin):
 
 class TestSuiteBase(TemplateMixin):
     test_case_class = None
+    type = None
 
     def __init__(self, name):
         self.name = name
