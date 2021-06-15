@@ -1,6 +1,7 @@
 from django_meta.project import DjangoProject
-from generate.suite import TestSuite, PyTestMarkDecorator, PyTestParametrizeDecorator
-from generate.utils import to_function_name
+from nlp.generate.pytest.decorator import PyTestMarkDecorator, PyTestParametrizeDecorator
+from nlp.generate.pytest.suite import PyTestTestSuite
+from nlp.generate.utils import to_function_name
 from gherkin.compiler_base.compiler import Lexer, Compiler, Parser, CodeGenerator
 
 from gherkin.ast import Comment as ASTComment, Scenario, ScenarioOutline, Rule, Given, Then, When
@@ -152,7 +153,8 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         # TODO: extract django project path from input
         project = DjangoProject('django_sample_project.apps.config.settings')
 
-        suite = TestSuite(ast.feature.name if ast.feature else '')
+        # TODO: implement way to handle different testing forms
+        suite = PyTestTestSuite(ast.feature.name if ast.feature else '')
         for child in ast.feature.children:
             if isinstance(child, (Scenario, ScenarioOutline)):
                 self.scenario_to_test_case(child, suite, project)

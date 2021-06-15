@@ -5,7 +5,7 @@ from django.apps import apps
 from django import setup
 from django.urls import URLPattern, URLResolver, get_resolver
 
-from generate.utils import to_function_name
+from nlp.generate.utils import to_function_name
 
 
 class ModelInterface(object):

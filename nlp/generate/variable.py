@@ -1,4 +1,4 @@
-from generate.utils import remove_non_alnum, to_function_name
+from nlp.generate.utils import remove_non_alnum, to_function_name
 
 
 class Variable(object):

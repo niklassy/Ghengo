@@ -4,8 +4,10 @@ from django.db.models import IntegerField, FloatField, BooleanField, DecimalFiel
     ForeignKey
 
 from django_meta.project import AbstractModelField
-from generate.suite import Statement, ModelM2MAddExpression, Kwarg, ModelFactoryExpression
-from generate.utils import to_function_name
+from nlp.generate.argument import Kwarg
+from nlp.generate.expression import ModelM2MAddExpression
+from nlp.generate.pytest.expression import PyTestModelFactoryExpression
+from nlp.generate.utils import to_function_name
 from nlp.generate.variable import Variable
 from nlp.utils import get_verb_for_token
 
@@ -75,7 +77,8 @@ class ModelFieldExtractor(Extractor):
 
         # search for a previous statement where an entry of that model was created and use its variable
         for statement in self.test_case.statements:
-            if not isinstance(statement.expression, ModelFactoryExpression) or not statement.variable:
+            # TODO: implement way to handle different testing libraries
+            if not isinstance(statement.expression, PyTestModelFactoryExpression) or not statement.variable:
                 continue
 
             expression_model = statement.expression.model_interface.model
@@ -143,7 +146,7 @@ class ModelFieldExtractor(Extractor):
 
                     for statement in self.test_case.statements:
                         expression = statement.expression
-                        if not isinstance(expression, ModelFactoryExpression):
+                        if not isinstance(expression, PyTestModelFactoryExpression):
                             continue
 
                         # check if the value can become the variable and if the expression has the same model
@@ -152,12 +155,11 @@ class ModelFieldExtractor(Extractor):
                             variable = statement.variable.copy()
                             break
 
-                    expression = ModelM2MAddExpression(
+                    statement = ModelM2MAddExpression(
                         model=factory_statement.variable,
                         field=self.field_name,
                         variable=variable,
-                    )
-                    statement = Statement(expression)
+                    ).as_statement()
                     statements.append(statement)
 
         return statements

@@ -31,14 +31,14 @@ class Tiler(object):
     @property
     def best_converter(self) -> Converter:
         if self._best_converter is None:
-            highest_fitness = 0
+            highest_compatibility = 0
 
             for converter_cls in self.converter_classes:
                 converter = converter_cls(self.document, self.ast_object, self.django_project, self.test_case)
-                fitness = converter.get_document_fitness()
+                compatibility = converter.get_document_compatibility()
 
-                if fitness > highest_fitness:
-                    highest_fitness = fitness
+                if compatibility > highest_compatibility:
+                    highest_compatibility = compatibility
                     self._best_converter = converter
 
         return self._best_converter

@@ -1,6 +1,7 @@
 from django_meta.project import AbstractModelInterface
-from generate.suite import ModelFactoryExpression, AssignmentStatement
-from generate.utils import to_function_name
+from nlp.generate.pytest.expression import PyTestModelFactoryExpression
+from nlp.generate.statement import AssignmentStatement
+from nlp.generate.utils import to_function_name
 from nlp.generate.variable import Variable
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher
 from nlp.extractor import ModelFieldExtractor
@@ -49,14 +50,14 @@ class Converter(object):
         """
         raise NotImplementedError()
 
-    def get_document_fitness(self):
+    def get_document_compatibility(self):
         """
         Returns the fitness of a document. This represents how well this converter fits the given document.
 
         Returns:
             value from 0-1
         """
-        raise NotImplementedError()
+        return 1
 
 
 class ModelFactoryConverter(Converter):
@@ -73,7 +74,8 @@ class ModelFactoryConverter(Converter):
         self._extractors = None
 
     def get_statement_kwargs(self, *args, **kwargs):
-        factory_statement = ModelFactoryExpression(*args, **kwargs)
+        # TODO: implement way to change for different testing types
+        factory_statement = PyTestModelFactoryExpression(*args, **kwargs)
         variable = Variable(
             name_predetermined=self.variable_name,
             reference_string=self._model.model.__name__,
@@ -96,17 +98,17 @@ class ModelFactoryConverter(Converter):
 
         return statements
 
-    def get_document_fitness(self):
-        fitness = 1
+    def get_document_compatibility(self):
+        compatibility = 1
 
         if isinstance(self.model_interface, AbstractModelInterface):
-            fitness *= 0.5
+            compatibility *= 0.5
 
         # models are normally displayed by nouns
         if self.model_token.pos_ != 'NOUN':
-            fitness *= 0.2
+            compatibility *= 0.2
 
-        return fitness
+        return compatibility
 
     def _get_statements_with_datatable(self):
         """
