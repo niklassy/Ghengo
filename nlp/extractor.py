@@ -8,7 +8,7 @@ from nlp.generate.argument import Kwarg
 from nlp.generate.expression import ModelM2MAddExpression, ModelFactoryExpression
 from nlp.generate.utils import to_function_name
 from nlp.generate.variable import Variable
-from nlp.generate.vocab import NEGATIONS, POSITIVE_BOOLEAN_INDICATORS
+from nlp.vocab import NEGATIONS, POSITIVE_BOOLEAN_INDICATORS
 from nlp.utils import get_verb_for_token, token_is_proper_noun
 
 
