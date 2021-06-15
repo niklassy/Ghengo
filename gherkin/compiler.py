@@ -136,8 +136,9 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
                 continue
 
             if in_given_steps:
-                tiler = GivenTiler(ast_object=step, django_project=project, language=Settings.language)
-                tiler.add_statements_to_test_case(test_case)
+                tiler = GivenTiler(
+                    ast_object=step, django_project=project, language=Settings.language, test_case=test_case)
+                tiler.add_statements_to_test_case()
 
         return test_case
 

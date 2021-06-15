@@ -17,6 +17,8 @@ class Converter(object):
         2) Extract the data to use that class/ element from the text
         3) Create the statements that will become templates sooner or later
     """
+    statement_class = None
+
     def __init__(self, document, related_object, django_project, test_case):
         self.document = document
         self.django_project = django_project
@@ -27,6 +29,15 @@ class Converter(object):
     def get_noun_chunks(self):
         """Returns all the noun chunks from the document."""
         return get_noun_chunks(self.document)
+
+    def build_statement(self, *args, **kwargs):
+        return self.statement_class(**self.get_statement_kwargs(*args, **kwargs))
+
+    def get_statement_kwargs(self, *args, **kwargs):
+        return {}
+
+    def get_statements(self, extractors):
+        raise NotImplementedError()
 
     def convert_to_statements(self):
         """
@@ -51,6 +62,8 @@ class ModelFactoryConverter(Converter):
     """
     This converter will convert a document into a model factory statement and everything that belongs to it.
     """
+    statement_class = AssignmentStatement
+
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
         self._model = None
@@ -58,23 +71,27 @@ class ModelFactoryConverter(Converter):
         self._variable_name = None
         self._extractors = []
 
-    def get_statements(self, extractors):
-        factory_kwargs = []
-        statements = []
-
-        factory_statement = ModelFactoryExpression(self._model, factory_kwargs)
+    def get_statement_kwargs(self, *args, **kwargs):
+        factory_statement = ModelFactoryExpression(*args, **kwargs)
         variable = Variable(
             name_predetermined=self.variable_name,
             reference_string=self._model.model.__name__,
         )
-        statement = AssignmentStatement(expression=factory_statement, variable=variable)
-        statements.append(statement)
+        return {'expression': factory_statement, 'variable': variable}
 
-        for translator in extractors:
-            kwargs = translator.get_kwarg()
+    def get_statements(self, extractors):
+        factory_kwargs = []
+        # create the initial statement
+        statements = [self.build_statement(self.model_interface, factory_kwargs=factory_kwargs)]
+
+        # go through each extractor and append its kwargs to the factory kwargs
+        for extractor in extractors:
+            kwargs = extractor.get_kwarg()
             if kwargs:
                 factory_kwargs.append(kwargs)
-            translator.append_side_effect_statements(statements)
+
+            # some extractors add more statements, so add them here if needed
+            extractor.append_side_effect_statements(statements)
 
         return statements
 
