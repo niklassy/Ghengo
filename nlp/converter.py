@@ -1,9 +1,8 @@
 from generate.suite import ModelFactoryExpression, AssignmentStatement
 from generate.utils import to_function_name
-from nlp.extractor import ModelFieldExtractor, SpanModelFieldExtractor
 from nlp.generate.variable import Variable
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher
-from nlp.translator import ModelFieldTranslator
+from nlp.translator import ModelFieldExtractor
 from nlp.utils import get_noun_chunks, is_proper_noun_of, token_references, get_non_stop_tokens
 
 
@@ -120,7 +119,7 @@ class ModelFactoryConverter(Converter):
                 field_searcher = ModelFieldSearcher(column_names[index], src_language=self.language)
                 field = field_searcher.search(model_interface=self._model)
                 extractors_copy.append(
-                    ModelFieldTranslator(
+                    ModelFieldExtractor(
                         test_case=test_case,
                         predetermined_value=cell.value,
                         model=self._model,
@@ -149,7 +148,6 @@ class ModelFactoryConverter(Converter):
         self._model = model_searcher.search(project_interface=self.django_project)
 
     def get_field_with_span(self, span, token=None):
-        # TODO: clean - search span and token
         # all the following nouns will reference fields of that model, so find a field
         field_searcher_span = ModelFieldSearcher(text=str(span), src_language=self.language)
 
@@ -159,7 +157,7 @@ class ModelFactoryConverter(Converter):
         # if nothing is found, try the root instead
         except NoConversionFound:
             token = span.root if span.root.pos_ == 'NOUN' else token
-            field_searcher_root = ModelFieldSearcher(text=str(token), src_language=self.language)
+            field_searcher_root = ModelFieldSearcher(text=str(token.lemma_), src_language=self.language)
             return field_searcher_root.search(model_interface=self._model)
 
     def get_noun_chunk_of_token(self, token):
@@ -243,40 +241,11 @@ class ModelFactoryConverter(Converter):
 
             fields.append((field, field_token, field_value_token))
 
-        return [ModelFieldTranslator(test_case, value_token, field_token, self._model, field) for field, field_token, value_token in fields]
+        output = []
+        for field, field_token, value_token in fields:
+            output.append(ModelFieldExtractor(test_case, value_token, field_token, self._model, field))
 
-    def _initialize_fields(self):
-        self._extractors = []
-        noun_chunks = self.get_noun_chunks()
-        unhandled_propn = None
-
-        # first entry will contain the model, so skip it
-        for index, noun_chunk in enumerate(noun_chunks[1:]):
-            # filter out any noun chunks without a noun
-            if noun_chunk.root.pos_ != 'NOUN':
-                # if it is a proper noun, it will be handled later
-                # Proper nouns represent names like "Alice" "todo1" and so on. They describe other nouns in detail
-                # If one is found here, it will probably be used in a later noun chunk
-                if noun_chunk.root.pos_ == 'PROPN':
-                    unhandled_propn = noun_chunk.root
-                continue
-
-            field = self.get_field_with_span(noun_chunk)
-
-            # search for any tokens that reference the root element - which means that they contain the value for
-            # that field
-            field_value_token = None
-            for token in noun_chunk:
-                if is_proper_noun_of(token, noun_chunk.root):
-                    field_value_token = token
-                    break
-
-            # if the current noun_chunk does not contain a PROPN that references the root, grab the one that was
-            # not handled yet
-            if field_value_token is None and unhandled_propn is not None:
-                self._extractors.append(ModelFieldExtractor(self._model, unhandled_propn, field))
-            else:
-                self._extractors.append(SpanModelFieldExtractor(self._model, noun_chunk, field))
+        return output
 
     def convert_to_statements(self, test_case):
         # first get the model

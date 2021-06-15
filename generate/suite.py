@@ -291,7 +291,7 @@ class AssignmentStatement(Statement):
                 if not isinstance(statement, AssignmentStatement):
                     continue
 
-                if self.variable.has_similar_reference_string(statement.variable):
+                if self.variable.reference_strings_are_equal(statement.variable):
                     similar_statements.append(statement)
 
             self.variable.name_predetermined = str(len(similar_statements) + 1)
