@@ -1,22 +1,6 @@
-from nlp.settings import SIMILARITY_BENCHMARK
-
-
-def are_synonyms(input_1, input_2):
-    """Check if two tokens are synonyms."""
-    if not input_1.vector_norm or not input_2.vector_norm:
-        return False
-
-    return input_1.similarity(input_2) > SIMILARITY_BENCHMARK
-
-
 def get_non_stop_tokens(doc):
     """Reduce to the most important content."""
     return [t for t in doc if not t.is_stop]
-
-
-def get_named_entities(doc):
-    """Useful to find names in a doc"""
-    return doc.ents
 
 
 def get_noun_chunks(doc):
@@ -39,19 +23,6 @@ def is_proper_noun_of(token, target):
     => Given a user alice.
     """
     return token_references(token, target) and token_is_proper_noun(token)
-
-
-def token_in_span(token, span):
-    return token in span
-
-
-def get_referenced_entity(token):
-    if not bool(token.ent_type_):
-        if token == token.head or not token.head:
-            return None
-
-        return get_referenced_entity(token.head)
-    return token
 
 
 def get_verb_for_token(token):
@@ -92,7 +63,7 @@ def token_is_proper_noun(token):
     """
     Check if a token is a proper noun.
 
-    Proper nouns are descriptions of nouns (like Alice, Bob...)
+    Proper nouns are names of nouns like persons, places etc. (like Alice, Bob...)
     """
     return token.pos_ == 'PROPN'
 
