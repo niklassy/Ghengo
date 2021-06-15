@@ -1,3 +1,4 @@
+from django_meta.project import AbstractModelInterface
 from generate.suite import ModelFactoryExpression, AssignmentStatement
 from generate.utils import to_function_name
 from nlp.generate.variable import Variable
@@ -96,8 +97,16 @@ class ModelFactoryConverter(Converter):
         return statements
 
     def get_document_fitness(self):
-        """For now, this is only used as the single converter in GIVEN. So just return 1."""
-        return 1
+        fitness = 1
+
+        if isinstance(self.model_interface, AbstractModelInterface):
+            fitness *= 0.5
+
+        # models are normally displayed by nouns
+        if self.model_token.pos_ != 'NOUN':
+            fitness *= 0.2
+
+        return fitness
 
     def _get_statements_with_datatable(self):
         """
