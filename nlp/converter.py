@@ -202,47 +202,64 @@ class ModelFactoryConverter(Converter):
         """
         if self._extractors is None:
             fields = []
+            handled_non_stop = []
             non_stop_tokens = get_non_stop_tokens(self.document)
 
-            handled_non_stop = []
+            # the first noun_chunk holds the model, so skip it
             unhandled_noun_chunks = self.get_noun_chunks()[1:].copy()
             unhandled_propn_chunk = None
+
+            model_noun_chunk = get_noun_chunk_of_token(self.model_token, self.document)
+
+            # go through each non stop token
             for non_stop_token in non_stop_tokens:
-                if non_stop_token.i < self.get_noun_chunks()[0].end or non_stop_token.head == self.model_token:
+                # if that token is part of the model definition, skip it
+                if non_stop_token.i < model_noun_chunk.end or non_stop_token.head == self.model_token:
                     handled_non_stop.append(non_stop_token)
                     continue
 
-                # there are two ways to detect a field:
-                #   1) by noun chunks
-                #   2) by using the stop tokens
-                #       a token references another which can be extracted by the `head` attribute
-
+                # get the head of the non_stop_token
                 head = non_stop_token.head
+
+                # extract the current noun_chunk
                 try:
                     current_noun_chunk = unhandled_noun_chunks[0]
                 except IndexError:
                     continue
 
-                # clean the noun chunks
+                # ========== CLEAN NOUN_CHUNKS ==========
                 if non_stop_token in current_noun_chunk:
+                    # if the current token is the last one in the chunk, mark the chunk as handled
                     if non_stop_token == current_noun_chunk[-1]:
                         unhandled_noun_chunks.remove(current_noun_chunk)
 
+                    # if the root of the chunk is a proper noun (normally a noun), it needs to be handled later
                     if current_noun_chunk.root.pos_ == 'PROPN':
                         unhandled_propn_chunk = current_noun_chunk
                         continue
+                # if the last token of that chunk is not present in the non stop tokens, mark the chunk as handled
                 elif current_noun_chunk[-1] not in non_stop_tokens:
                     unhandled_noun_chunks.remove(current_noun_chunk)
 
+                # if the token was already handled, continue
                 if non_stop_token in handled_non_stop:
                     continue
 
+                # ========== GET VALUE AND SOURCE ===========
+                # if the head is in the non stop tokens and not already handled, it is considered the field
+                # and the token is the value
                 if head in non_stop_tokens and head not in handled_non_stop:
                     field_token = head
                     field_value_token = non_stop_token
+
+                # if there was an unhandled proper noun, the token is the field and the value is the root of the
+                # unhandled proper noun
                 elif unhandled_propn_chunk:
                     field_token = non_stop_token
                     field_value_token = unhandled_propn_chunk.root
+
+                # if the root of the current noun chunk is a noun, that noun is the field; the value is the proper
+                # noun of of that chunk
                 elif current_noun_chunk.root.pos_ == 'NOUN':
                     field_token = current_noun_chunk.root
                     field_value_token = None
@@ -254,6 +271,7 @@ class ModelFactoryConverter(Converter):
                 else:
                     continue
 
+                # ========== GET FIELD ==========
                 noun_chunk = get_noun_chunk_of_token(field_token, self.document)
                 field = self._search_for_field(span=noun_chunk, token=field_token)
 
@@ -266,12 +284,13 @@ class ModelFactoryConverter(Converter):
 
                 fields.append((field, field_token, field_value_token))
 
-            output = []
+            # ========== BUILD EXTRACTORS ==========
+            extractors = []
             for field, field_token, value_token in fields:
-                output.append(
+                extractors.append(
                     ModelFieldExtractor(self.test_case, value_token, field_token, self.model_interface, field))
 
-            self._extractors = output
+            self._extractors = extractors
         return self._extractors
 
     def convert_to_statements(self):

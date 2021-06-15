@@ -65,6 +65,9 @@ def get_verb_for_token(token):
 
 
 def get_noun_chunk_of_token(token, document):
+    """
+    Returns the noun chunk of a given token.
+    """
     for chunk in get_noun_chunks(document):
         if token in chunk:
             return chunk
