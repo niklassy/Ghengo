@@ -5,6 +5,7 @@ from nlp.generate.utils import camel_to_snake_case
 
 class Expression(TemplateMixin, OnAddToTestCaseListenerMixin):
     def as_statement(self):
+        """Expressions can be statements. This can be used to translate an expression into a Statement."""
         return Statement(self)
 
 
@@ -29,10 +30,7 @@ class ModelFactoryExpression(FunctionCallExpression):
 
     @property
     def factory_name(self):
-        return '{}_factory'.format(self.get_model_in_snake_case())
-
-    def get_model_in_snake_case(self):
-        return camel_to_snake_case(self.model_interface.name)
+        return '{}_factory'.format(camel_to_snake_case(self.model_interface.name))
 
 
 class ModelM2MAddExpression(Expression):
