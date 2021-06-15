@@ -17,17 +17,18 @@ class Converter(object):
         2) Extract the data to use that class/ element from the text
         3) Create the statements that will become templates sooner or later
     """
-    def __init__(self, document, related_object, django_project):
+    def __init__(self, document, related_object, django_project, test_case):
         self.document = document
         self.django_project = django_project
         self.related_object = related_object
         self.language = document.lang_
+        self.test_case = test_case
 
     def get_noun_chunks(self):
         """Returns all the noun chunks from the document."""
         return get_noun_chunks(self.document)
 
-    def convert_to_statements(self, test_case):
+    def convert_to_statements(self):
         """
         Converts the document to statements.
 
@@ -50,8 +51,8 @@ class ModelFactoryConverter(Converter):
     """
     This converter will convert a document into a model factory statement and everything that belongs to it.
     """
-    def __init__(self, document, related_object, django_project):
-        super().__init__(document, related_object, django_project)
+    def __init__(self, document, related_object, django_project, test_case):
+        super().__init__(document, related_object, django_project, test_case)
         self._model = None
         self._model_token = None
         self._variable_name = None
@@ -81,7 +82,7 @@ class ModelFactoryConverter(Converter):
         """For now, this is only used as the single converter in GIVEN. So just return 1."""
         return 1
 
-    def _get_statements_with_datatable(self, test_case):
+    def _get_statements_with_datatable(self):
         """
         If a there is a data table on the step, it is assumed that it contains data to create the model entry.
         In that case, use the extractors that already exist and append the ones that are defined in the table.
@@ -98,7 +99,7 @@ class ModelFactoryConverter(Converter):
                 field = field_searcher.search(model_interface=self.model_interface)
                 extractors_copy.append(
                     ModelFieldExtractor(
-                        test_case=test_case,
+                        test_case=self.test_case,
                         predetermined_value=cell.value,
                         model_interface=self.model_interface,
                         field=field,
@@ -176,16 +177,7 @@ class ModelFactoryConverter(Converter):
             field_searcher_root = ModelFieldSearcher(text=str(token.lemma_), src_language=self.language)
             return field_searcher_root.search(model_interface=self.model_interface)
 
-    def get_fields(self, test_case):
-        """
-        Main points to improve everything:
-            - more reliable way of handling variables in the test generation
-                - is a variable already defined?
-                - find a variable for a given context
-                - have only one point to create variable names
-            - improve the extraction of fields and data
-        """
-
+    def get_extractors(self):
         fields = []
         non_stop_tokens = get_non_stop_tokens(self.document)
 
@@ -253,14 +245,14 @@ class ModelFactoryConverter(Converter):
 
         output = []
         for field, field_token, value_token in fields:
-            output.append(ModelFieldExtractor(test_case, value_token, field_token, self.model_interface, field))
+            output.append(ModelFieldExtractor(self.test_case, value_token, field_token, self.model_interface, field))
 
         return output
 
-    def convert_to_statements(self, test_case):
-        self._extractors = self.get_fields(test_case)
+    def convert_to_statements(self):
+        self._extractors = self.get_extractors()
 
         if not self.related_object.has_datatable:
             return self.get_statements(self._extractors)
 
-        return self._get_statements_with_datatable(test_case)
+        return self._get_statements_with_datatable()

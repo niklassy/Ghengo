@@ -10,11 +10,12 @@ class Tiler(object):
     """
     converter_classes: [Converter] = []
 
-    def __init__(self, ast_object, language, django_project):
+    def __init__(self, ast_object, language, django_project, test_case):
         self.ast_object = ast_object
         self.language = language
         self._document = None
         self.django_project = django_project
+        self.test_case = test_case
         self._best_converter = None
 
     @property
@@ -33,7 +34,7 @@ class Tiler(object):
             highest_fitness = 0
 
             for converter_cls in self.converter_classes:
-                converter = converter_cls(self.document, self.ast_object, self.django_project)
+                converter = converter_cls(self.document, self.ast_object, self.django_project, self.test_case)
                 fitness = converter.get_document_fitness()
 
                 if fitness > highest_fitness:
@@ -42,14 +43,14 @@ class Tiler(object):
 
         return self._best_converter
 
-    def add_statements_to_test_case(self, test_case):
-        statements = self.get_statements(test_case)
+    def add_statements_to_test_case(self):
+        statements = self.get_statements()
 
         for statement in statements:
-            test_case.add_statement(statement)
+            self.test_case.add_statement(statement)
 
-    def get_statements(self, test_case):
-        return self.best_converter.convert_to_statements(test_case)
+    def get_statements(self):
+        return self.best_converter.convert_to_statements()
 
 
 class GivenTiler(Tiler):
