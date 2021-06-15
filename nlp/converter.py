@@ -70,7 +70,7 @@ class Converter(object):
 
     def get_document_compatibility(self):
         """
-        Returns the fitness of a document. This represents how well this converter fits the given document.
+        Returns the compatibility of a document. This represents how well this converter fits the given document.
 
         Returns:
             value from 0-1

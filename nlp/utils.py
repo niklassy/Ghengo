@@ -26,6 +26,7 @@ def is_proper_noun_of(token, target):
 
 
 def get_verb_for_token(token):
+    """Returns the that belongs to a given token."""
     if token_is_verb(token):
         return token
 
@@ -36,6 +37,7 @@ def get_verb_for_token(token):
 
 
 def get_proper_noun_of_chunk(token, chunk):
+    """Returns the proper noun of a given noun chunk."""
     for t in chunk:
         if is_proper_noun_of(t, token):
             return t
