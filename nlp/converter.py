@@ -7,7 +7,8 @@ from nlp.generate.utils import to_function_name
 from nlp.generate.variable import Variable
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher
 from nlp.extractor import ModelFieldExtractor
-from nlp.utils import get_noun_chunks, is_proper_noun_of, token_references, get_non_stop_tokens, get_noun_chunk_of_token
+from nlp.utils import get_noun_chunks, is_proper_noun_of, token_references, get_non_stop_tokens, \
+    get_noun_chunk_of_token, get_proper_noun_of_chunk, token_is_noun, token_is_verb, token_is_proper_noun
 
 
 class Converter(object):
@@ -143,6 +144,7 @@ class ModelFactoryConverter(Converter):
 
     @property
     def variable_name(self):
+        """Returns the name of the variable that the factory statement will have (if any)."""
         if self._variable_name is None:
             try:
                 next_token = self.document[self.model_token.i + 1]
@@ -196,16 +198,25 @@ class ModelFactoryConverter(Converter):
         Searches for a field with a given span and token inside the self.model_interface
         """
         # all the following nouns will reference fields of that model, so find a field
-        field_searcher_span = ModelFieldSearcher(text=str(span), src_language=self.language)
+        if span:
+            field_searcher_span = ModelFieldSearcher(text=str(span), src_language=self.language)
 
-        # try to find something for whole span first
-        try:
-            return field_searcher_span.search(raise_exception=True, model_interface=self.model_interface)
-        # if nothing is found, try the root instead
-        except NoConversionFound:
-            token = span.root if span.root.pos_ == 'NOUN' else token
-            field_searcher_root = ModelFieldSearcher(text=str(token.lemma_), src_language=self.language)
-            return field_searcher_root.search(model_interface=self.model_interface)
+            try:
+                return field_searcher_span.search(raise_exception=True, model_interface=self.model_interface)
+            except NoConversionFound:
+                pass
+
+            field_searcher_root = ModelFieldSearcher(text=str(span.root.lemma_), src_language=self.language)
+            try:
+                return field_searcher_root.search(raise_exception=bool(token), model_interface=self.model_interface)
+            except NoConversionFound:
+                pass
+
+        if token:
+            field_searcher_token = ModelFieldSearcher(text=str(token.lemma_), src_language=self.language)
+            return field_searcher_token.search(model_interface=self.model_interface)
+
+        return None
 
     @property
     def extractors(self):
@@ -238,7 +249,7 @@ class ModelFactoryConverter(Converter):
                 try:
                     current_noun_chunk = unhandled_noun_chunks[0]
                 except IndexError:
-                    continue
+                    current_noun_chunk = []
 
                 # ========== CLEAN NOUN_CHUNKS ==========
                 if non_stop_token in current_noun_chunk:
@@ -247,11 +258,11 @@ class ModelFactoryConverter(Converter):
                         unhandled_noun_chunks.remove(current_noun_chunk)
 
                     # if the root of the chunk is a proper noun (normally a noun), it needs to be handled later
-                    if current_noun_chunk.root.pos_ == 'PROPN':
+                    if token_is_proper_noun(current_noun_chunk.root):
                         unhandled_propn_chunk = current_noun_chunk
                         continue
                 # if the last token of that chunk is not present in the non stop tokens, mark the chunk as handled
-                elif current_noun_chunk[-1] not in non_stop_tokens:
+                elif bool(current_noun_chunk) and current_noun_chunk[-1] not in non_stop_tokens:
                     unhandled_noun_chunks.remove(current_noun_chunk)
 
                 # if the token was already handled, continue
@@ -261,7 +272,7 @@ class ModelFactoryConverter(Converter):
                 # ========== GET VALUE AND SOURCE ===========
                 # if the head is in the non stop tokens and not already handled, it is considered the field
                 # and the token is the value
-                if head in non_stop_tokens and head not in handled_non_stop:
+                if head in non_stop_tokens and (token_is_noun(head) or token_is_verb(head, include_aux=False)):
                     field_token = head
                     field_value_token = non_stop_token
 
@@ -273,20 +284,24 @@ class ModelFactoryConverter(Converter):
 
                 # if the root of the current noun chunk is a noun, that noun is the field; the value is the proper
                 # noun of of that chunk
-                elif current_noun_chunk.root.pos_ == 'NOUN':
+                elif bool(current_noun_chunk) and token_is_noun(current_noun_chunk.root):
                     field_token = current_noun_chunk.root
-                    field_value_token = None
+                    field_value_token = get_proper_noun_of_chunk(field_token, current_noun_chunk)
 
-                    for token in current_noun_chunk:
-                        if is_proper_noun_of(token, field_token):
-                            field_value_token = token
-                            break
+                # above we checked the head of the non stop token, check the token itself here too
+                elif token_is_noun(non_stop_token) or token_is_verb(non_stop_token, include_aux=False):
+                    field_token = non_stop_token
+                    field_value_token = get_proper_noun_of_chunk(field_token, current_noun_chunk)
+
                 else:
                     continue
 
                 # ========== GET FIELD ==========
                 noun_chunk = get_noun_chunk_of_token(field_token, self.document)
                 field = self._search_for_field(span=noun_chunk, token=field_token)
+
+                if field is None:
+                    continue
 
                 handled_non_stop.append(head)
                 handled_non_stop.append(non_stop_token)

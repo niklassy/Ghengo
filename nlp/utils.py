@@ -38,7 +38,7 @@ def is_proper_noun_of(token, target):
 
     => Given a user alice.
     """
-    return token_references(token, target) and token.pos_ == 'PROPN'
+    return token_references(token, target) and token_is_proper_noun(token)
 
 
 def token_in_span(token, span):
@@ -55,13 +55,20 @@ def get_referenced_entity(token):
 
 
 def get_verb_for_token(token):
-    if token.pos_ == 'VERB':
+    if token_is_verb(token):
         return token
 
     if token.head is None or token.head == token:
         return None
 
     return get_verb_for_token(token.head)
+
+
+def get_proper_noun_of_chunk(token, chunk):
+    for t in chunk:
+        if is_proper_noun_of(t, token):
+            return t
+    return None
 
 
 def get_noun_chunk_of_token(token, document):
@@ -72,3 +79,34 @@ def get_noun_chunk_of_token(token, document):
         if token in chunk:
             return chunk
     return None
+
+
+def token_is_noun(token):
+    """
+    Check if a token is a noun.
+    """
+    return token.pos_ == 'NOUN'
+
+
+def token_is_proper_noun(token):
+    """
+    Check if a token is a proper noun.
+
+    Proper nouns are descriptions of nouns (like Alice, Bob...)
+    """
+    return token.pos_ == 'PROPN'
+
+
+def token_is_verb(token, include_aux=True):
+    """
+    Returns if a token is a verb.
+
+    AUX means auxiliary verbs. Those are words like:
+        - de: (sein, haben, tun...)
+        - en: (will, do...)
+    """
+    if not include_aux:
+        return token.pos_ == 'VERB'
+
+    return token.pos_ == 'VERB' or token.pos_ == 'AUX'
+

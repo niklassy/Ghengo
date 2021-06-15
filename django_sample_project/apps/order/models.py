@@ -9,6 +9,7 @@ class ToDo(models.Model):
     system = models.IntegerField()
     entries = models.IntegerField()
     from_other_system = models.BooleanField()
+    done = models.BooleanField(verbose_name='abgeschlossen')
 
 
 class Order(models.Model):
