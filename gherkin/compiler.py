@@ -103,17 +103,6 @@ class GherkinParser(Parser):
 class GherkinToPyTestCodeGenerator(CodeGenerator):
     file_extension = 'py'
 
-    def step_to_statements(self, step, test_case, converter):
-        statements = []
-        statements += converter.get_statements(test_case)
-
-        for sub_step in step.sub_steps:
-            converter.ast_object = sub_step
-            converter._document = None
-            statements += converter.get_statements(test_case)
-
-        return statements
-
     def scenario_to_test_case(self, scenario, suite, project):
         test_case = suite.create_and_add_test_case(scenario.name)
 

@@ -1,8 +1,7 @@
 from django_meta.project import AbstractModelInterface
 from nlp.generate.expression import ModelFactoryExpression
 from nlp.generate.importer import Importer
-from nlp.generate.pytest.expression import PyTestModelFactoryExpression
-from nlp.generate.statement import AssignmentStatement
+from nlp.generate.statement import AssignmentStatement, Statement
 from nlp.generate.utils import to_function_name
 from nlp.generate.variable import Variable
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher
@@ -22,7 +21,8 @@ class Converter(object):
         2) Extract the data to use that class/ element from the text
         3) Create the statements that will become templates sooner or later
     """
-    statement_class = None
+    statement_class = Statement
+    expression_class = None
 
     def __init__(self, document, related_object, django_project, test_case):
         self.document = document
@@ -31,18 +31,33 @@ class Converter(object):
         self.language = document.lang_
         self.test_case = test_case
 
+    @property
+    def extractors(self):
+        raise NotImplementedError()
+
     def get_noun_chunks(self):
         """Returns all the noun chunks from the document."""
         return get_noun_chunks(self.document)
 
-    def build_statement(self, *args, **kwargs):
-        return self.statement_class(**self.get_statement_kwargs(*args, **kwargs))
+    def build_statement(self):
+        """Creates an instance of the statement that was defined by this converter."""
+        return self.statement_class(**self.get_statement_kwargs())
 
-    def get_statement_kwargs(self, *args, **kwargs):
+    def get_statement_kwargs(self):
+        """Returns the kwargs that are used to create a statement."""
         return {}
 
-    def get_statements(self, extractors):
-        raise NotImplementedError()
+    def get_expression_kwargs(self):
+        """Returns all kwargs that are used to create the expression."""
+        return {}
+
+    def build_expression(self):
+        """Returns an instance if the expression that this converter uses."""
+        return self.get_expression_class()(**self.get_expression_kwargs())
+
+    def get_expression_class(self):
+        """Returns the class of the expression that this converter uses."""
+        return Importer.get_class(self.expression_class, self.test_case)
 
     def convert_to_statements(self):
         """
@@ -51,7 +66,7 @@ class Converter(object):
         Returns:
             a list of Statements
         """
-        raise NotImplementedError()
+        return self.get_statements_from_extractors(self.extractors)
 
     def get_document_compatibility(self):
         """
@@ -62,12 +77,28 @@ class Converter(object):
         """
         return 1
 
+    def handle_extractor(self, extractor, statements):
+        """Does everything that is needed when an extractor is called."""
+        # some extractors add more statements, so add them here if needed
+        extractor.append_side_effect_statements(statements)
+
+    def get_statements_from_extractors(self, extractors):
+        """Function to return statements based on extractors."""
+        statements = [self.build_statement()]
+
+        # go through each extractor and append its kwargs to the factory kwargs
+        for extractor in extractors:
+            self.handle_extractor(extractor, statements)
+
+        return statements
+
 
 class ModelFactoryConverter(Converter):
     """
     This converter will convert a document into a model factory statement and everything that belongs to it.
     """
     statement_class = AssignmentStatement
+    expression_class = ModelFactoryExpression
 
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
@@ -76,42 +107,37 @@ class ModelFactoryConverter(Converter):
         self._variable_name = None
         self._extractors = None
 
-    def get_statement_kwargs(self, *args, **kwargs):
-        factory_statement_class = Importer.get_class(ModelFactoryExpression, self.test_case)
-        factory_statement = factory_statement_class(*args, **kwargs)
-        variable = Variable(
-            name_predetermined=self.variable_name,
-            reference_string=self._model.model.__name__,
-        )
-        return {'expression': factory_statement, 'variable': variable}
-
-    def get_statements(self, extractors):
-        factory_kwargs = []
-        # create the initial statement
-        statements = [self.build_statement(self.model_interface, factory_kwargs=factory_kwargs)]
-
-        # go through each extractor and append its kwargs to the factory kwargs
-        for extractor in extractors:
-            kwargs = extractor.get_kwarg()
-            if kwargs:
-                factory_kwargs.append(kwargs)
-
-            # some extractors add more statements, so add them here if needed
-            extractor.append_side_effect_statements(statements)
-
-        return statements
-
     def get_document_compatibility(self):
         compatibility = 1
 
         if isinstance(self.model_interface, AbstractModelInterface):
-            compatibility *= 0.5
+            compatibility *= 0.7
 
         # models are normally displayed by nouns
-        if self.model_token.pos_ != 'NOUN':
-            compatibility *= 0.2
+        if not token_is_noun(self.model_token):
+            compatibility *= 0.01
 
         return compatibility
+
+    def get_statement_kwargs(self):
+        expression = self.build_expression()
+        variable = Variable(
+            name_predetermined=self.variable_name,
+            reference_string=self._model.model.__name__,
+        )
+        return {'expression': expression, 'variable': variable}
+
+    def get_expression_kwargs(self):
+        return {'model_interface': self.model_interface, 'factory_kwargs': []}
+
+    def handle_extractor(self, extractor, statements):
+        """Get the kwargs for the expression from the extractor."""
+        super().handle_extractor(extractor, statements)
+        factory_kwargs = statements[0].expression.function_kwargs
+
+        kwarg = extractor.get_kwarg()
+        if kwarg:
+            factory_kwargs.append(kwarg)
 
     def _get_statements_with_datatable(self):
         """
@@ -138,7 +164,7 @@ class ModelFactoryConverter(Converter):
                     )
                 )
 
-            statements += self.get_statements(extractors_copy)
+            statements += self.get_statements_from_extractors(extractors_copy)
 
         return statements
 
@@ -323,6 +349,6 @@ class ModelFactoryConverter(Converter):
 
     def convert_to_statements(self):
         if not self.related_object.has_datatable:
-            return self.get_statements(self.extractors)
+            return self.get_statements_from_extractors(self.extractors)
 
         return self._get_statements_with_datatable()
