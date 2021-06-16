@@ -14,6 +14,9 @@ class Argument(TemplateMixin):
     def __init__(self, value):
         self.value = value
 
+    def __bool__(self):
+        return bool(self.value)
+
     @classmethod
     def get_string_for_template(cls, string):
         return '\'{}\''.format(string) if isinstance(string, str) else str(string)

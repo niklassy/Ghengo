@@ -17,10 +17,16 @@ class PyTestMarkDecorator(Decorator):
 class PyTestParametrizeDecorator(PyTestMarkDecorator):
     def __init__(self, argument_names, argument_values):
         self.argument_names_raw = argument_names
+        arguments = []
         self.argument_names = Argument(', '.join(argument_names))
-        self.argument_values = Argument(argument_values)
+        if self.argument_names:
+            arguments.append(self.argument_names)
 
-        super().__init__('parametrize', [self.argument_names, self.argument_values])
+        self.argument_values = Argument(argument_values)
+        if self.argument_values:
+            arguments.append(self.argument_values)
+
+        super().__init__('parametrize', arguments)
 
     def get_template_context(self, indent):
         context = super().get_template_context(indent)
