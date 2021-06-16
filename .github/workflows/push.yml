@@ -17,4 +17,6 @@ jobs:
       - name: Run tests
         run: |
           pipenv install --dev
+          pipenv run python -m spacy download de_core_news_lg
+          pipenv run python -m spacy download en_core_web_lg
           pipenv run pytest
