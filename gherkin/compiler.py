@@ -107,7 +107,10 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         test_case = suite.create_and_add_test_case(scenario.name)
 
         for tag in scenario.tags:
-            test_case.add_decorator(PyTestMarkDecorator(tag.name))
+            try:
+                test_case.add_decorator(PyTestMarkDecorator(tag.name))
+            except test_case.DecoratorAlreadyPresent:
+                pass
 
         # for a scenario outline, pytest offers the parametrize mark that we can add here to simplify everything
         if isinstance(scenario, ScenarioOutline):
@@ -116,7 +119,10 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
                     example.datatable.header.get_values(),
                     example.datatable.get_values_as_list(),
                 )
-                test_case.add_decorator(decorator)
+                try:
+                    test_case.add_decorator(decorator)
+                except test_case.DecoratorAlreadyPresent:
+                    pass
 
         # first phase: GIVEN clauses
         in_given_steps = True

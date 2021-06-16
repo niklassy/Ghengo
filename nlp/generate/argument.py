@@ -1,4 +1,5 @@
 from nlp.generate.mixin import TemplateMixin
+from nlp.generate.settings import INDENT_SPACES
 
 
 class Argument(TemplateMixin):

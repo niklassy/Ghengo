@@ -38,7 +38,10 @@ class PyTestParametrizeDecorator(PyTestMarkDecorator):
         super().on_add_to_test_case(test_case)
 
         for argument_name in self.argument_names_raw:
-            test_case.add_parameter(Parameter(argument_name))
+            try:
+                test_case.add_parameter(Parameter(argument_name))
+            except test_case.ParameterAlreadyPresent:
+                pass
 
 
 class DjangoDBDecorator(PyTestMarkDecorator):

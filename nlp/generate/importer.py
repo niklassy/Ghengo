@@ -8,17 +8,17 @@ class _Importer(object):
     def __init__(self):
         self.replacements = {}
 
-    def get_class(self, generate_class, test_case):
+    def get_class(self, generate_class, env_name):
         try:
-            return self.replacements[test_case.type][generate_class]
+            return self.replacements[env_name][generate_class]
         except KeyError:
             return generate_class
 
-    def register(self, generate_class, replaces, test_case):
-        if self.replacements.get(test_case) is None:
-            self.replacements[test_case] = {}
+    def register(self, generate_class, replaces, env_name):
+        if self.replacements.get(env_name) is None:
+            self.replacements[env_name] = {}
 
-        self.replacements[test_case][replaces] = generate_class
+        self.replacements[env_name][replaces] = generate_class
 
 
 Importer = _Importer()

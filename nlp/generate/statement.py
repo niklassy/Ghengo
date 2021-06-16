@@ -1,7 +1,7 @@
-from nlp.generate.mixin import TemplateMixin
+from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
 
 
-class Statement(TemplateMixin):
+class Statement(TemplateMixin, OnAddToTestCaseListenerMixin):
     template = '{expression}'
 
     def __init__(self, expression):
@@ -11,7 +11,7 @@ class Statement(TemplateMixin):
     def get_template_context(self, indent):
         return {'expression': self.expression}
 
-    def add_to_test_case(self, test_case):
+    def on_add_to_test_case(self, test_case):
         self.test_case = test_case
 
         if self.expression is not None:

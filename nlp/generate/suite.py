@@ -9,12 +9,18 @@ from nlp.generate.utils import to_function_name
 class Import(TemplateMixin):
     def __init__(self, path: str, variables=None):
         self.path = path
-        self.variables = variables or []
+        if variables is None:
+            variables = []
+
+        if not isinstance(variables, list):
+            variables = [variables]
+
+        self.variables = variables
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
-        return self.path == other.path and self.variables == other.variables
+        return self.path == other.path
 
     def get_template(self):
         if not self.variables:
@@ -32,6 +38,12 @@ class Import(TemplateMixin):
 class TestCaseBase(TemplateMixin):
     type = None
 
+    class ParameterAlreadyPresent(Exception):
+        pass
+
+    class DecoratorAlreadyPresent(Exception):
+        pass
+
     def __init__(self, name, test_suite):
         self._name = name
         self.parameters = []
@@ -47,7 +59,11 @@ class TestCaseBase(TemplateMixin):
         if self._name is not None:
             return self._name
 
-        index_in_test_suite = self.test_suite.test_cases.index(self)
+        try:
+            index_in_test_suite = self.test_suite.test_cases.index(self)
+        except ValueError:
+            index_in_test_suite = 0
+
         return str(index_in_test_suite)
 
     @property
@@ -65,11 +81,12 @@ class TestCaseBase(TemplateMixin):
             'decorators': '\n'.join(decorator.to_template(indent) for decorator in self.decorators),
             'decorator_separator': '\n' if len(self.decorators) > 0 else '',
             'name': to_function_name(self.name),
-            'arguments': ', '.join(argument.to_template(indent) for argument in self.parameters),
+            'parameters': ', '.join(para.to_template() for para in self.parameters),
             'statements': '\n'.join(statement.to_template(indent + INDENT_SPACES) for statement in self.statements),
         }
 
     def get_variable_by_string(self, string):
+        """Returns a variable with a given string."""
         for statement in self.statements:
             variable = getattr(statement, 'variable', None)
 
@@ -79,9 +96,10 @@ class TestCaseBase(TemplateMixin):
         return None
 
     def variable_defined(self, name):
+        """Check if the given variable is defined."""
         variable_statement = self.get_variable_by_string(name)
         if variable_statement is not None:
-            return variable_statement
+            return True
 
         for parameter in self.parameters:
             if name == parameter.name:
@@ -98,13 +116,15 @@ class TestCaseBase(TemplateMixin):
         if decorator not in self.decorators:
             self.decorators.append(decorator)
             decorator.on_add_to_test_case(self)
+        else:
+            raise self.DecoratorAlreadyPresent()
 
     def add_statement(self, statement):
         if not isinstance(statement, Statement):
             raise ValueError('You can only add Statement instances.')
 
         self._statements.append(statement)
-        statement.add_to_test_case(self)
+        statement.on_add_to_test_case(self)
 
     def add_parameter(self, parameter):
         if not isinstance(parameter, Parameter):
@@ -112,6 +132,8 @@ class TestCaseBase(TemplateMixin):
 
         if parameter not in self.parameters:
             self.parameters.append(parameter)
+        else:
+            raise self.ParameterAlreadyPresent()
 
 
 class TestSuiteBase(TemplateMixin):
@@ -131,6 +153,7 @@ class TestSuiteBase(TemplateMixin):
         }
 
     def create_and_add_test_case(self, name):
+        """Creates a test case and adds it to the suite."""
         test_case = self.test_case_class(name, self)
         self.test_cases.append(test_case)
         return test_case
@@ -139,3 +162,10 @@ class TestSuiteBase(TemplateMixin):
         """Add an import to the test suite/ the test file."""
         if import_instance not in self.imports:
             self.imports.append(import_instance)
+        else:
+            for existing_import in self.imports:
+                if existing_import == import_instance:
+                    # search for the existing import and add the variables to that import if not already present
+                    for variable in import_instance.variables:
+                        if variable not in existing_import.variables:
+                            existing_import.variables.append(variable)

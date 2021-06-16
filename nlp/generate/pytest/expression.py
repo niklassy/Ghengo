@@ -8,10 +8,16 @@ from nlp.generate.pytest.suite import PY_TEST
 class PyTestModelFactoryExpression(ModelFactoryExpression):
     def on_add_to_test_case(self, test_case):
         parameter = Parameter(self.factory_name)
-        test_case.add_parameter(parameter)
+        try:
+            test_case.add_parameter(parameter)
+        except test_case.ParameterAlreadyPresent:
+            pass
 
         # when a factory is used, there needs to be a mark for DjangoDB
-        test_case.add_decorator(DjangoDBDecorator())
+        try:
+            test_case.add_decorator(DjangoDBDecorator())
+        except test_case.DecoratorAlreadyPresent:
+            pass
 
 
 Importer.register(PyTestModelFactoryExpression, ModelFactoryExpression, PY_TEST)

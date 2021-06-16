@@ -19,7 +19,7 @@ class FunctionCallExpression(Expression):
     def get_template_context(self, indent):
         return {
             'fn_name': self.function_name,
-            'kwargs': ', '.join([kwarg.to_template(indent) for kwarg in self.function_kwargs]),
+            'kwargs': ', '.join([kwarg.to_template() for kwarg in self.function_kwargs]),
         }
 
 
@@ -36,14 +36,14 @@ class ModelFactoryExpression(FunctionCallExpression):
 class ModelM2MAddExpression(Expression):
     template = '{model_instance}.{field}.add({variable})'
 
-    def __init__(self, model, field, variable):
-        self.model = model
+    def __init__(self, model_instance_variable, field, add_variable):
+        self.model_instance_variable = model_instance_variable
         self.field = field
-        self.variable = variable
+        self.add_variable = add_variable
 
     def get_template_context(self, indent):
         return {
-            'model_instance': self.model,
+            'model_instance': self.model_instance_variable,
             'field': self.field,
-            'variable': self.variable,
+            'variable': self.add_variable,
         }

@@ -194,11 +194,11 @@ class ModelFieldExtractor(Extractor):
                             variable = statement.variable.copy()
                             break
 
-                    statement = ModelM2MAddExpression(
-                        model=factory_statement.variable,
+                    m2m_expression = ModelM2MAddExpression(
+                        model_instance_variable=factory_statement.variable,
                         field=self.field_name,
-                        variable=variable,
-                    ).as_statement()
-                    statements.append(statement)
+                        add_variable=variable
+                    )
+                    statements.append(m2m_expression.as_statement())
 
         return statements

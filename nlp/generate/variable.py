@@ -48,7 +48,7 @@ class Variable(object):
         Check if a string would result in this variable under the same circumstances / with the same reference string.
         """
         var_copy = self.copy()
-        var_copy.reference_string = string
+        var_copy.name_predetermined = string
 
         return var_copy.name == self.name
 
@@ -70,13 +70,12 @@ class Variable(object):
         Returns the name of the variable.
         """
         predetermined_name = self.name_predetermined
-        clean_name = remove_non_alnum(predetermined_name) if predetermined_name else ''
+        clean_name = to_function_name(predetermined_name)
 
-        if not clean_name:
-            return ''
+        if clean_name:
+            return clean_name
 
-        if clean_name[0].isalpha():
-            return to_function_name(predetermined_name)
+        if predetermined_name and len(predetermined_name) > 0 and predetermined_name[0].isdigit():
+            return '{}_{}'.format(self.clean_reference_string.lower(), predetermined_name[0])
 
-        # must be number
-        return '{}_{}'.format(self.clean_reference_string.lower(), clean_name[0])
+        return ''

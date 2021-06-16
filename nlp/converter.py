@@ -57,7 +57,7 @@ class Converter(object):
 
     def get_expression_class(self):
         """Returns the class of the expression that this converter uses."""
-        return Importer.get_class(self.expression_class, self.test_case)
+        return Importer.get_class(self.expression_class, self.test_case.type)
 
     def convert_to_statements(self):
         """
