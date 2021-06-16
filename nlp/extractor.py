@@ -9,7 +9,7 @@ from nlp.generate.expression import ModelM2MAddExpression, ModelFactoryExpressio
 from nlp.generate.utils import to_function_name
 from nlp.generate.variable import Variable
 from nlp.vocab import NEGATIONS, POSITIVE_BOOLEAN_INDICATORS
-from nlp.utils import get_verb_for_token, token_is_proper_noun
+from nlp.utils import get_verb_for_token, token_is_proper_noun, get_all_children
 
 
 class Extractor(object):
@@ -48,7 +48,7 @@ class ModelFieldExtractor(Extractor):
             return str(self.get_default_value())
 
         root = self.source
-        for child in self.get_all_children(root):
+        for child in get_all_children(root):
             if child.is_digit:
                 return str(child)
 
@@ -77,6 +77,7 @@ class ModelFieldExtractor(Extractor):
         if isinstance(self.field, DecimalField):
             return self.get_value_for_decimal_field()
 
+        # TODO: handle the reverse relation!!!
         if isinstance(self.field, ForeignKey):
             return self.get_value_for_fk_field()
 
@@ -109,7 +110,7 @@ class ModelFieldExtractor(Extractor):
         """
         The default value is a simple string that removes ' and " from the edges.
         """
-        value = str(self.predetermined_value)
+        value = str(self.predetermined_value) if self.predetermined_value else ''
 
         if len(value) > 0:
             if (value[0] == '"' and value[-1] == '"') or (value[0] == "'" and value[-1] == "'"):
@@ -144,15 +145,6 @@ class ModelFieldExtractor(Extractor):
         """Case to decimal."""
         return Decimal(self.extract_number_for_field())
 
-    def get_all_children(self, token, prefilled_list=None):
-        output = prefilled_list if prefilled_list is not None else []
-
-        for child in token.children:
-            output.append(child)
-            self.get_all_children(child, output)
-
-        return output
-
     def get_kwarg(self):
         """Wraps the value of this extractor in a Kwarg object."""
         if isinstance(self.field, (ManyToManyField, ManyToManyRel)):
@@ -175,7 +167,7 @@ class ModelFieldExtractor(Extractor):
                 factory_statement.generate_variable(self.test_case)
 
             value = self.predetermined_value
-            for child in [value] + self.get_all_children(value):
+            for child in [value] + get_all_children(value):
                 if child.is_digit or token_is_proper_noun(child):
                     related_model = self.field.related_model
                     variable = Variable(

@@ -152,7 +152,7 @@ class TestSuiteBase(TemplateMixin):
             'test_cases': '\n\n\n'.join(test_case.to_template(indent) for test_case in self.test_cases)
         }
 
-    def create_and_add_test_case(self, name):
+    def create_and_add_test_case(self, name) -> TestCaseBase:
         """Creates a test case and adds it to the suite."""
         test_case = self.test_case_class(name, self)
         self.test_cases.append(test_case)

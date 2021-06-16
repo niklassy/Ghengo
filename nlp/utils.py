@@ -83,3 +83,13 @@ def token_is_verb(token, include_aux=True):
 
     return token.pos_ == 'VERB' or token.pos_ == 'AUX'
 
+
+def get_all_children(token, prefilled_list=None):
+    """Returns all children and sub-children of a token."""
+    output = prefilled_list if prefilled_list is not None else []
+
+    for child in token.children:
+        output.append(child)
+        get_all_children(child, output)
+
+    return output

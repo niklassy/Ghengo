@@ -1,5 +1,6 @@
 from nlp.utils import token_is_verb, token_is_proper_noun, token_is_noun, get_non_stop_tokens, get_noun_chunks, \
-    token_references, is_proper_noun_of, get_verb_for_token, get_proper_noun_of_chunk, get_noun_chunk_of_token
+    token_references, is_proper_noun_of, get_verb_for_token, get_proper_noun_of_chunk, get_noun_chunk_of_token, \
+    get_all_children
 
 
 class MockToken:
@@ -110,3 +111,11 @@ def test_get_noun_chunk_of_token():
     ]
     doc = MockDocument([], noun_chunks=noun_chunks)
     assert get_noun_chunk_of_token(token, doc) == noun_chunks[0]
+
+
+def test_get_all_children():
+    """Check if get_all_children returns all children and all sub-children."""
+    t_3 = MockToken(children=[])
+    t_2 = MockToken(children=[t_3])
+    t_1 = MockToken(children=[t_2, MockToken(children=[])])
+    assert len(get_all_children(t_1)) == 3
