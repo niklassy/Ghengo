@@ -44,7 +44,10 @@ class Searcher(object):
             self._doc_en = self.nlp_en(self.translator.translate(self.text))
         return self._doc_en
 
-    def get_possible_conversions(self, *args, **kwargs):
+    def get_possible_results(self, *args, **kwargs):
+        """
+        Returns all possible values that the text can transform to.
+        """
         return []
 
     def get_comparisons(self, conversion_object):
@@ -54,7 +57,7 @@ class Searcher(object):
         The values will be compared in all languages.
 
         Arguments:
-            conversion_object: one object that was returned from `get_possible_conversions`
+            conversion_object: one object that was returned from `get_possible_results`
         """
         keywords = self.get_keywords(conversion_object)
         comparisons = []
@@ -91,7 +94,7 @@ class Searcher(object):
         highest_similarity = 0
         fittest_conversion = None
 
-        for conversion in self.get_possible_conversions(*args, **kwargs):
+        for conversion in self.get_possible_results(*args, **kwargs):
             comparisons = self.get_comparisons(conversion)
 
             for input_doc, target_doc in comparisons:
@@ -117,7 +120,7 @@ class ModelFieldSearcher(Searcher):
     def get_keywords(self, field):
         return [field.name, getattr(field, 'verbose_name', None)]
 
-    def get_possible_conversions(self, model_interface):
+    def get_possible_results(self, model_interface):
         return model_interface.fields
 
 
@@ -128,5 +131,5 @@ class ModelSearcher(Searcher):
     def get_keywords(self, model):
         return [model.name, model.verbose_name]
 
-    def get_possible_conversions(self, project_interface):
+    def get_possible_results(self, project_interface):
         return project_interface.get_models(as_interface=True, include_django=True)
