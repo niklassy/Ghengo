@@ -1,5 +1,4 @@
 from django_meta.project import AbstractModelInterface, AbstractModelField
-from nlp.settings import SIMILARITY_BENCHMARK
 from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity
 from nlp.translator import CacheTranslator
@@ -10,6 +9,8 @@ class NoConversionFound(Exception):
 
 
 class Searcher(object):
+    SIMILARITY_BENCHMARK = 0.59
+
     def __init__(self, text, src_language):
         self.text = text
         self.src_language = src_language
@@ -100,7 +101,7 @@ class Searcher(object):
                     fittest_conversion = conversion
                     highest_similarity = similarity
 
-        if highest_similarity <= SIMILARITY_BENCHMARK or fittest_conversion is None:
+        if highest_similarity <= self.SIMILARITY_BENCHMARK or fittest_conversion is None:
             if raise_exception:
                 raise NoConversionFound()
 

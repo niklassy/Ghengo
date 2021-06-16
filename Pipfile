@@ -13,6 +13,7 @@ wheel = "*"
 spacy = "*"
 deep-translator = "*"
 unidecode = "*"
+pytest-mock = "*"
 
 [dev-packages]
 

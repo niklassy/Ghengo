@@ -14,6 +14,11 @@ class CacheTranslator(object):
         else:
             self.translator = None
 
+        self.reset_cache()
+
+    def reset_cache(self):
+        self.cache = {}
+
     @property
     def should_translate(self):
         return self.src_language != self.target_language
