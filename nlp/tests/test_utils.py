@@ -45,8 +45,8 @@ def test_token_is_proper_noun():
 def test_token_is_noun():
     """Checks if token_is_noun uses pos_ correctly."""
     assert token_is_noun(MockToken(pos_='NOUN')) is True
-    assert token_is_noun(MockToken(pos_='asasdasd')) is True
-    assert token_is_noun(MockToken(pos_='VERB')) is True
+    assert token_is_noun(MockToken(pos_='asasdasd')) is False
+    assert token_is_noun(MockToken(pos_='VERB')) is False
 
 
 def test_get_non_stop_tokens():
