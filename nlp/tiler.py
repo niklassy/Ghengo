@@ -30,6 +30,7 @@ class Tiler(object):
 
     @property
     def best_converter(self) -> Converter:
+        """Returns the converter that fits the document the best."""
         if self._best_converter is None:
             highest_compatibility = 0
 
