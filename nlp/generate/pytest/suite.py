@@ -4,7 +4,7 @@ PY_TEST = 'pytest'
 
 
 class PyTestTestCase(TestCaseBase):
-    template = '{decorators}{decorator_separator}def test_{name}({parameters}):\n{statements}'
+    template = '{decorators}{decorator_separator}def {name}({parameters}):\n{statements}'
     type = PY_TEST
 
 

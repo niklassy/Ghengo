@@ -51,9 +51,9 @@ def test_test_case_get_variable_by_string():
     test_case = TestingTestSuiteBase('bar').create_and_add_test_case('foo')
     var = Variable('other_name', 'my_reference')
     statement = AssignmentStatement(FunctionCallExpression('foo', [Kwarg('bar', 123)]), var)
-    assert test_case.get_variable_by_string('other_name') is None
+    assert test_case.get_variable_by_string('other_name', 'my_reference') is None
     test_case.add_statement(statement)
-    assert test_case.get_variable_by_string('other_name') == var
+    assert test_case.get_variable_by_string('other_name', 'my_reference') == var
 
 
 def test_test_case_variable_defined():
@@ -61,13 +61,13 @@ def test_test_case_variable_defined():
     test_case = TestingTestSuiteBase('bar').create_and_add_test_case('foo')
     param = Parameter('param')
     test_case.add_parameter(param)
-    assert test_case.variable_defined('param') is True
-    assert test_case.variable_defined('param_123') is False
-    assert test_case.variable_defined('other_name') is False
+    assert test_case.variable_defined('param', None) is True
+    assert test_case.variable_defined('param_123', None) is False
+    assert test_case.variable_defined('other_name', None) is False
     var = Variable('other_name', 'my_reference')
     statement = AssignmentStatement(FunctionCallExpression('foo', [Kwarg('bar', 123)]), var)
     test_case.add_statement(statement)
-    assert test_case.variable_defined('other_name') is True
+    assert test_case.variable_defined('other_name', 'my_reference') is True
 
 
 def test_test_case_add_param():
@@ -101,7 +101,7 @@ def test_test_case_template_context_empty():
     context = test_case.get_template_context(0)
     assert context['decorator_separator'] == ''
     assert context['decorators'] == ''
-    assert context['name'] == 'foo'
+    assert context['name'] == 'test_foo'
     assert context['parameters'] == ''
     assert context['statements'] == '    pass'
 
@@ -121,7 +121,7 @@ def test_test_case_template_context_with_data():
     context = test_case.get_template_context(0)
     assert context['decorator_separator'] == '\n'
     assert context['decorators'] == '@foo\n@foo2'
-    assert context['name'] == 'foo'
+    assert context['name'] == 'test_foo'
     assert context['parameters'] == 'param, param_2'
     assert context['statements'] == '    assert foo(bar=123)'
 

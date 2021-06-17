@@ -80,24 +80,24 @@ class TestCaseBase(TemplateMixin):
         return {
             'decorators': '\n'.join(decorator.to_template(indent) for decorator in self.decorators),
             'decorator_separator': '\n' if len(self.decorators) > 0 else '',
-            'name': to_function_name(self.name),
+            'name': to_function_name('test_{}'.format(self.name)),
             'parameters': ', '.join(para.to_template() for para in self.parameters),
             'statements': '\n'.join(statement.to_template(indent + INDENT_SPACES) for statement in self.statements),
         }
 
-    def get_variable_by_string(self, string):
+    def get_variable_by_string(self, string, reference_string):
         """Returns a variable with a given string."""
         for statement in self.statements:
             variable = getattr(statement, 'variable', None)
 
-            if statement.string_matches_variable(string):
+            if statement.string_matches_variable(string, reference_string):
                 return variable
 
         return None
 
-    def variable_defined(self, name):
+    def variable_defined(self, name, reference_string):
         """Check if the given variable is defined."""
-        variable_statement = self.get_variable_by_string(name)
+        variable_statement = self.get_variable_by_string(name, reference_string)
         if variable_statement is not None:
             return True
 

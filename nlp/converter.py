@@ -8,7 +8,12 @@ from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher
 from nlp.extractor import ModelFieldExtractor
 from nlp.utils import get_noun_chunks, is_proper_noun_of, token_references, get_non_stop_tokens, \
     get_noun_chunk_of_token, get_proper_noun_of_chunk, token_is_noun, token_is_verb, token_is_proper_noun, \
-    get_root_of_token
+    get_root_of_token, get_noun_from_chunk, get_proper_noun_from_chunk
+
+
+class NoToken:
+    def __eq__(self, other):
+        return False
 
 
 class Converter(object):
@@ -106,6 +111,7 @@ class ModelFactoryConverter(Converter):
         self._model = None
         self._model_token = None
         self._variable_name = None
+        self._variable_token = None
         self._extractors = None
 
     def get_document_compatibility(self):
@@ -130,7 +136,7 @@ class ModelFactoryConverter(Converter):
         expression = self.build_expression()
         variable = Variable(
             name_predetermined=self.variable_name,
-            reference_string=self._model.model.__name__,
+            reference_string=self.variable_reference_string,
         )
         return {'expression': expression, 'variable': variable}
 
@@ -176,33 +182,43 @@ class ModelFactoryConverter(Converter):
         return statements
 
     @property
+    def variable_reference_string(self):
+        return self.model_interface.name
+
+    @property
+    def variable_token(self):
+        if self._variable_token is None:
+            for child in self.model_token.children:
+                future_name = self._get_variable_name(child)
+                variable_in_tc = self.test_case.variable_defined(future_name, self.variable_reference_string)
+
+                # sometimes nlp gets confused about variables and what belongs to this model factory and
+                # what is a reference to an older variable - so if there is a variable with the exact same name
+                # we assume that that token is not valid
+                if (child.is_digit or is_proper_noun_of(child, self.model_token)) and not variable_in_tc:
+                    self._variable_token = child
+                    break
+
+            if self._variable_token is None:
+                self._variable_token = NoToken()
+
+        return self._variable_token
+
+    @classmethod
+    def _get_variable_name(cls, token):
+        """Helper function that translates a token into a variable name."""
+        if isinstance(token, NoToken):
+            return ''
+        elif token.is_digit:
+            return str(token)
+        else:
+            return to_function_name(str(token))
+
+    @property
     def variable_name(self):
         """Returns the name of the variable that the factory statement will have (if any)."""
         if self._variable_name is None:
-            try:
-                next_token = self.document[self.model_token.i + 1]
-
-                # check for any Proper Nouns (nouns that describe/ give a name to a noun)
-                if is_proper_noun_of(next_token, self.model_token):
-                    self._variable_name = to_function_name(str(next_token))
-                    return self._variable_name
-            except IndexError:
-                pass
-
-            # search for real names like 'Alice'
-            for named_entity in self.document.ents:
-                for token in named_entity:
-                    if token_references(token, self.model_token):
-                        self._variable_name = to_function_name(str(token))
-                    return self._variable_name
-
-            # sometimes the variable can be defined as '1', e.g. order 1
-            for child in self.model_token.children:
-                if child.is_digit:
-                    self._variable_name = str(child)
-                    return self._variable_name
-
-            self._variable_name = ''
+            self._variable_name = self._get_variable_name(self.variable_token)
         return self._variable_name
 
     @property
@@ -271,7 +287,7 @@ class ModelFactoryConverter(Converter):
             # go through each non stop token
             for non_stop_token in non_stop_tokens:
                 # if that token is part of the model definition, skip it
-                if non_stop_token.i < model_noun_chunk.end or non_stop_token.head == self.model_token:
+                if non_stop_token.i < model_noun_chunk.end or self.variable_token == non_stop_token:
                     handled_non_stop.append(non_stop_token)
                     continue
 
@@ -280,23 +296,23 @@ class ModelFactoryConverter(Converter):
 
                 # extract the current noun_chunk
                 try:
-                    current_noun_chunk = unhandled_noun_chunks[0]
+                    noun_chunk = unhandled_noun_chunks[0]
                 except IndexError:
-                    current_noun_chunk = []
+                    noun_chunk = []
 
                 # ========== CLEAN NOUN_CHUNKS ==========
-                if non_stop_token in current_noun_chunk:
+                if non_stop_token in noun_chunk:
                     # if the current token is the last one in the chunk, mark the chunk as handled
-                    if non_stop_token == current_noun_chunk[-1]:
-                        unhandled_noun_chunks.remove(current_noun_chunk)
+                    if non_stop_token == noun_chunk[-1]:
+                        unhandled_noun_chunks.remove(noun_chunk)
 
                     # if the root of the chunk is a proper noun (normally a noun), it needs to be handled later
-                    if token_is_proper_noun(current_noun_chunk.root):
-                        unhandled_propn_chunk = current_noun_chunk
+                    if get_noun_from_chunk(noun_chunk) is None and get_proper_noun_from_chunk(noun_chunk):
+                        unhandled_propn_chunk = noun_chunk
                         continue
                 # if the last token of that chunk is not present in the non stop tokens, mark the chunk as handled
-                elif bool(current_noun_chunk) and current_noun_chunk[-1] not in non_stop_tokens:
-                    unhandled_noun_chunks.remove(current_noun_chunk)
+                elif bool(noun_chunk) and noun_chunk[-1] not in non_stop_tokens:
+                    unhandled_noun_chunks.remove(noun_chunk)
 
                 # if the token was already handled, continue
                 if non_stop_token in handled_non_stop:
@@ -305,7 +321,8 @@ class ModelFactoryConverter(Converter):
                 # ========== GET VALUE AND SOURCE ===========
                 # if the head is in the non stop tokens and not already handled, it is considered the field
                 # and the token is the value
-                if head in non_stop_tokens and (token_is_noun(head) or token_is_verb(head, include_aux=False)):
+                noun_or_verb_head = token_is_noun(head) or token_is_verb(head, include_aux=False)
+                if head in non_stop_tokens and head not in model_noun_chunk and noun_or_verb_head:
                     field_token = head
                     field_value_token = non_stop_token
 
@@ -313,18 +330,18 @@ class ModelFactoryConverter(Converter):
                 # unhandled proper noun
                 elif unhandled_propn_chunk:
                     field_token = non_stop_token
-                    field_value_token = unhandled_propn_chunk.root
+                    field_value_token = get_proper_noun_from_chunk(unhandled_propn_chunk)
 
                 # if the root of the current noun chunk is a noun, that noun is the field; the value is the proper
                 # noun of of that chunk
-                elif bool(current_noun_chunk) and token_is_noun(current_noun_chunk.root):
-                    field_token = current_noun_chunk.root
-                    field_value_token = get_proper_noun_of_chunk(field_token, current_noun_chunk)
+                elif bool(noun_chunk) and token_is_noun(noun_chunk.root):
+                    field_token = noun_chunk.root
+                    field_value_token = get_proper_noun_of_chunk(field_token, noun_chunk)
 
                 # above we checked the head of the non stop token, check the token itself here too
                 elif token_is_noun(non_stop_token) or token_is_verb(non_stop_token, include_aux=False):
                     field_token = non_stop_token
-                    field_value_token = get_proper_noun_of_chunk(field_token, current_noun_chunk)
+                    field_value_token = get_proper_noun_of_chunk(field_token, noun_chunk)
 
                 else:
                     continue

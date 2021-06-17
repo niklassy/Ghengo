@@ -32,22 +32,22 @@ def test_statement_add_to_test_case():
 
 def test_statement_string_matches_variable():
     """Check that the default statement always returns False for a variable."""
-    assert Statement(FunctionCallExpression('foo', [Kwarg('bar', 123)])).string_matches_variable('123') is False
-    assert Statement(FunctionCallExpression('foo', [Kwarg('bar', 123)])).string_matches_variable('qwe') is False
-    assert Statement(FunctionCallExpression('foo', [Kwarg('bar', 123)])).string_matches_variable(None) is False
-    assert Statement(FunctionCallExpression('foo', [Kwarg('bar', 123)])).string_matches_variable(['123']) is False
+    assert Statement(FunctionCallExpression('foo', [Kwarg('bar', 123)])).string_matches_variable('123', '') is False
+    assert Statement(FunctionCallExpression('foo', [Kwarg('bar', 123)])).string_matches_variable('qwe', '') is False
+    assert Statement(FunctionCallExpression('foo', [Kwarg('bar', 123)])).string_matches_variable(None, '') is False
+    assert Statement(FunctionCallExpression('foo', [Kwarg('bar', 123)])).string_matches_variable(['123'], '') is False
 
 
 def test_assignment_statement_string_matches_variable():
     """Check that AssignmentStatement can be used to check the variable."""
     statement_1 = AssignmentStatement(FunctionCallExpression('foo', [Kwarg('bar', 123)]), Variable('', ''))
-    assert statement_1.string_matches_variable('123') is False
-    assert statement_1.string_matches_variable(123) is False
-    assert statement_1.string_matches_variable('werwerwer') is False
+    assert statement_1.string_matches_variable('123', '') is False
+    assert statement_1.string_matches_variable(123, '') is False
+    assert statement_1.string_matches_variable('werwerwer', '') is False
 
     statement_2 = AssignmentStatement(FunctionCallExpression('foo', [Kwarg('bar', 123)]), Variable('name', ''))
-    assert statement_2.string_matches_variable('name') is True
-    assert statement_2.string_matches_variable('123') is False
+    assert statement_2.string_matches_variable('name', '') is True
+    assert statement_2.string_matches_variable('123', '') is False
 
 
 def test_assignment_statement_template():

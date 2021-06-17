@@ -101,7 +101,7 @@ class ModelFieldExtractor(Extractor):
                 continue
 
             expression_model = statement.expression.model_interface.model
-            if statement.string_matches_variable(value) and expression_model == related_model:
+            if statement.string_matches_variable(value, related_model.__name__) and expression_model == related_model:
                 return statement.variable.copy()
 
         return value
@@ -173,10 +173,8 @@ class ModelFieldExtractor(Extractor):
 
                 if child.is_digit or token_is_proper_noun(child):
                     related_model = self.field.related_model
-                    variable = Variable(
-                        name_predetermined=str(child),
-                        reference_string=related_model.__name__,
-                    )
+                    related_name = related_model.__name__
+                    variable = Variable(name_predetermined=str(child), reference_string=related_name)
 
                     for statement in self.test_case.statements:
                         expression = statement.expression
@@ -185,7 +183,8 @@ class ModelFieldExtractor(Extractor):
 
                         # check if the value can become the variable and if the expression has the same model
                         expression_model = expression.model_interface.model
-                        if statement.string_matches_variable(str(child)) and expression_model == related_model:
+                        variable_matches = statement.string_matches_variable(str(child), related_name)
+                        if variable_matches and expression_model == related_model:
                             variable = statement.variable.copy()
                             break
 

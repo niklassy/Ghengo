@@ -1,4 +1,5 @@
 from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
+from nlp.generate.variable import Variable
 
 
 class Statement(TemplateMixin, OnAddToTestCaseListenerMixin):
@@ -17,7 +18,7 @@ class Statement(TemplateMixin, OnAddToTestCaseListenerMixin):
         if self.expression is not None:
             self.expression.on_add_to_test_case(test_case)
 
-    def string_matches_variable(self, string):
+    def string_matches_variable(self, string, reference_string):
         return False
 
 
@@ -29,11 +30,15 @@ class AssignmentStatement(Statement):
         self.variable = variable
         variable.set_value(self.expression)
 
-    def string_matches_variable(self, string):
+    def string_matches_variable(self, string, reference_string):
         if not self.variable:
             return False
 
-        return self.variable.string_matches_variable(string)
+        copy = self.variable.copy()
+        copy.name_predetermined = string
+        copy.reference_string = reference_string
+
+        return copy == self.variable
 
     def generate_variable(self, test_case):
         if not self.variable.name_predetermined:

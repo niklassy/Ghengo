@@ -4,5 +4,6 @@ Funktionalität: Tests
 #    Gegeben sei ein Benutzer Alice mit dem Benutzernamen alice, der Email a@local.local und dem Passwort Haus1234
 
   Szenario:
-    Gegeben sei ein Todo 1 aus dem System 2
-    Und ein Auftrag, der als Todos das Todo 1 hat
+    Gegeben sei ein Auftrag 1
+    Und ein Auftrag 2
+    Und ein ToDo 1, das die Aufträge 1 und 2 zugewiesen hat

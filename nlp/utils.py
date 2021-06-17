@@ -70,6 +70,20 @@ def token_is_proper_noun(token):
     return token.pos_ == 'PROPN'
 
 
+def get_proper_noun_from_chunk(chunk):
+    for t in chunk:
+        if token_is_proper_noun(t):
+            return t
+    return None
+
+
+def get_noun_from_chunk(chunk):
+    for t in chunk:
+        if token_is_noun(t):
+            return t
+    return None
+
+
 def token_is_verb(token, include_aux=True):
     """
     Returns if a token is a verb.
