@@ -7,7 +7,8 @@ from nlp.generate.variable import Variable
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher
 from nlp.extractor import ModelFieldExtractor
 from nlp.utils import get_noun_chunks, is_proper_noun_of, token_references, get_non_stop_tokens, \
-    get_noun_chunk_of_token, get_proper_noun_of_chunk, token_is_noun, token_is_verb, token_is_proper_noun
+    get_noun_chunk_of_token, get_proper_noun_of_chunk, token_is_noun, token_is_verb, token_is_proper_noun, \
+    get_root_of_token
 
 
 class Converter(object):
@@ -111,11 +112,17 @@ class ModelFactoryConverter(Converter):
         compatibility = 1
 
         if isinstance(self.model_interface, AbstractModelInterface):
-            compatibility *= 0.7
+            compatibility *= 0.8
 
         # models are normally displayed by nouns
         if not token_is_noun(self.model_token):
             compatibility *= 0.01
+
+        # If the root of the document is a finites Modalverb (e.g. sollte) it is rather inlikely that the creation of
+        # a model is meant
+        root = get_root_of_token(self.model_token)
+        if root and root.tag_ == 'VMFIN':
+            compatibility *= 0.4
 
         return compatibility
 

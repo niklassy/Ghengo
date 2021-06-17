@@ -168,6 +168,9 @@ class ModelFieldExtractor(Extractor):
 
             value = self.predetermined_value
             for child in [value] + get_all_children(value):
+                if not child:
+                    continue
+
                 if child.is_digit or token_is_proper_noun(child):
                     related_model = self.field.related_model
                     variable = Variable(

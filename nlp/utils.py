@@ -86,6 +86,9 @@ def token_is_verb(token, include_aux=True):
 
 def get_all_children(token, prefilled_list=None):
     """Returns all children and sub-children of a token."""
+    if not token:
+        return []
+
     output = prefilled_list if prefilled_list is not None else []
 
     for child in token.children:
@@ -93,3 +96,13 @@ def get_all_children(token, prefilled_list=None):
         get_all_children(child, output)
 
     return output
+
+
+def get_root_of_token(token):
+    if token.dep_ == 'ROOT':
+        return token
+
+    if not token.head or token.head == token:
+        return None
+
+    return get_root_of_token(token.head)
