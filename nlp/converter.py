@@ -1,14 +1,14 @@
 from django_meta.project import AbstractModelInterface
+from nlp.generate.argument import Kwarg
 from nlp.generate.expression import ModelFactoryExpression
 from nlp.generate.importer import Importer
 from nlp.generate.statement import AssignmentStatement, Statement
 from nlp.generate.utils import to_function_name
 from nlp.generate.variable import Variable
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher
-from nlp.extractor import ModelFieldExtractor
-from nlp.utils import get_noun_chunks, is_proper_noun_of, token_references, get_non_stop_tokens, \
-    get_noun_chunk_of_token, get_proper_noun_of_chunk, token_is_noun, token_is_verb, token_is_proper_noun, \
-    get_root_of_token, get_noun_from_chunk, get_proper_noun_from_chunk
+from nlp.extractor import ModelFieldExtractor, get_model_field_extractor
+from nlp.utils import get_noun_chunks, is_proper_noun_of, get_non_stop_tokens, \
+    get_noun_chunk_of_token, token_is_noun, get_root_of_token
 
 
 class NoToken:
@@ -86,7 +86,7 @@ class Converter(object):
     def handle_extractor(self, extractor, statements):
         """Does everything that is needed when an extractor is called."""
         # some extractors add more statements, so add them here if needed
-        extractor.append_side_effect_statements(statements)
+        extractor.get_statements(statements)
 
     def get_statements_from_extractors(self, extractors):
         """Function to return statements based on extractors."""
@@ -148,9 +148,12 @@ class ModelFactoryConverter(Converter):
         super().handle_extractor(extractor, statements)
         factory_kwargs = statements[0].expression.function_kwargs
 
-        kwarg = extractor.get_kwarg()
-        if kwarg:
-            factory_kwargs.append(kwarg)
+        extracted_value = extractor.extract_value()
+        if not extracted_value:
+            return
+
+        kwarg = Kwarg(extractor.field_name, extracted_value)
+        factory_kwargs.append(kwarg)
 
     def _get_statements_with_datatable(self):
         """
@@ -170,10 +173,9 @@ class ModelFactoryConverter(Converter):
                 extractors_copy.append(
                     ModelFieldExtractor(
                         test_case=self.test_case,
-                        predetermined_value=cell.value,
                         model_interface=self.model_interface,
                         field=field,
-                        source=None,
+                        source=cell.value,
                     )
                 )
 
@@ -269,104 +271,29 @@ class ModelFactoryConverter(Converter):
 
     @property
     def extractors(self):
-        """
-        Returns all the extractors. Each extractor gets the information about each field in the model factory
-        statement.
-        """
         if self._extractors is None:
             fields = []
-            handled_non_stop = []
-            non_stop_tokens = get_non_stop_tokens(self.document)
 
-            # the first noun_chunk holds the model, so skip it
-            unhandled_noun_chunks = self.get_noun_chunks()[1:].copy()
-            unhandled_propn_chunk = None
-
-            model_noun_chunk = get_noun_chunk_of_token(self.model_token, self.document)
-
-            # go through each non stop token
-            for non_stop_token in non_stop_tokens:
-                # if that token is part of the model definition, skip it
-                if non_stop_token.i < model_noun_chunk.end or self.variable_token == non_stop_token:
-                    handled_non_stop.append(non_stop_token)
+            for token in get_non_stop_tokens(self.document):
+                if token == self.model_token or self.variable_token == token:
                     continue
 
-                # get the head of the non_stop_token
-                head = non_stop_token.head
-
-                # extract the current noun_chunk
-                try:
-                    noun_chunk = unhandled_noun_chunks[0]
-                except IndexError:
-                    noun_chunk = []
-
-                # ========== CLEAN NOUN_CHUNKS ==========
-                if non_stop_token in noun_chunk:
-                    # if the current token is the last one in the chunk, mark the chunk as handled
-                    if non_stop_token == noun_chunk[-1]:
-                        unhandled_noun_chunks.remove(noun_chunk)
-
-                    # if the root of the chunk is a proper noun (normally a noun), it needs to be handled later
-                    if get_noun_from_chunk(noun_chunk) is None and get_proper_noun_from_chunk(noun_chunk):
-                        unhandled_propn_chunk = noun_chunk
-                        continue
-                # if the last token of that chunk is not present in the non stop tokens, mark the chunk as handled
-                elif bool(noun_chunk) and noun_chunk[-1] not in non_stop_tokens:
-                    unhandled_noun_chunks.remove(noun_chunk)
-
-                # if the token was already handled, continue
-                if non_stop_token in handled_non_stop:
+                if token.pos_ != 'ADJ' and token.pos_ != 'NOUN':
                     continue
 
-                # ========== GET VALUE AND SOURCE ===========
-                # if the head is in the non stop tokens and not already handled, it is considered the field
-                # and the token is the value
-                noun_or_verb_head = token_is_noun(head) or token_is_verb(head, include_aux=False)
-                if head in non_stop_tokens and head not in model_noun_chunk and noun_or_verb_head:
-                    field_token = head
-                    field_value_token = non_stop_token
+                chunk = get_noun_chunk_of_token(token, self.document)
+                field = self._search_for_field(chunk, token)
 
-                # if there was an unhandled proper noun, the token is the field and the value is the root of the
-                # unhandled proper noun
-                elif unhandled_propn_chunk:
-                    field_token = non_stop_token
-                    field_value_token = get_proper_noun_from_chunk(unhandled_propn_chunk)
-
-                # if the root of the current noun chunk is a noun, that noun is the field; the value is the proper
-                # noun of of that chunk
-                elif bool(noun_chunk) and token_is_noun(noun_chunk.root):
-                    field_token = noun_chunk.root
-                    field_value_token = get_proper_noun_of_chunk(field_token, noun_chunk)
-
-                # above we checked the head of the non stop token, check the token itself here too
-                elif token_is_noun(non_stop_token) or token_is_verb(non_stop_token, include_aux=False):
-                    field_token = non_stop_token
-                    field_value_token = get_proper_noun_of_chunk(field_token, noun_chunk)
-
-                else:
+                if field in [f for f, _ in fields]:
                     continue
 
-                # ========== GET FIELD ==========
-                noun_chunk = get_noun_chunk_of_token(field_token, self.document)
-                field = self._search_for_field(span=noun_chunk, token=field_token)
+                fields.append((field, token))
 
-                if field is None:
-                    continue
-
-                handled_non_stop.append(head)
-                handled_non_stop.append(non_stop_token)
-                unhandled_propn_chunk = None
-
-                if field in [f for f, _, _ in fields]:
-                    continue
-
-                fields.append((field, field_token, field_value_token))
-
-            # ========== BUILD EXTRACTORS ==========
             extractors = []
-            for field, field_token, value_token in fields:
-                extractors.append(
-                    ModelFieldExtractor(self.test_case, value_token, field_token, self.model_interface, field))
+
+            for field, field_token in fields:
+                extractor_cls = get_model_field_extractor(field)
+                extractors.append(extractor_cls(self.test_case, field_token, self.model_interface, field))
 
             self._extractors = extractors
         return self._extractors

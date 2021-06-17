@@ -4,6 +4,7 @@ from nlp.generate.parameter import Parameter
 from nlp.generate.settings import INDENT_SPACES
 from nlp.generate.statement import PassStatement, Statement
 from nlp.generate.utils import to_function_name
+from nlp.generate.warning import GenerationWarningCollection
 
 
 class Import(TemplateMixin):
@@ -142,11 +143,13 @@ class TestSuiteBase(TemplateMixin):
 
     def __init__(self, name):
         self.name = name
+        self.warning_collection = GenerationWarningCollection()
         self.imports = []
         self.test_cases = []
 
     def get_template_context(self, indent):
         return {
+            'warning_collection': self.warning_collection.to_template(),
             'imports': '\n'.join(import_entry.to_template(indent) for import_entry in self.imports),
             'separator': '\n\n\n' if len(self.imports) > 0 else '',
             'test_cases': '\n\n\n'.join(test_case.to_template(indent) for test_case in self.test_cases)

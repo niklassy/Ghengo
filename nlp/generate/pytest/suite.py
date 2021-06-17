@@ -9,6 +9,6 @@ class PyTestTestCase(TestCaseBase):
 
 
 class PyTestTestSuite(TestSuiteBase):
-    template = '{imports}{separator}{test_cases}\n'
+    template = '{imports}{warning_collection}{separator}{test_cases}\n'
     test_case_class = PyTestTestCase
     type = PY_TEST

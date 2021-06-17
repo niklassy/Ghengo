@@ -14,7 +14,11 @@ class _Nlp(object):
         matcher.add(
             'QUOTED',
             [
-               [{'ORTH': {'IN': ['"', "'"]}}, {'OP': '+', 'LENGTH': {'>': 0}}, {'ORTH': {'IN': ['"', "'"]}}],
+               [
+                   {'ORTH': {'IN': ['"', "'"]}},
+                   {'OP': '+', 'LENGTH': {'>': 0}, 'ORTH': {'NOT_IN': ['"', "'"]}},
+                   {'ORTH': {'IN': ['"', "'"]}}
+               ],
             ]
         )
 
@@ -26,7 +30,13 @@ class _Nlp(object):
             for match_id, start, end in matches:
                 span = doc[start:end]
                 matched_spans.append(span)
-            for span in matched_spans:
+            matched_spans.reverse()
+            for index, span in enumerate(matched_spans):
+                # every second entry will be between two strings:
+                # "foo" bar "baz" => would normally return [foo, bar, baz]; so skip the second entry here
+                if index % 2 == 1:
+                    continue
+
                 with doc.retokenize() as retokenizer:
                     # merge into one token after collecting all matches
                     retokenizer.merge(span)

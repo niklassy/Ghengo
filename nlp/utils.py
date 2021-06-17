@@ -1,3 +1,6 @@
+from nlp.vocab import NEGATIONS
+
+
 def get_non_stop_tokens(doc):
     """Reduce to the most important content."""
     return [t for t in doc if not t.is_stop]
@@ -82,6 +85,18 @@ def get_noun_from_chunk(chunk):
         if token_is_noun(t):
             return t
     return None
+
+
+def is_quoted(token):
+    string = str(token) if token else ''
+    if len(string) < 3:
+        return False
+
+    return (string[0] == '"' and string[-1] == '"') or (string[0] == '\'' and string[-1] == '\'')
+
+
+def token_is_negated(token):
+    return any([child for child in token.children if child.lemma_ in NEGATIONS[token.lang_]])
 
 
 def token_is_verb(token, include_aux=True):
