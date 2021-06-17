@@ -41,10 +41,10 @@ def test_model_factory_converter_compatibility(doc, min_compatibility, max_compa
 
 @pytest.mark.parametrize(
     'doc, expected_field_names', [
-        # (nlp('Gegeben sei ein Auftrag mit der Nummer 3'), ['number']),
-        # (nlp('Gegeben sei ein Auftrag mit der Nummer 3 und "Fertig" als Status'), ['number', 'status']),
-        # (nlp('Gegeben sei ein Dach mit der Länge 3'), ['length']),
-        # (nlp('Gegeben sei ein ToDo Alice als Besitzerin'), ['owner']),
+        (nlp('Gegeben sei ein Auftrag mit der Nummer 3'), ['number']),
+        (nlp('Gegeben sei ein Auftrag mit der Nummer 3 und "Fertig" als Status'), ['number', 'status']),
+        (nlp('Gegeben sei ein Dach mit der Länge 3'), ['length']),
+        (nlp('Gegeben sei ein ToDo Alice als Besitzerin'), ['owner']),
         (nlp('Gegeben sei ein ToDo, das nicht aus dem anderen System kommt'), ['from_other_system']),
         (
             nlp('Gegeben sei ein ToDo, das nicht aus dem anderen System kommt und System 4'),

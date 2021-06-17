@@ -2,14 +2,16 @@ from nlp.generate.mixin import TemplateMixin
 from nlp.generate.settings import INDENT_SPACES
 
 
+NO_VALUE_FOUND_CODE = '001'
+
 WARNING_MESSAGES = {
-    1: 'No value was found for this field. One reason might be that the field does not exist on the model '
-       'and therefore it is harder to determine the value of the field. You can try to write the value after '
-       'the field name. Like: `Given an order with a number "123"`.'
+    NO_VALUE_FOUND_CODE: 'No value was found for this field. One reason might be that the field does not exist '
+                         'on the model and therefore it is harder to determine the value of the field. You can try '
+                         'to write the value after the field name. Like: `Given an order with a number "123"`.'
 }
 
 
-class GenerationWarning(TemplateMixin):
+class GenerationWarningDescription(TemplateMixin):
     template = 'class GenerationWarning{code}:\n{text}\n\n{call}'
 
     def __init__(self, code):
@@ -44,7 +46,7 @@ class GenerationWarning(TemplateMixin):
         return self.code == other.code
 
 
-class GenerationWarningReference(TemplateMixin):
+class GenerationWarning(TemplateMixin):
     template = 'GenerationWarning{code}()'
 
     def __init__(self, code):
@@ -55,7 +57,7 @@ class GenerationWarningReference(TemplateMixin):
 
     @classmethod
     def create_for_test_case(cls, code, test_case):
-        ref = GenerationWarningReference(code)
+        ref = GenerationWarning(code)
         test_case.test_suite.warning_collection.add_warning(code)
         return ref
 
@@ -73,6 +75,6 @@ class GenerationWarningCollection(TemplateMixin):
         return {'warnings': '\n'.join([w.to_template() for w in self.warnings])}
 
     def add_warning(self, code):
-        warning = GenerationWarning(code)
+        warning = GenerationWarningDescription(code)
         if warning not in self.warnings:
             self.warnings.append(warning)

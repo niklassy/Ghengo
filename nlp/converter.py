@@ -149,7 +149,7 @@ class ModelFactoryConverter(Converter):
         factory_kwargs = statements[0].expression.function_kwargs
 
         extracted_value = extractor.extract_value()
-        if not extracted_value:
+        if extracted_value is None:
             return
 
         kwarg = Kwarg(extractor.field_name, extracted_value)
@@ -264,7 +264,7 @@ class ModelFactoryConverter(Converter):
                 pass
 
         if token:
-            field_searcher_token = ModelFieldSearcher(text=str(token.lemma_), src_language=self.language)
+            field_searcher_token = ModelFieldSearcher(text=str(token), src_language=self.language)
             return field_searcher_token.search(model_interface=self.model_interface)
 
         return None
@@ -278,7 +278,11 @@ class ModelFactoryConverter(Converter):
                 if token == self.model_token or self.variable_token == token:
                     continue
 
-                if token.pos_ != 'ADJ' and token.pos_ != 'NOUN':
+                if token.pos_ != 'ADJ' and token.pos_ != 'NOUN' and token.pos_ != 'VERB':
+                    continue
+
+                # verbs with aux are fine (is done, ist abgeschlossen)
+                if token.pos_ == 'VERB' and token.head.pos_ != 'AUX':
                     continue
 
                 chunk = get_noun_chunk_of_token(token, self.document)

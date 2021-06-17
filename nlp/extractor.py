@@ -1,32 +1,23 @@
 from decimal import Decimal
 
 from django.db.models import IntegerField, FloatField, BooleanField, DecimalField, ManyToManyField, ManyToManyRel, \
-    ForeignKey
+    ForeignKey, ManyToOneRel
 
 from nlp.generate.expression import ModelM2MAddExpression, ModelFactoryExpression
 from nlp.generate.variable import Variable
-from nlp.generate.warning import GenerationWarningReference
+from nlp.generate.warning import GenerationWarning, NO_VALUE_FOUND_CODE
 from nlp.vocab import POSITIVE_BOOLEAN_INDICATORS
 from nlp.utils import get_verb_for_token, token_is_proper_noun, get_all_children, \
     get_noun_chunk_of_token, get_noun_chunks, is_quoted, get_noun_from_chunk, get_proper_noun_from_chunk, \
     token_is_negated
 
 
-class NoValueFound:
-    def __str__(self):
-        return 'No value was found for this field. One reason might be that the field does not exist on the model ' \
-               'and therefore it is harder to determine the value of the field. You can try to write the value after ' \
-               'the field name. Like: `Given an order with a number "123"`.'
-
-
 class Extractor(object):
     """
-    The extractor is responsible to get valid data from a token. There may be a predetermined value that
-    the extractor can use.
+    Extractors turn Tokens and strings into Python values that can be used in the generate part.
     """
-    def __init__(self, test_case, predetermined_value, source):
+    def __init__(self, test_case, source):
         self.test_case = test_case
-        self.predetermined_value = predetermined_value
         self.source = source
 
     @classmethod
@@ -34,7 +25,7 @@ class Extractor(object):
         return False
 
     def extract_value(self):
-        raise NotImplementedError()
+        return str(self.source)
 
     def get_statements(self, statements):
         return statements
@@ -47,7 +38,7 @@ class ModelFieldExtractor(Extractor):
     field_classes = ()
 
     def __init__(self, test_case, source, model_interface, field):
-        super().__init__(test_case, None, source)
+        super().__init__(test_case, source)
         self.model_interface = model_interface
         self.field = field
         self.field_name = field.name
@@ -57,35 +48,45 @@ class ModelFieldExtractor(Extractor):
         return isinstance(field, cls.field_classes)
 
     def extract_value(self):
-        if self.source.pos_ == 'ADJ':
-            value = ''
-        else:
-            document = self.source.doc
-            noun_chunks = get_noun_chunks(document)
-            chunk = get_noun_chunk_of_token(self.source, self.source.doc)
-            chunk_index = noun_chunks.index(chunk)
+        if isinstance(self.source, str):
+            return super().extract_value()
+
+        # if the token is an adjective or verb, it will most likely be a boolean field
+        if self.source.pos_ == 'ADJ' or self.source.pos_ == 'VERB':
+            return not token_is_negated(self.source)
+
+        document = self.source.doc
+        noun_chunks = get_noun_chunks(document)
+        chunk = get_noun_chunk_of_token(self.source, self.source.doc)
+        chunk_index = noun_chunks.index(chunk)
+        value = None
+
+        try:
+            next_token = document[self.source.i + 1]
+        except IndexError:
+            next_token = None
+
+        # check if any children is a digit or a proper noun, if yes they are the value
+        for child in self.source.children:
+            if child.is_digit or token_is_proper_noun(child):
+                value = child
+                break
+
+        # as an alternative, if the next token is in quotes it should be the value
+        if value is None and is_quoted(next_token):
+            value = next_token
+
+        # if still nothing is found, the value might be in a previous noun chunk
+        try:
             previous_chunk = noun_chunks[chunk_index - 1]
-            value = None
-
-            try:
-                next_token = document[self.source.i + 1]
-            except IndexError:
-                next_token = None
-
-            for child in self.source.children:
-                if child.is_digit or token_is_proper_noun(child):
-                    value = child
-                    break
-
-            if value is None and is_quoted(next_token):
-                value = next_token
-
             previous_propn = get_proper_noun_from_chunk(previous_chunk)
             if value is None and get_noun_from_chunk(previous_chunk) is None and previous_propn:
                 value = previous_propn
+        except IndexError:
+            pass
 
         if value is None:
-            return GenerationWarningReference.create_for_test_case(1, self.test_case)
+            return GenerationWarning.create_for_test_case(NO_VALUE_FOUND_CODE, self.test_case)
 
         value = str(value)
         if is_quoted(value):
@@ -149,7 +150,7 @@ class BooleanModelFieldExtractor(ModelFieldExtractor):
 
 
 class M2MModelFieldExtractor(ModelFieldExtractor):
-    field_classes = (ManyToManyField, ManyToManyRel)
+    field_classes = (ManyToManyField, ManyToManyRel, ManyToOneRel)
 
     def extract_value(self):
         return None

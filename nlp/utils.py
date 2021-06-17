@@ -88,6 +88,7 @@ def get_noun_from_chunk(chunk):
 
 
 def is_quoted(token):
+    """Check if a given input is quoted."""
     string = str(token) if token else ''
     if len(string) < 3:
         return False
@@ -96,6 +97,7 @@ def is_quoted(token):
 
 
 def token_is_negated(token):
+    """Check if a token is negated."""
     return any([child for child in token.children if child.lemma_ in NEGATIONS[token.lang_]])
 
 

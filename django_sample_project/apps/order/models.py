@@ -15,6 +15,7 @@ class ToDo(models.Model):
 class Order(models.Model):
     name = models.CharField(max_length=255)
     to_dos = models.ManyToManyField(ToDo, related_name='orders')
+    mission = models.ForeignKey(ToDo, on_delete=models.CASCADE, related_name='commands')
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
     task = models.OneToOneField(ToDo, on_delete=models.CASCADE, related_name='order')
 
