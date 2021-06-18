@@ -6,5 +6,6 @@ db.sqlite3
 .DS_Store
 
 generated_tests/*
+nlp/translation_cache/*
 !**/.gitkeep
 

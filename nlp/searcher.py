@@ -1,6 +1,6 @@
 from django_meta.project import AbstractModelInterface, AbstractModelField
 from nlp.setup import Nlp
-from nlp.similarity import CosineSimilarity
+from nlp.similarity import CosineSimilarity, ContainsSimilarity
 from nlp.translator import CacheTranslator
 
 
@@ -14,15 +14,22 @@ class Searcher(object):
     def __init__(self, text, src_language):
         self.text = text
         self.src_language = src_language
-        self._translator = None
+        self._translator_to_en = None
+        self._translator_to_src = None
         self._doc_src_language = None
         self._doc_en = None
 
     @property
-    def translator(self):
-        if self._translator is None:
-            self._translator = CacheTranslator(src_language=self.src_language, target_language='en')
-        return self._translator
+    def translator_to_en(self):
+        if self._translator_to_en is None:
+            self._translator_to_en = CacheTranslator(src_language=self.src_language, target_language='en')
+        return self._translator_to_en
+
+    @property
+    def translator_to_src(self):
+        if self._translator_to_src is None:
+            self._translator_to_src = CacheTranslator(src_language='en', target_language=self.src_language)
+        return self._translator_to_src
 
     @property
     def nlp_en(self):
@@ -41,7 +48,7 @@ class Searcher(object):
     @property
     def doc_en(self):
         if self._doc_en is None:
-            self._doc_en = self.nlp_en(self.translator.translate(self.text))
+            self._doc_en = self.nlp_en(self.translator_to_en.translate(self.text))
         return self._doc_en
 
     def get_possible_results(self, *args, **kwargs):
@@ -61,21 +68,36 @@ class Searcher(object):
         """
         keywords = self.get_keywords(conversion_object)
         comparisons = []
+        filtered_keywords = []
 
         for keyword in keywords:
+            if not keyword or keyword.lower() in filtered_keywords:
+                continue
+            filtered_keywords.append(keyword)
+
+        for keyword in filtered_keywords:
             if not keyword:
                 continue
+
+            translated_keyword = self.translator_to_src.translate(keyword.replace('_', ' '))
 
             # create documents for english and source language to get the similarity
             comparisons.append((self.doc_en, self.nlp_en(keyword.replace('_', ' '))))
             comparisons.append((self.doc_src_language, self.nlp_src_language(keyword.replace('_', ' '))))
+            comparisons.append((self.doc_src_language, self.nlp_src_language(translated_keyword)))
 
         return comparisons
 
     def get_similarity(self, input_doc, target_doc):
         """Returns the similarity between two docs/ tokens in a range from 0 - 1."""
         # TODO: implement levenshtein similarity (for typos)?
-        return CosineSimilarity(input_doc, target_doc).get_similarity()
+        contains_similarity = ContainsSimilarity(input_doc, target_doc).get_similarity()
+        cos_similarity = CosineSimilarity(input_doc, target_doc).get_similarity()
+
+        total_similarity = contains_similarity + cos_similarity
+        if total_similarity > 1:
+            return 1
+        return total_similarity
 
     def get_keywords(self, conversion_object):
         """Returns all they keywords that this class should look for in the conversion object."""
@@ -115,7 +137,7 @@ class Searcher(object):
 
 class ModelFieldSearcher(Searcher):
     def get_convert_fallback(self):
-        return AbstractModelField(name=self.translator.translate(self.text))
+        return AbstractModelField(name=self.translator_to_en.translate(self.text))
 
     def get_keywords(self, field):
         return [field.name, getattr(field, 'verbose_name', None)]
@@ -126,7 +148,7 @@ class ModelFieldSearcher(Searcher):
 
 class ModelSearcher(Searcher):
     def get_convert_fallback(self):
-        return AbstractModelInterface(name=self.translator.translate(self.text))
+        return AbstractModelInterface(name=self.translator_to_en.translate(self.text))
 
     def get_keywords(self, model):
         return [model.name, model.verbose_name]

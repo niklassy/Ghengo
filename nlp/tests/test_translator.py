@@ -13,7 +13,7 @@ class CallCounter:
 
 
 def test_cache_translator_should_translate_false(mocker: MockerFixture):
-    """Check if the translator does not call translate when should_translate is False."""
+    """Check if the translator_to_en does not call translate when should_translate is False."""
     translator = CacheTranslator('de', 'de')
     assert translator.should_translate is False
     custom_translator = CallCounter(lambda a: a)

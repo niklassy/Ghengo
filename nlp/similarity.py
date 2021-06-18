@@ -14,3 +14,14 @@ class CosineSimilarity(Similarity):
             return 0
 
         return self.input_1.similarity(self.input_2)
+
+
+class ContainsSimilarity(Similarity):
+    def get_similarity(self):
+        if str(self.input_1) == str(self.input_2):
+            return 1
+
+        if str(self.input_1) in str(self.input_2) or str(self.input_2) in str(self.input_1):
+            return 0.8
+
+        return 0
