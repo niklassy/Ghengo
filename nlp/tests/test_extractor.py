@@ -189,7 +189,7 @@ def test_model_field_extractor_extract_fk():
 def test_model_field_extractor_extract_m2m():
     """M2M should always return None."""
     doc = nlp('Gegeben sei ein Todo, das aus dem anderen System kommt')
-    extractor = M2MModelFieldExtractor(default_test_case, doc[9], model_interface, None, doc)
+    extractor = M2MModelFieldExtractor(default_test_case, doc[9], model_interface, field, doc)
     assert extractor.extract_value() is None
 
 
