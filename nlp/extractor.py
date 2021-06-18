@@ -3,13 +3,20 @@ from decimal import Decimal
 from django.db.models import IntegerField, FloatField, BooleanField, DecimalField, ManyToManyField, ManyToManyRel, \
     ForeignKey, ManyToOneRel
 
+from django_meta.project import AbstractModelField
 from nlp.generate.expression import ModelM2MAddExpression, ModelFactoryExpression
 from nlp.generate.variable import Variable
-from nlp.generate.warning import GenerationWarning, NO_VALUE_FOUND_CODE, BOOLEAN_NO_SOURCE
+from nlp.generate.warning import GenerationWarning, NO_VALUE_FOUND_CODE, BOOLEAN_NO_SOURCE, VARIABLE_NOT_FOUND
 from nlp.vocab import POSITIVE_BOOLEAN_INDICATORS, NEGATIVE_BOOLEAN_INDICATORS
 from nlp.utils import get_verb_for_token, token_is_proper_noun, get_all_children, \
     get_noun_chunk_of_token, get_noun_chunks, is_quoted, get_noun_from_chunk, get_proper_noun_from_chunk, \
     token_is_negated
+
+
+class ExtractionError(Exception):
+    """Indicates the the extractor had trouble to get a value."""
+    def __init__(self, code):
+        self.code = code
 
 
 class Extractor(object):
@@ -56,11 +63,17 @@ class Extractor(object):
         # just return the value
         return value_str
 
-    def extract_value(self):
+    def _extract_value(self):
         return self.get_guessed_python_value(self.source)
 
-    def get_statements(self, statements):
-        return statements
+    def extract_value(self):
+        try:
+            return self._extract_value()
+        except ExtractionError as e:
+            return GenerationWarning.create_for_test_case(e.code, self.test_case)
+
+    def on_handled_by_converter(self, statements):
+        pass
 
 
 class ModelFieldExtractor(Extractor):
@@ -79,9 +92,18 @@ class ModelFieldExtractor(Extractor):
     def fits_input(cls, field, *args, **kwargs):
         return isinstance(field, cls.field_classes)
 
-    def extract_value(self):
+    def get_guessed_python_value(self, string):
+        """Handle variables that were referenced in the past if we dont know the type of field that is used."""
+        if isinstance(self.field, AbstractModelField):
+            for statement in self.test_case.statements:
+                if statement.string_matches_variable(str(string), reference_string=None):
+                    return statement.variable.copy()
+
+        return super().get_guessed_python_value(string)
+
+    def _extract_value(self):
         if isinstance(self.source, str):
-            return super().extract_value()
+            return super()._extract_value()
 
         # if the token is an adjective or verb, it will most likely be a boolean field
         if self.source.pos_ == 'ADJ' or self.source.pos_ == 'VERB':
@@ -118,16 +140,19 @@ class ModelFieldExtractor(Extractor):
             pass
 
         if value is None:
-            return GenerationWarning.create_for_test_case(NO_VALUE_FOUND_CODE, self.test_case)
+            raise ExtractionError(NO_VALUE_FOUND_CODE)
 
-        return super().get_guessed_python_value(value)
+        return self.get_guessed_python_value(value)
 
 
 class NumberModelFieldExtractor(ModelFieldExtractor):
-    def extract_value(self):
-        default_value = super().extract_value()
+    def _extract_value(self):
+        try:
+            default_value = super()._extract_value()
+        except ExtractionError:
+            default_value = None
 
-        if not self.source:
+        if isinstance(self.source, str) and default_value:
             return str(default_value)
 
         root = self.source
@@ -135,42 +160,50 @@ class NumberModelFieldExtractor(ModelFieldExtractor):
             if child.is_digit:
                 return str(child)
 
-        raise ValueError('There was not a number found for field {}'.format(self.field_name))
+        # check if the default value can be used instead
+        if default_value:
+            try:
+                float(default_value)
+                return default_value
+            except ValueError:
+                pass
+
+        raise ExtractionError(NO_VALUE_FOUND_CODE)
 
 
 class IntegerModelFieldExtractor(NumberModelFieldExtractor):
     field_classes = (IntegerField,)
 
-    def extract_value(self):
-        return int(super().extract_value())
+    def _extract_value(self):
+        return int(super()._extract_value())
 
 
 class FloatModelFieldExtractor(NumberModelFieldExtractor):
     field_classes = (FloatField,)
 
-    def extract_value(self):
-        return float(super().extract_value())
+    def _extract_value(self):
+        return float(super()._extract_value())
 
 
 class DecimalModelFieldExtractor(NumberModelFieldExtractor):
     field_classes = (DecimalField,)
 
-    def extract_value(self):
-        return Decimal(super().extract_value())
+    def _extract_value(self):
+        return Decimal(super()._extract_value())
 
 
 class BooleanModelFieldExtractor(ModelFieldExtractor):
     field_classes = (BooleanField,)
 
-    def extract_value(self):
-        if isinstance(self.source, str):
+    def _extract_value(self):
+        if isinstance(self.source, str) or self.source is None:
             verb = None
         else:
             verb = get_verb_for_token(self.source)
 
         if verb is None:
             if self.source is None:
-                return GenerationWarning.create_for_test_case(BOOLEAN_NO_SOURCE, self.test_case)
+                raise ExtractionError(BOOLEAN_NO_SOURCE)
 
             return self.source in POSITIVE_BOOLEAN_INDICATORS[self.document.lang_]
 
@@ -180,10 +213,10 @@ class BooleanModelFieldExtractor(ModelFieldExtractor):
 class M2MModelFieldExtractor(ModelFieldExtractor):
     field_classes = (ManyToManyField, ManyToManyRel, ManyToOneRel)
 
-    def extract_value(self):
+    def _extract_value(self):
         return None
 
-    def get_statements(self, statements):
+    def on_handled_by_converter(self, statements):
         factory_statement = statements[0]
 
         if not factory_statement.variable:
@@ -217,14 +250,12 @@ class M2MModelFieldExtractor(ModelFieldExtractor):
                 )
                 statements.append(m2m_expression.as_statement())
 
-        return statements
-
 
 class ForeignKeyModelFieldExtractor(ModelFieldExtractor):
     field_classes = (ForeignKey,)
 
-    def extract_value(self):
-        value = super().extract_value()
+    def _extract_value(self):
+        value = super()._extract_value()
         related_model = self.field.related_model
 
         # search for a previous statement where an entry of that model was created and use its variable
@@ -236,7 +267,7 @@ class ForeignKeyModelFieldExtractor(ModelFieldExtractor):
             if statement.string_matches_variable(value, related_model.__name__) and expression_model == related_model:
                 return statement.variable.copy()
 
-        return value
+        raise ExtractionError(VARIABLE_NOT_FOUND)
 
 
 MODEL_FIELD_EXTRACTORS = [
@@ -256,108 +287,3 @@ def get_model_field_extractor(field):
             return extractor
 
     return ModelFieldExtractor
-
-
-# ========= OLD IMPLEMENTATION EXTRACTOR LOGIC ==========
-
-"""
-@property
-def extractors(self):
-    if self._extractors is None:
-        fields = []
-        handled_non_stop = []
-        non_stop_tokens = get_non_stop_tokens(self.document)
-
-        # the first noun_chunk holds the model, so skip it
-        unhandled_noun_chunks = self.get_noun_chunks()[1:].copy()
-        unhandled_propn_chunk = None
-
-        model_noun_chunk = get_noun_chunk_of_token(self.model_token, self.document)
-
-        # go through each non stop token
-        for non_stop_token in non_stop_tokens:
-            # if that token is part of the model definition, skip it
-            if non_stop_token.i < model_noun_chunk.end or self.variable_token == non_stop_token:
-                handled_non_stop.append(non_stop_token)
-                continue
-
-            # get the head of the non_stop_token
-            head = non_stop_token.head
-
-            # extract the current noun_chunk
-            try:
-                noun_chunk = unhandled_noun_chunks[0]
-            except IndexError:
-                noun_chunk = []
-
-            # ========== CLEAN NOUN_CHUNKS ==========
-            if non_stop_token in noun_chunk:
-                # if the current token is the last one in the chunk, mark the chunk as handled
-                if non_stop_token == noun_chunk[-1]:
-                    unhandled_noun_chunks.remove(noun_chunk)
-
-                # if the root of the chunk is a proper noun (normally a noun), it needs to be handled later
-                if get_noun_from_chunk(noun_chunk) is None and get_proper_noun_from_chunk(noun_chunk):
-                    unhandled_propn_chunk = noun_chunk
-                    continue
-            # if the last token of that chunk is not present in the non stop tokens, mark the chunk as handled
-            elif bool(noun_chunk) and noun_chunk[-1] not in non_stop_tokens:
-                unhandled_noun_chunks.remove(noun_chunk)
-
-            # if the token was already handled, continue
-            if non_stop_token in handled_non_stop:
-                continue
-
-            # ========== GET VALUE AND SOURCE ===========
-            # if the head is in the non stop tokens and not already handled, it is considered the field
-            # and the token is the value
-            noun_or_verb_head = token_is_noun(head) or token_is_verb(head, include_aux=False)
-            if head in non_stop_tokens and head not in model_noun_chunk and noun_or_verb_head:
-                field_token = head
-                field_value_token = non_stop_token
-
-            # if there was an unhandled proper noun, the token is the field and the value is the root of the
-            # unhandled proper noun
-            elif unhandled_propn_chunk:
-                field_token = non_stop_token
-                field_value_token = get_proper_noun_from_chunk(unhandled_propn_chunk)
-
-            # if the root of the current noun chunk is a noun, that noun is the field; the value is the proper
-            # noun of of that chunk
-            elif bool(noun_chunk) and token_is_noun(noun_chunk.root):
-                field_token = noun_chunk.root
-                field_value_token = get_proper_noun_of_chunk(field_token, noun_chunk)
-
-            # above we checked the head of the non stop token, check the token itself here too
-            elif token_is_noun(non_stop_token) or token_is_verb(non_stop_token, include_aux=False):
-                field_token = non_stop_token
-                field_value_token = get_proper_noun_of_chunk(field_token, noun_chunk)
-
-            else:
-                continue
-
-            # ========== GET FIELD ==========
-            noun_chunk = get_noun_chunk_of_token(field_token, self.document)
-            field = self._search_for_field(span=noun_chunk, token=field_token)
-
-            if field is None:
-                continue
-
-            handled_non_stop.append(head)
-            handled_non_stop.append(non_stop_token)
-            unhandled_propn_chunk = None
-
-            if field in [f for f, _, _ in fields]:
-                continue
-
-            fields.append((field, field_token, field_value_token))
-
-        # ========== BUILD EXTRACTORS ==========
-        extractors = []
-        for field, field_token, value_token in fields:
-            extractors.append(
-                ModelFieldExtractor(self.test_case, value_token, field_token, self.model_interface, field))
-
-        self._extractors = extractors
-    return self._extractors
-"""

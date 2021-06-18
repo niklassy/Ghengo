@@ -1,5 +1,6 @@
 import pytest
 
+from django_meta.project import DjangoProject
 from gherkin.settings import Settings
 
 
@@ -9,3 +10,8 @@ def run_around_tests():
     Settings.language = Settings.DEFAULT_LANGUAGE
     yield
     Settings.language = Settings.DEFAULT_LANGUAGE
+
+
+@pytest.fixture(scope="session", autouse=True)
+def prepare_django_project(request):
+    DjangoProject('django_sample_project.apps.config.settings')

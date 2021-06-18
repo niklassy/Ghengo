@@ -30,13 +30,19 @@ class AssignmentStatement(Statement):
         self.variable = variable
         variable.set_value(self.expression)
 
-    def string_matches_variable(self, string, reference_string):
+    def string_matches_variable(self, string, reference_string=None):
+        """
+        Check if a string matches a the variable of this statement. If you don't pass the reference
+        string, the check will be broader and not as precise.
+        """
         if not self.variable:
             return False
 
         copy = self.variable.copy()
         copy.name_predetermined = string
-        copy.reference_string = reference_string
+
+        if reference_string:
+            copy.reference_string = reference_string
 
         return copy == self.variable
 

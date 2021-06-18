@@ -4,12 +4,16 @@ from nlp.generate.settings import INDENT_SPACES
 
 NO_VALUE_FOUND_CODE = '001'
 BOOLEAN_NO_SOURCE = '002'
+VARIABLE_NOT_FOUND = '003'
 
 WARNING_MESSAGES = {
     NO_VALUE_FOUND_CODE: 'No value was found for this field. One reason might be that the field does not exist '
                          'on the model and therefore it is harder to determine the value of the field. You can try '
                          'to write the value after the field name. Like: `Given an order with a number "123"`.',
-    BOOLEAN_NO_SOURCE: 'There was no source found to determine the value of the boolean field.'
+    BOOLEAN_NO_SOURCE: 'There was no source found to determine the value of the boolean field.',
+    VARIABLE_NOT_FOUND: 'There should be a variable in this place, but nothing was found for it. Maybe you did '
+                        'not define a variable for a reference or the value is not found. You could try to write '
+                        'the variable reference in quotations. Like: `Given an order with the owner "Alice".`',
 }
 
 

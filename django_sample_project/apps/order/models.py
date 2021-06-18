@@ -7,6 +7,7 @@ from django.db import models
 
 class ToDo(models.Model):
     system = models.IntegerField()
+    part = models.FloatField()
     entries = models.IntegerField()
     from_other_system = models.BooleanField()
     done = models.BooleanField(verbose_name='abgeschlossen')

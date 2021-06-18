@@ -86,7 +86,7 @@ class Converter(object):
     def handle_extractor(self, extractor, statements):
         """Does everything that is needed when an extractor is called."""
         # some extractors add more statements, so add them here if needed
-        extractor.get_statements(statements)
+        extractor.on_handled_by_converter(statements)
 
     def get_statements_from_extractors(self, extractors):
         """Function to return statements based on extractors."""
