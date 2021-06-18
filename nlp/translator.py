@@ -1,10 +1,15 @@
 import json
+from json import JSONDecodeError
 from pathlib import Path
 
 from deep_translator import GoogleTranslator
 
 
 class CacheTranslator(object):
+    """
+    This translator uses the GoogleTranslator but saves the results in a file. If the same
+    text is used again later, it uses the cache instead of Google.
+    """
     cache = {}
 
     def __init__(self, src_language, target_language):
@@ -12,22 +17,35 @@ class CacheTranslator(object):
         self.src_language = src_language
         self.target_language = target_language
 
-        if self.should_translate:
+        if self.src_language != self.target_language:
             self.translator = GoogleTranslator(source=src_language, target=target_language)
         else:
             self.translator = None
 
     @property
     def cache_path(self):
+        """Returns the path to the file where the cache can be found."""
         directory_path = Path(__file__).parent.absolute()
         return '{}/translation_cache/{}_to_{}.json'.format(directory_path, self.src_language, self.target_language)
 
     def create_cache(self):
+        """
+        Creates the file for the cache.
+        """
+        if self.translator is None:
+            return
+
         with open(self.cache_path, 'w') as file:
             file.write('{}')
             file.close()
 
     def write_to_cache(self, text, translation):
+        """
+        Writes a text and its translation into the cache.
+        """
+        if self.translator is None:
+            return
+
         file_content = self.get_cache()
 
         with open(self.cache_path, 'w') as file:
@@ -35,34 +53,68 @@ class CacheTranslator(object):
             file.write(json.dumps(file_content, indent=2, sort_keys=True))
             file.close()
 
+    def remove_from_cache(self, text):
+        """Removes an entry from the cache."""
+        if self.translator is None:
+            return
+
+        file_content = self.get_cache()
+
+        with open(self.cache_path, 'w') as file:
+            del file_content[self.get_cache_name_for_text(text)]
+            file.write(json.dumps(file_content, indent=2, sort_keys=True))
+            file.close()
+
+    def delete_cache(self):
+        """Deletes the whole cache for this translator."""
+        self.create_cache()
+
     def read_from_cache(self, text):
+        """
+        Reads from the cache.
+        """
+        if not self.translator:
+            return None
+
         content = self.get_cache()
         return content[text]
 
     def get_cache(self):
+        """
+        Returns the whole cache.
+        """
+        if not self.translator:
+            return {}
+
         try:
             with open(self.cache_path) as file:
-                return json.load(file)
-        except FileNotFoundError:
+                content = json.load(file)
+                file.close()
+            return content
+        except (FileNotFoundError, JSONDecodeError):
             self.create_cache()
             return self.get_cache()
 
-    @property
-    def should_translate(self):
-        return self.src_language != self.target_language
+    def translator_request_necessary(self, text):
+        """Checks if it is necessary to call the translator for the given text."""
+        cache_index = self.get_cache_name_for_text(text)
+        return self.translator and cache_index not in self.get_cache()
 
     @classmethod
     def get_cache_name_for_text(cls, text):
+        """Returns the index in the cache for a given text."""
         return text
 
     def translate(self, text, **kwargs):
-        if not self.should_translate:
-            return text
+        """
+        Translates a given text.
+        """
+        if self.translator is None:
+            translation = text
+        elif self.translator_request_necessary(text):
+            translation = self.translator.translate(text, **kwargs)
+            self.write_to_cache(text, translation)
+        else:
+            translation = self.read_from_cache(text)
 
-        cache_index = self.get_cache_name_for_text(text)
-        if cache_index in self.get_cache():
-            return self.read_from_cache(cache_index)
-
-        translation = self.translator.translate(text, **kwargs)
-        self.write_to_cache(text, translation)
         return translation
