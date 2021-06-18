@@ -14,13 +14,13 @@ class CallCounter:
 
 
 def test_translator_get_cache():
-    translator = CacheTranslator('es', 'en')
+    translator = CacheTranslator('xh', 'en')
     assert translator.get_cache() == {}
 
 
 def test_translator_delete_cache(mocker: MockerFixture):
     """Check if the deleting of the cache works as expected."""
-    translator = CacheTranslator('es', 'en')
+    translator = CacheTranslator('xh', 'en')
     custom_translator = CallCounter(lambda a: a)
     mocker.patch('deep_translator.GoogleTranslator.translate', custom_translator)
     translator.translate('______foo_______')
@@ -31,7 +31,7 @@ def test_translator_delete_cache(mocker: MockerFixture):
 
 def test_translator_translate_cache(mocker: MockerFixture):
     """Check if a value already exists in the cache, it is used instead of the one from the translator."""
-    translator = CacheTranslator('es', 'en')
+    translator = CacheTranslator('xh', 'en')
     custom_translator = CallCounter(lambda a: a)
     mocker.patch('deep_translator.GoogleTranslator.translate', custom_translator)
     assert translator.translate('______foo_______') == '______foo_______'
@@ -46,7 +46,7 @@ def test_translator_translate_cache(mocker: MockerFixture):
 
 def test_translator_request_necessary(mocker: MockerFixture):
     """Check if translator_request_necessary works as expected."""
-    translator = CacheTranslator('es', 'en')
+    translator = CacheTranslator('xh', 'en')
     custom_translator = CallCounter(lambda a: a)
     mocker.patch('deep_translator.GoogleTranslator.translate', custom_translator)
     translator.write_to_cache('foo', 'bar')
@@ -58,7 +58,7 @@ def test_translator_request_necessary(mocker: MockerFixture):
 
 def test_translator_same_language(mocker: MockerFixture):
     """Check if the translator does not work entirely when using the same language twice."""
-    translator = CacheTranslator('es', 'es')
+    translator = CacheTranslator('xh', 'xh')
     custom_translator = CallCounter(lambda a: a)
     mocker.patch('deep_translator.GoogleTranslator.translate', custom_translator)
     assert translator.translate('text') == 'text'
