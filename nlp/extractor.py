@@ -5,8 +5,8 @@ from django.db.models import IntegerField, FloatField, BooleanField, DecimalFiel
 
 from nlp.generate.expression import ModelM2MAddExpression, ModelFactoryExpression
 from nlp.generate.variable import Variable
-from nlp.generate.warning import GenerationWarning, NO_VALUE_FOUND_CODE
-from nlp.vocab import POSITIVE_BOOLEAN_INDICATORS
+from nlp.generate.warning import GenerationWarning, NO_VALUE_FOUND_CODE, BOOLEAN_NO_SOURCE
+from nlp.vocab import POSITIVE_BOOLEAN_INDICATORS, NEGATIVE_BOOLEAN_INDICATORS
 from nlp.utils import get_verb_for_token, token_is_proper_noun, get_all_children, \
     get_noun_chunk_of_token, get_noun_chunks, is_quoted, get_noun_from_chunk, get_proper_noun_from_chunk, \
     token_is_negated
@@ -16,16 +16,48 @@ class Extractor(object):
     """
     Extractors turn Tokens and strings into Python values that can be used in the generate part.
     """
-    def __init__(self, test_case, source):
+    def __init__(self, test_case, source, document):
         self.test_case = test_case
         self.source = source
+        self.document = document
 
     @classmethod
     def fits_input(cls, *args, **kwargs):
         return False
 
+    def get_guessed_python_value(self, string):
+        """
+        Uses a string as an input to get a python value that may fit that string.
+        """
+        value_str = str(string)
+
+        # remove any quotations
+        if is_quoted(value_str):
+            value_str = value_str[1:-1]
+
+        # try to get int
+        try:
+            return int(value_str)
+        except ValueError:
+            pass
+
+        # try float value
+        try:
+            return float(value_str)
+        except ValueError:
+            pass
+
+        # check if the value may be a boolean
+        bool_pos = POSITIVE_BOOLEAN_INDICATORS[self.document.lang_]
+        bool_neg = NEGATIVE_BOOLEAN_INDICATORS[self.document.lang_]
+        if value_str in bool_pos or value_str in bool_neg:
+            return value_str in bool_pos
+
+        # just return the value
+        return value_str
+
     def extract_value(self):
-        return str(self.source)
+        return self.get_guessed_python_value(self.source)
 
     def get_statements(self, statements):
         return statements
@@ -37,8 +69,8 @@ class ModelFieldExtractor(Extractor):
     """
     field_classes = ()
 
-    def __init__(self, test_case, source, model_interface, field):
-        super().__init__(test_case, source)
+    def __init__(self, test_case, source, model_interface, field, document):
+        super().__init__(test_case, source, document)
         self.model_interface = model_interface
         self.field = field
         self.field_name = field.name
@@ -88,14 +120,7 @@ class ModelFieldExtractor(Extractor):
         if value is None:
             return GenerationWarning.create_for_test_case(NO_VALUE_FOUND_CODE, self.test_case)
 
-        value = str(value)
-        if is_quoted(value):
-            value = value[1:-1]
-
-        try:
-            return float(value)
-        except ValueError:
-            return value
+        return super().get_guessed_python_value(value)
 
 
 class NumberModelFieldExtractor(ModelFieldExtractor):
@@ -138,13 +163,16 @@ class BooleanModelFieldExtractor(ModelFieldExtractor):
     field_classes = (BooleanField,)
 
     def extract_value(self):
-        if self.source and isinstance(self.source, str):
+        if isinstance(self.source, str):
             verb = None
         else:
             verb = get_verb_for_token(self.source)
 
         if verb is None:
-            return self.source in POSITIVE_BOOLEAN_INDICATORS[self.source.lang_]
+            if self.source is None:
+                return GenerationWarning.create_for_test_case(BOOLEAN_NO_SOURCE, self.test_case)
+
+            return self.source in POSITIVE_BOOLEAN_INDICATORS[self.document.lang_]
 
         return not token_is_negated(verb) and not token_is_negated(self.source)
 

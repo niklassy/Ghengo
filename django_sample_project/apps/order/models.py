@@ -13,6 +13,7 @@ class ToDo(models.Model):
 
 
 class Order(models.Model):
+    plays_soccer = models.BooleanField()
     name = models.CharField(max_length=255)
     to_dos = models.ManyToManyField(ToDo, related_name='orders')
     mission = models.ForeignKey(ToDo, on_delete=models.CASCADE, related_name='commands')

@@ -176,6 +176,7 @@ class ModelFactoryConverter(Converter):
                         model_interface=self.model_interface,
                         field=field,
                         source=cell.value,
+                        document=self.document,
                     )
                 )
 
@@ -297,7 +298,9 @@ class ModelFactoryConverter(Converter):
 
             for field, field_token in fields:
                 extractor_cls = get_model_field_extractor(field)
-                extractors.append(extractor_cls(self.test_case, field_token, self.model_interface, field))
+                extractors.append(
+                    extractor_cls(self.test_case, field_token, self.model_interface, field, self.document)
+                )
 
             self._extractors = extractors
         return self._extractors
