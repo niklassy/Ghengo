@@ -5,7 +5,7 @@ from django.apps import apps
 from django import setup
 from django.urls import URLPattern, URLResolver, get_resolver
 
-from generate.utils import to_function_name
+from nlp.generate.utils import to_function_name
 
 
 class ModelInterface(object):
@@ -57,6 +57,11 @@ class AbstractModelField(object):
     def __init__(self, name):
         self.name = to_function_name(name)
         self.verbose_name = self.name
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.name == other.name
 
 
 class AppInterface(object):

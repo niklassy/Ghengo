@@ -1,6 +1,7 @@
 from django_meta.project import DjangoProject
-from generate.suite import TestSuite, PyTestMarkDecorator, PyTestParametrizeDecorator
-from generate.utils import to_function_name
+from nlp.generate.pytest.decorator import PyTestMarkDecorator, PyTestParametrizeDecorator
+from nlp.generate.pytest.suite import PyTestTestSuite
+from nlp.generate.utils import to_function_name
 from gherkin.compiler_base.compiler import Lexer, Compiler, Parser, CodeGenerator
 
 from gherkin.ast import Comment as ASTComment, Scenario, ScenarioOutline, Rule, Given, Then, When
@@ -102,22 +103,14 @@ class GherkinParser(Parser):
 class GherkinToPyTestCodeGenerator(CodeGenerator):
     file_extension = 'py'
 
-    def step_to_statements(self, step, test_case, converter):
-        statements = []
-        statements += converter.get_statements(test_case)
-
-        for sub_step in step.sub_steps:
-            converter.ast_object = sub_step
-            converter._document = None
-            statements += converter.get_statements(test_case)
-
-        return statements
-
     def scenario_to_test_case(self, scenario, suite, project):
         test_case = suite.create_and_add_test_case(scenario.name)
 
         for tag in scenario.tags:
-            test_case.add_decorator(PyTestMarkDecorator(tag.name))
+            try:
+                test_case.add_decorator(PyTestMarkDecorator(tag.name))
+            except test_case.DecoratorAlreadyPresent:
+                pass
 
         # for a scenario outline, pytest offers the parametrize mark that we can add here to simplify everything
         if isinstance(scenario, ScenarioOutline):
@@ -126,7 +119,10 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
                     example.datatable.header.get_values(),
                     example.datatable.get_values_as_list(),
                 )
-                test_case.add_decorator(decorator)
+                try:
+                    test_case.add_decorator(decorator)
+                except test_case.DecoratorAlreadyPresent:
+                    pass
 
         # first phase: GIVEN clauses
         in_given_steps = True
@@ -136,8 +132,9 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
                 continue
 
             if in_given_steps:
-                tiler = GivenTiler(ast_object=step, django_project=project, language=Settings.language)
-                tiler.add_statements_to_test_case(test_case)
+                tiler = GivenTiler(
+                    ast_object=step, django_project=project, language=Settings.language, test_case=test_case)
+                tiler.add_statements_to_test_case()
 
         return test_case
 
@@ -151,7 +148,7 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         # TODO: extract django project path from input
         project = DjangoProject('django_sample_project.apps.config.settings')
 
-        suite = TestSuite(ast.feature.name if ast.feature else '')
+        suite = PyTestTestSuite(ast.feature.name if ast.feature else '')
         for child in ast.feature.children:
             if isinstance(child, (Scenario, ScenarioOutline)):
                 self.scenario_to_test_case(child, suite, project)

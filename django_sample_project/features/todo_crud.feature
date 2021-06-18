@@ -16,32 +16,35 @@ Funktionalität: Erstellen, Löschen und Ändern von ToDos
 #    Dann sollte die Antwort den Status 400 haben
 #    Und es sollte kein To-Do Objekt existieren
 
-#  Szenario: Ändern von ToDo - Erfolg
-#    Gegeben sei ein To-Do AliceToDo mit dem Text todo1, mit 4 Einträgen und Alice als Besitzerin hat
+  Szenario: Ändern von ToDo - Erfolg
+    Gegeben sei ein To-Do AliceToDo mit dem Text todo1, das nicht aus dem anderen System kommt und Alice als Besitzerin hat
 #    Wenn Alice eine Anfrage zum Ändern des To-Do AliceToDo mit dem Text todo2 macht
 #    Dann sollte die Antwort den Status 200 haben
 #    Und das To-Do AliceToDo sollte den Text todo2 haben
 #
-#  Szenario: Ändern von ToDo - anderer Nutzer
-#    Gegeben sei ein Benutzer Bob mit dem Benutzernamen Bob
-#    Und folgende To-Dos
-#      | text | number | owner |
-#      | qwe  | 123    | alice |
-#      | qwe  | tre    | alice |
+  Szenario: Ändern von ToDo - anderer Nutzer
+    Gegeben sei ein Benutzer Bob mit dem Benutzernamen Bob
+    Und folgende To-Dos
+      | text | number | owner |
+      | qwe  | 123    | alice |
+      | qwe  | tre    | alice |
 
-#  Szenario: Mein neuer Test
-#    Gegeben sei ein Benutzer 1 mit dem Benutzernamen test
+  Szenario: M2M
+    Gegeben sei eine Produkt mit dem Namen iPhone
+
+  Szenario: Mein neuer Test
+    Gegeben sei ein Benutzer 1 mit dem "test" als Benutzernamen
 
   Szenario: Aufträge und Todos
-    Gegeben sei ein Auftrag 1 mit dem Namen "Auftrag 123"
-    Und ein Auftrag 2
-    Und ein To-Do mit den Aufträgen 1 und 2
+    Gegeben sei ein Auftrag 1 mit "Auftrag 123" als Name
+#    Und ein Auftrag 2
+#    Und ein To-Do mit den Aufträgen 1 und 2
 #    Wenn Bob eine Anfrage zum Ändern des To-Do AliceToDo mit dem Text todoBob macht
 #    Dann sollte die Antwort den status 400 haben
 #    Und das To-Do AliceToDo sollte den Text todo1 haben
 #
-#  Szenario: Ändern von ToDo - nicht eingeloggt
-#    Gegeben sei ein To-Do AliceToDo mit dem Text todo1, das Alice zugeordnet ist
+  Szenario: Ändern von ToDo - nicht eingeloggt
+    Gegeben sei ein To-Do AliceToDo mit dem Text todo1, das Alice als Besitzerin hat
 #    Wenn ein anonymer Nutzer eine Anfrage zum Ändern des To-Do AliceToDo mit dem Text todo123 sendet
 #    Dann sollte die Antwort den Status 400 haben
 #    Und das To-Do AliceToDo sollte den Text todo1 haben
@@ -52,9 +55,9 @@ Funktionalität: Erstellen, Löschen und Ändern von ToDos
 #    Dann sollte die Antwort den Status 200 haben
 #    Und das To-Do AliceToDo sollte nicht mehr existieren
 #
-#  Szenario: Löschen eines ToDo - anderer Benutzer
-#    Gegeben sei ein Nutzer Bob mit dem Benutzernamen Bob
-#    Und ein Auftrag Order1 mit dem Namen hi123, der einem Benutzer Alice zugewiesen ist
+  Szenario: Löschen eines ToDo - anderer Benutzer
+    Gegeben sei ein Nutzer Bob mit dem Benutzernamen Bob
+    Und ein Auftrag Order1 mit dem Namen hi123, der Alice als Besitzerin hat
 #    Wenn Bob eine Anfrage zum Löschen des To-Do AliceToDo macht
 #    Dann sollte die Antwort den Status 400 haben
 #    Und das To-Do AliceToDo sollte noch existieren

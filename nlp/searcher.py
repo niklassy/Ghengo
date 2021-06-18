@@ -1,5 +1,4 @@
 from django_meta.project import AbstractModelInterface, AbstractModelField
-from nlp.settings import SIMILARITY_BENCHMARK
 from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity
 from nlp.translator import CacheTranslator
@@ -10,6 +9,8 @@ class NoConversionFound(Exception):
 
 
 class Searcher(object):
+    SIMILARITY_BENCHMARK = 0.59
+
     def __init__(self, text, src_language):
         self.text = text
         self.src_language = src_language
@@ -43,7 +44,10 @@ class Searcher(object):
             self._doc_en = self.nlp_en(self.translator.translate(self.text))
         return self._doc_en
 
-    def get_possible_conversions(self, *args, **kwargs):
+    def get_possible_results(self, *args, **kwargs):
+        """
+        Returns all possible values that the text can transform to.
+        """
         return []
 
     def get_comparisons(self, conversion_object):
@@ -53,7 +57,7 @@ class Searcher(object):
         The values will be compared in all languages.
 
         Arguments:
-            conversion_object: one object that was returned from `get_possible_conversions`
+            conversion_object: one object that was returned from `get_possible_results`
         """
         keywords = self.get_keywords(conversion_object)
         comparisons = []
@@ -90,7 +94,7 @@ class Searcher(object):
         highest_similarity = 0
         fittest_conversion = None
 
-        for conversion in self.get_possible_conversions(*args, **kwargs):
+        for conversion in self.get_possible_results(*args, **kwargs):
             comparisons = self.get_comparisons(conversion)
 
             for input_doc, target_doc in comparisons:
@@ -100,7 +104,7 @@ class Searcher(object):
                     fittest_conversion = conversion
                     highest_similarity = similarity
 
-        if highest_similarity <= SIMILARITY_BENCHMARK or fittest_conversion is None:
+        if highest_similarity <= self.SIMILARITY_BENCHMARK or fittest_conversion is None:
             if raise_exception:
                 raise NoConversionFound()
 
@@ -116,16 +120,16 @@ class ModelFieldSearcher(Searcher):
     def get_keywords(self, field):
         return [field.name, getattr(field, 'verbose_name', None)]
 
-    def get_possible_conversions(self, model_interface):
+    def get_possible_results(self, model_interface):
         return model_interface.fields
 
 
 class ModelSearcher(Searcher):
     def get_convert_fallback(self):
-        return AbstractModelInterface(name=self.text)
+        return AbstractModelInterface(name=self.translator.translate(self.text))
 
     def get_keywords(self, model):
         return [model.name, model.verbose_name]
 
-    def get_possible_conversions(self, project_interface):
+    def get_possible_results(self, project_interface):
         return project_interface.get_models(as_interface=True, include_django=True)
