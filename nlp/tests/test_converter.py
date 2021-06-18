@@ -122,24 +122,23 @@ def test_model_factory_converter_variable_name(doc, expected_variable_name, mock
     assert str(converter.variable_name) == expected_variable_name
 
 
-# TODO: FIX!!!
-# def test_model_factory_converter_datatable(mocker):
-#     """Check that statements are correctly generated in the case GIVEN has a datatable."""
-#     header = TableRow([TableCell('number'), TableCell('value'), TableCell('name')])
-#     row_1 = TableRow([TableCell(123), TableCell('val_1'), TableCell('name_2')])
-#     row_2 = TableRow([TableCell(234), TableCell('val_2'), TableCell('name_3')])
-#     rows = [row_1, row_2]
-#     datatable = DataTable(header=header, rows=rows)
-#     given = Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3', argument=datatable)
-#     suite = PyTestTestSuite('foo')
-#     test_case = suite.create_and_add_test_case('bar')
-#     converter = ModelFactoryConverter(nlp('Gegeben sei ein Auftrag'), given, django_project, test_case)
-#     mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
-#     statements = converter.convert_to_statements()
-#     assert len(statements) == 2
-#
-#     for statement_index, statement in enumerate(statements):
-#         for kwarg_index, kwarg in enumerate(statement.expression.function_kwargs):
-#             assert kwarg.name == header.cells[kwarg_index].value
-#             assert kwarg.value.value == rows[statement_index].cells[kwarg_index].value
+def test_model_factory_converter_datatable(mocker):
+    """Check that statements are correctly generated in the case GIVEN has a datatable."""
+    header = TableRow([TableCell('number'), TableCell('value'), TableCell('name')])
+    row_1 = TableRow([TableCell(123), TableCell('val_1'), TableCell('name_2')])
+    row_2 = TableRow([TableCell(234), TableCell('val_2'), TableCell('name_3')])
+    rows = [row_1, row_2]
+    datatable = DataTable(header=header, rows=rows)
+    given = Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3', argument=datatable)
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+    converter = ModelFactoryConverter(nlp('Gegeben sei ein Auftrag'), given, django_project, test_case)
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    statements = converter.convert_to_statements()
+    assert len(statements) == 2
+
+    for statement_index, statement in enumerate(statements):
+        for kwarg_index, kwarg in enumerate(statement.expression.function_kwargs):
+            assert kwarg.name == header.cells[kwarg_index].value
+            assert kwarg.value.value == rows[statement_index].cells[kwarg_index].value
 

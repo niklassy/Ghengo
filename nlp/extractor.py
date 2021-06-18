@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.db.models import IntegerField, FloatField, BooleanField, DecimalField, ManyToManyField, ManyToManyRel, \
     ForeignKey, ManyToOneRel
+from spacy.tokens import Token
 
 from django_meta.project import AbstractModelField
 from nlp.generate.expression import ModelM2MAddExpression, ModelFactoryExpression
@@ -102,7 +103,7 @@ class ModelFieldExtractor(Extractor):
         return super().get_guessed_python_value(string)
 
     def _extract_value(self):
-        if isinstance(self.source, str):
+        if not isinstance(self.source, Token):
             return super()._extract_value()
 
         # if the token is an adjective or verb, it will most likely be a boolean field
