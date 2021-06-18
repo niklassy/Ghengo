@@ -68,14 +68,8 @@ class Searcher(object):
         """
         keywords = self.get_keywords(conversion_object)
         comparisons = []
-        filtered_keywords = []
 
         for keyword in keywords:
-            if not keyword or keyword.lower() in filtered_keywords:
-                continue
-            filtered_keywords.append(keyword)
-
-        for keyword in filtered_keywords:
             if not keyword:
                 continue
 
@@ -94,9 +88,20 @@ class Searcher(object):
         contains_similarity = ContainsSimilarity(input_doc, target_doc).get_similarity()
         cos_similarity = CosineSimilarity(input_doc, target_doc).get_similarity()
 
-        total_similarity = contains_similarity + cos_similarity
-        if total_similarity > 1:
-            return 1
+        cos_weight = 0.7
+        contains_weight = 0.3
+
+        # if cos is very sure, just use it
+        if cos_similarity > 0.8:
+            return cos_similarity
+
+        # if the documents have a similar length the contains similarity can be ignored
+        if len(input_doc) <= len(target_doc) + 2 or len(input_doc) >= len(target_doc) + 2:
+            contains_weight = 0
+            cos_weight = 1
+
+        total_similarity = (contains_similarity * contains_weight) + (cos_similarity * cos_weight)
+
         return total_similarity
 
     def get_keywords(self, conversion_object):
