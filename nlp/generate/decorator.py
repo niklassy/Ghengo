@@ -9,9 +9,10 @@ class Decorator(TemplateMixin, OnAddToTestCaseListenerMixin):
         self.name = name
         self.arguments = arguments or []
 
-    def get_template_context(self, parent_intend):
+    def get_template_context(self, line_indent, indent):
         if len(self.arguments) > 0:
-            arguments = '({})'.format(', '.join([argument.to_template(parent_intend) for argument in self.arguments]))
+            arguments = '({})'.format(
+                ', '.join([argument.to_template(line_indent) for argument in self.arguments]))
         else:
             arguments = ''
 

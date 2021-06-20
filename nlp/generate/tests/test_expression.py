@@ -15,8 +15,7 @@ def test_function_call_expression():
     """Check that FunctionCallExpression returns the correct template."""
     exp = FunctionCallExpression('foo', [Kwarg('bar', 123)])
     assert exp.to_template() == 'foo(bar=123)'
-    exp.indent = 4
-    assert exp.to_template() == '    foo(bar=123)'
+    assert exp.to_template(4, 4) == '    foo(bar=123)'
 
 
 def test_model_factory_expression():
@@ -27,8 +26,7 @@ def test_model_factory_expression():
     exp = ModelFactoryExpression(ModelInterface(), [Kwarg('bar', 123)])
     assert exp.factory_name == 'order_factory'
     assert exp.to_template() == 'order_factory(bar=123)'
-    exp.indent = 4
-    assert exp.to_template() == '    order_factory(bar=123)'
+    assert exp.to_template(4, 4) == '    order_factory(bar=123)'
 
 
 def test_m2m_add_expression():

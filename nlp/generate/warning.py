@@ -27,9 +27,9 @@ class GenerationWarningDescription(TemplateMixin):
         super().__init__()
         self.code = code
 
-    def get_template_context(self, parent_intend):
-        one_indent = self.get_indent_string(parent_intend + INDENT_SPACES)
-        two_indents = self.get_indent_string(parent_intend + (INDENT_SPACES * 2))
+    def get_template_context(self, line_indent, indent):
+        one_indent = self.get_indent_string(line_indent + INDENT_SPACES)
+        two_indents = self.get_indent_string(line_indent + (INDENT_SPACES * 2))
 
         message = WARNING_MESSAGES[self.code]
 
@@ -39,7 +39,7 @@ class GenerationWarningDescription(TemplateMixin):
                 message_lines[-1] += '{} '.format(word)
                 if len(message_lines[-1]) > 90:
                     message_lines.append('')
-            join_str = ' \\\n{}'.format(self.get_indent_string(parent_intend + INDENT_SPACES + 7))
+            join_str = ' \\\n{}'.format(self.get_indent_string(line_indent + INDENT_SPACES + 7))
             message = join_str.join('\'{}\''.format(line) for line in message_lines)
         else:
             message = '\'{}\''.format(message)
@@ -63,7 +63,7 @@ class GenerationWarning(TemplateMixin):
         super().__init__()
         self.code = code
 
-    def get_template_context(self, parent_intend):
+    def get_template_context(self, line_indent, indent):
         return {'code': self.code}
 
     @classmethod
@@ -83,7 +83,7 @@ class GenerationWarningCollection(TemplateMixin):
             return ''
         return '\n\n\n{warnings}'
 
-    def get_template_context(self, parent_intend):
+    def get_template_context(self, line_indent, indent):
         return {'warnings': '\n'.join([w.to_template() for w in self.warnings])}
 
     def add_warning(self, code):

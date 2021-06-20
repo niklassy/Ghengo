@@ -1,11 +1,11 @@
 # language: de
 Funktionalität: Tests
-#  Grundlage:
-#    Gegeben sei ein Benutzer Alice mit dem Benutzernamen alice, der Email a@local.local und dem Passwort Haus1234
+  Grundlage:
+    Gegeben sei ein Benutzer Alice mit dem Benutzernamen alice, der Email a@local.local und dem Passwort Haus1234
 
-    Szenariogrundriss: Ändern von ToDo - anderer Nutzer
-    Gegeben sei ein folgende To-Do mit dem Text "<text>", der Nummer "<number>" und dem Besitzer "<owner>"
-    Beispiele:
+  Szenario: Ändern von ToDo - anderer Nutzer
+    Gegeben sei ein Benutzer Bob mit dem Benutzernamen Bob
+    Und die To-Do
       | text | number | owner |
-      | qwe  | 12312312312321123123123123211231231231232112312312312321    | alice |
-      | qwe  | 12312312312321123123123123211231231231232112312312312321    | alice |
+      | qwe  | 123123123123123123123123123123123123123123123123123123123123    | alice |
+      | qwe  | 123123123123123123123123123123123123123123123123123123123123    | alice |

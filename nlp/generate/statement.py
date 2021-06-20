@@ -10,9 +10,9 @@ class Statement(TemplateMixin, OnAddToTestCaseListenerMixin):
         self.test_case = None
         self.comment = comment
 
-    def get_template_context(self, parent_intend):
+    def get_template_context(self, line_indent, indent):
         return {
-            'expression': self.expression.to_template(self.indent),
+            'expression': self.expression.to_template(line_indent),
             'comment': '   # {}'.format(self.comment) if self.comment else ''
         }
 
@@ -68,8 +68,8 @@ class AssignmentStatement(Statement):
             return self.template
         return '{expression}{comment}'
 
-    def get_template_context(self, parent_intend):
-        context = super().get_template_context(parent_intend)
+    def get_template_context(self, line_indent, indent):
+        context = super().get_template_context(line_indent, indent)
         context['variable'] = self.variable
 
         return context
@@ -82,7 +82,7 @@ class PassStatement(Statement):
         # there is no expression in a pass statement
         super().__init__(None)
 
-    def get_template_context(self, parent_intend):
+    def get_template_context(self, line_indent, indent):
         return {}
 
 

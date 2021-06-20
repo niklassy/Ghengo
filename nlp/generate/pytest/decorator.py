@@ -38,13 +38,12 @@ class PyTestParametrizeDecorator(PyTestMarkDecorator):
 
         super().__init__('parametrize', arguments)
 
-    def get_template_context(self, parent_intend):
-        context = super().get_template_context(parent_intend)
+    def get_template_context(self, line_indent, indent):
+        context = super().get_template_context(line_indent, indent)
         # since parametrize decorators can be quite long, add some line breaks here
         if len(self.arguments) > 0:
-            for argument in self.arguments:
-                argument.indent = parent_intend + INDENT_SPACES
-            argument_values = [argument.to_template(parent_intend + INDENT_SPACES) for argument in self.arguments]
+            new_indent = line_indent + INDENT_SPACES
+            argument_values = [argument.to_template(new_indent, new_indent) for argument in self.arguments]
             arguments = '(\n{}\n)'.format(',\n'.join(argument_values))
         else:
             arguments = ''

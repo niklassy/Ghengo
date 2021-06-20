@@ -56,8 +56,7 @@ def test_assignment_statement_template():
     assert AssignmentStatement(exp, Variable('', '')).to_template() == 'foo(bar=123)'
     assert AssignmentStatement(exp, Variable('var_name', '')).to_template() == 'var_name = foo(bar=123)'
     statement = AssignmentStatement(exp, Variable('var_name', ''))
-    statement.indent = 5
-    assert statement.to_template() == '     var_name = foo(bar=123)'
+    assert statement.to_template(5, 5) == '     var_name = foo(bar=123)'
 
 
 def test_assignment_statement_generate_variable_no_effect():
@@ -90,13 +89,11 @@ def test_pass_statement_template():
     """Check that the pass statement handles its template correctly."""
     statement = PassStatement()
     assert statement.to_template() == 'pass'
-    statement.indent = 4
-    assert statement.to_template() == '    pass'
+    assert statement.to_template(4, 4) == '    pass'
 
 
 def test_assert_statement_template():
     """Check that the assert statement handles its template correctly."""
     statement = AssertStatement(FunctionCallExpression('foo', [Kwarg('bar', 123)]))
     assert statement.to_template() == 'assert foo(bar=123)'
-    statement.indent = 4
-    assert statement.to_template() == '    assert foo(bar=123)'
+    assert statement.to_template(4, 4) == '    assert foo(bar=123)'

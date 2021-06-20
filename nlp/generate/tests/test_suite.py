@@ -98,7 +98,7 @@ def test_test_case_add_decorator():
 def test_test_case_template_context_empty():
     """Check that an empty test case returns the correct context for the template."""
     test_case = TestingTestSuiteBase('bar').create_and_add_test_case('foo')
-    context = test_case.get_template_context(0)
+    context = test_case.get_template_context(0, 0)
     assert context['decorator_separator'] == ''
     assert context['decorators'] == ''
     assert context['name'] == 'test_foo'
@@ -118,7 +118,7 @@ def test_test_case_template_context_with_data():
 
     test_case.add_statement(AssertStatement(FunctionCallExpression('foo', [Kwarg('bar', 123)])))
 
-    context = test_case.get_template_context(0)
+    context = test_case.get_template_context(0, 0)
     assert context['decorator_separator'] == '\n'
     assert context['decorators'] == '@foo\n@foo2'
     assert context['name'] == 'test_foo'
@@ -160,7 +160,7 @@ def test_test_suite_template_context():
     suite.add_import(Import('pytest'))
     suite.create_and_add_test_case('bar')
 
-    context = suite.get_template_context(0)
+    context = suite.get_template_context(0, 0)
     assert context['separator'] == '\n\n\n'
     assert context['imports'] == 'from nlp.generate.statement import PassStatement, AssertStatement\nimport pytest'
     assert context['test_cases'] == ''

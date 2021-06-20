@@ -213,7 +213,7 @@ class BooleanModelFieldExtractor(ModelFieldExtractor):
             if self.source is None:
                 raise ExtractionError(BOOLEAN_NO_SOURCE)
 
-            return self.source in POSITIVE_BOOLEAN_INDICATORS[self.document.lang_]
+            return str(self.source) in POSITIVE_BOOLEAN_INDICATORS[self.document.lang_]
 
         return not token_is_negated(verb) and not token_is_negated(self.source)
 

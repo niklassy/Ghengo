@@ -22,7 +22,7 @@ class Argument(TemplateMixin):
     def get_string_for_template(cls, string):
         return '\'{}\''.format(string) if isinstance(string, str) else str(string)
 
-    def get_template_context(self, parent_intend):
+    def get_template_context(self, line_indent, indent):
         if isinstance(self.value, (list, tuple, set)) and len(str(self.value)) > 100:
             if isinstance(self.value, list):
                 start_symbol = '['
@@ -35,15 +35,13 @@ class Argument(TemplateMixin):
                 end_symbol = '}'
 
             children = [Argument(value) for value in self.value]
-            for arg in children:
-                arg.indent = parent_intend + INDENT_SPACES
-
-            child_template = ',\n'.join(argument.to_template(parent_intend) for argument in children)
+            child_template = ',\n'.join(argument.to_template(
+                line_indent + INDENT_SPACES, line_indent + INDENT_SPACES) for argument in children)
 
             value = '{start_symbol}\n{child}\n{base_indent}{end_symbol}'.format(
                 start_symbol=start_symbol,
                 end_symbol=end_symbol,
-                base_indent=self.get_indent_string(parent_intend),
+                base_indent=self.get_indent_string(line_indent),
                 child=child_template,
             )
         else:
@@ -60,5 +58,5 @@ class Kwarg(TemplateMixin):
         self.name = name
         self.value = Argument(value)
 
-    def get_template_context(self, parent_intend):
+    def get_template_context(self, line_indent, indent):
         return {'name': self.name, 'value': self.value}

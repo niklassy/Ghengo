@@ -19,17 +19,14 @@ class FunctionCallExpression(Expression):
         self.function_name = function_name
         self.function_kwargs = function_kwargs
 
-    def get_template_context(self, parent_intend):
-        kwargs_template = ', '.join([kwarg.to_template() for kwarg in self.function_kwargs])
+    def get_template_context(self, line_indent, indent):
+        kwargs_template = ', '.join([kwarg.to_template(line_indent) for kwarg in self.function_kwargs])
 
         if len(self.function_name + kwargs_template) > 100:
             long_content_start = '\n'
-            long_content_end = '\n' + self.get_indent_string(parent_intend)
-
-            for kwarg in self.function_kwargs:
-                kwarg.indent = parent_intend + INDENT_SPACES
-
-            kwargs_template = ',\n'.join([kwarg.to_template(parent_intend) for kwarg in self.function_kwargs])
+            long_content_end = '\n' + self.get_indent_string(line_indent)
+            kwargs_template = ',\n'.join([kwarg.to_template(
+                line_indent, line_indent + INDENT_SPACES) for kwarg in self.function_kwargs])
         else:
             long_content_start = ''
             long_content_end = ''
@@ -47,8 +44,8 @@ class ModelQuerysetBaseExpression(FunctionCallExpression):
         self.model_interface = model_interface
         super().__init__('{}.objects.{}'.format(model_interface.name, function_name), function_kwargs)
 
-    def get_template_context(self, parent_intend):
-        context = super().get_template_context(parent_intend)
+    def get_template_context(self, line_indent, indent):
+        context = super().get_template_context(line_indent, indent)
         context['model'] = self.model_interface.name
         return context
 
@@ -80,11 +77,11 @@ class ModelM2MAddExpression(Expression):
         self.field = field
         self.add_variable = add_variable
 
-    def get_template_context(self, parent_intend):
+    def get_template_context(self, line_indent, indent):
         variable = self.add_variable
 
         if isinstance(self.add_variable, TemplateMixin):
-            variable = variable.to_template(parent_intend)
+            variable = variable.to_template(line_indent)
 
         return {
             'model_instance': self.model_instance_variable,
