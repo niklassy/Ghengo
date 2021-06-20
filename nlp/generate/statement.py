@@ -82,6 +82,9 @@ class PassStatement(Statement):
         # there is no expression in a pass statement
         super().__init__(None)
 
+    def get_template_context(self, parent_intend):
+        return {}
+
 
 class AssertStatement(Statement):
     template = 'assert {expression}{comment}'

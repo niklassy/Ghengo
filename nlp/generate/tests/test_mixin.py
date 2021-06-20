@@ -12,5 +12,6 @@ def test_mixin_indent():
     mixin = CustomTemplate()
     assert mixin.get_template() == mixin.template
     assert mixin.to_template() == '123asd'
-    assert mixin.to_template(5) == '     123asd'
+    mixin.indent = 5
+    assert mixin.to_template() == '     123asd'
     assert mixin.get_indent_string(5) == '     '

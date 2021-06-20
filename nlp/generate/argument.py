@@ -35,12 +35,15 @@ class Argument(TemplateMixin):
                 end_symbol = '}'
 
             children = [Argument(value) for value in self.value]
-            child_template = ',\n'.join(argument.to_template(parent_intend + INDENT_SPACES) for argument in children)
+            for arg in children:
+                arg.indent = parent_intend + INDENT_SPACES
+
+            child_template = ',\n'.join(argument.to_template(parent_intend) for argument in children)
 
             value = '{start_symbol}\n{child}\n{base_indent}{end_symbol}'.format(
                 start_symbol=start_symbol,
                 end_symbol=end_symbol,
-                base_indent=parent_intend,
+                base_indent=self.get_indent_string(parent_intend),
                 child=child_template,
             )
         else:

@@ -76,7 +76,9 @@ class TestCaseBase(TemplateMixin):
         the test valid.
         """
         if len(self._statements) == 0:
-            return [PassStatement()]
+            statement = PassStatement()
+            statement.indent = self.indent + INDENT_SPACES
+            return [statement]
         return self._statements
 
     def get_template_context(self, parent_intend):

@@ -47,6 +47,9 @@ class Extractor(object):
         if is_quoted(value_str):
             value_str = value_str[1:-1]
 
+            if value_str[0] == '<' and value_str[-1] == '>':
+                return Variable(value_str, '')
+
         # try to get int
         try:
             return int(value_str)

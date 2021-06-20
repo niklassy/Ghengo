@@ -5,7 +5,8 @@ def test_parameter_template():
     """Check that the template for parameters is handled as wanted."""
     param = Parameter('foo')
     assert param.to_template() == 'foo'
-    assert param.to_template(5) == '     foo'
+    param.indent = 5
+    assert param.to_template() == '     foo'
 
 
 def test_parameter_equals():

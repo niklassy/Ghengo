@@ -42,6 +42,8 @@ class PyTestParametrizeDecorator(PyTestMarkDecorator):
         context = super().get_template_context(parent_intend)
         # since parametrize decorators can be quite long, add some line breaks here
         if len(self.arguments) > 0:
+            for argument in self.arguments:
+                argument.indent = parent_intend + INDENT_SPACES
             argument_values = [argument.to_template(parent_intend + INDENT_SPACES) for argument in self.arguments]
             arguments = '(\n{}\n)'.format(',\n'.join(argument_values))
         else:
