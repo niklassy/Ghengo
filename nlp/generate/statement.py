@@ -2,14 +2,18 @@ from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
 
 
 class Statement(TemplateMixin, OnAddToTestCaseListenerMixin):
-    template = '{expression}'
+    template = '{expression}{comment}'
 
-    def __init__(self, expression):
+    def __init__(self, expression, comment=None):
         self.expression = expression
         self.test_case = None
+        self.comment = comment
 
     def get_template_context(self, indent):
-        return {'expression': self.expression}
+        return {
+            'expression': self.expression,
+            'comment': '   # {}'.format(self.comment) if self.comment else ''
+        }
 
     def on_add_to_test_case(self, test_case):
         self.test_case = test_case
@@ -22,7 +26,7 @@ class Statement(TemplateMixin, OnAddToTestCaseListenerMixin):
 
 
 class AssignmentStatement(Statement):
-    template = '{variable} = {expression}'
+    template = '{variable} = {expression}{comment}'
 
     def __init__(self, expression, variable):
         super().__init__(expression)
@@ -61,7 +65,7 @@ class AssignmentStatement(Statement):
     def get_template(self):
         if self.variable:
             return self.template
-        return '{expression}'
+        return '{expression}{comment}'
 
     def get_template_context(self, indent):
         context = super().get_template_context(indent)
@@ -79,7 +83,7 @@ class PassStatement(Statement):
 
 
 class AssertStatement(Statement):
-    template = 'assert {expression}'
+    template = 'assert {expression}{comment}'
 
 
 class RequestStatement(Statement):

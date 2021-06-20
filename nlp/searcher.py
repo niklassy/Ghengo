@@ -160,3 +160,20 @@ class ModelSearcher(Searcher):
 
     def get_possible_results(self, project_interface):
         return project_interface.get_models(as_interface=True, include_django=True)
+
+
+class PermissionSearcher(Searcher):
+    """Can search for specific permissions in Django."""
+    def __init__(self, permission_text, language):
+        from django.contrib.auth.models import Permission
+        self.permission_model_cls = Permission
+        super().__init__(permission_text, language)
+
+    def get_convert_fallback(self):
+        return None
+
+    def get_keywords(self, permission):
+        return [permission.codename, permission.name]
+
+    def get_possible_results(self, *args, **kwargs):
+        return self.permission_model_cls.objects.all()
