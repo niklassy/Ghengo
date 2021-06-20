@@ -1,4 +1,4 @@
-from nlp.generate.expression import ModelFactoryExpression
+from nlp.generate.expression import ModelFactoryExpression, FunctionCallExpression
 from nlp.generate.importer import Importer
 from nlp.generate.parameter import Parameter
 from nlp.generate.pytest.decorator import DjangoDBDecorator
@@ -17,6 +17,14 @@ class PyTestModelFactoryExpression(ModelFactoryExpression):
         try:
             test_case.add_decorator(DjangoDBDecorator())
         except test_case.DecoratorAlreadyPresent:
+            pass
+
+
+class FixtureFunctionCallExpression(FunctionCallExpression):
+    def on_add_to_test_case(self, test_case):
+        try:
+            test_case.add_parameter(Parameter(self.function_name))
+        except test_case.ParameterAlreadyPresent:
             pass
 
 

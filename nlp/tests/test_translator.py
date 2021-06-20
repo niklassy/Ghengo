@@ -1,5 +1,6 @@
-from nlp.translator import CacheTranslator
 from pytest_mock import MockerFixture
+
+from nlp.translator import CacheTranslator
 
 
 class CallCounter:
@@ -12,38 +13,54 @@ class CallCounter:
         return self.func(*args, **kwargs)
 
 
-def test_cache_translator_should_translate_false(mocker: MockerFixture):
-    """Check if the translator does not call translate when should_translate is False."""
-    translator = CacheTranslator('de', 'de')
-    assert translator.should_translate is False
-    custom_translator = CallCounter(lambda a: a)
-    assert custom_translator.call_counter == 0
-
-    mocker.patch('deep_translator.GoogleTranslator.translate', custom_translator)
-    assert translator.translate('Mein Text') == 'Mein Text'
-    assert custom_translator.call_counter == 0
+def test_translator_get_cache():
+    translator = CacheTranslator('xh', 'en')
+    assert translator.get_cache() == {}
 
 
-def test_cache_translator_should_translate_true(mocker: MockerFixture):
-    """Check if the translator does call translate when should_translate is True."""
-    translator = CacheTranslator('de', 'en')
-    custom_translator = CallCounter(lambda a: a)
-    assert custom_translator.call_counter == 0
-    assert translator.should_translate is True
-
-    mocker.patch('deep_translator.GoogleTranslator.translate', custom_translator)
-    assert translator.translate('Mein Text') == 'Mein Text'
-    assert custom_translator.call_counter == 1
-
-
-def test_cache_translator_cached(mocker: MockerFixture):
-    """Check if values that are used, are cached in all the translators."""
-    translator = CacheTranslator('de', 'en')
+def test_translator_delete_cache(mocker: MockerFixture):
+    """Check if the deleting of the cache works as expected."""
+    translator = CacheTranslator('xh', 'en')
     custom_translator = CallCounter(lambda a: a)
     mocker.patch('deep_translator.GoogleTranslator.translate', custom_translator)
+    translator.translate('______foo_______')
+    assert translator.get_cache() == {'______foo_______': '______foo_______'}
+    translator.delete_cache()
+    assert translator.get_cache() == {}
 
-    assert translator.translate('Mein Text') == 'Mein Text'
+
+def test_translator_translate_cache(mocker: MockerFixture):
+    """Check if a value already exists in the cache, it is used instead of the one from the translator."""
+    translator = CacheTranslator('xh', 'en')
+    custom_translator = CallCounter(lambda a: a)
+    mocker.patch('deep_translator.GoogleTranslator.translate', custom_translator)
+    assert translator.translate('______foo_______') == '______foo_______'
     assert custom_translator.call_counter == 1
-    assert translator.cache['de__Mein Text'] == 'Mein Text'
-    assert translator.translate('Mein Text') == 'Mein Text'
+    assert translator.get_cache() == {'______foo_______': '______foo_______'}
+    translator.translate('______foo_______')
     assert custom_translator.call_counter == 1
+    translator.write_to_cache('______foo_______', '12345')
+    assert translator.translate('______foo_______') == '12345'
+    translator.delete_cache()
+
+
+def test_translator_request_necessary(mocker: MockerFixture):
+    """Check if translator_request_necessary works as expected."""
+    translator = CacheTranslator('xh', 'en')
+    custom_translator = CallCounter(lambda a: a)
+    mocker.patch('deep_translator.GoogleTranslator.translate', custom_translator)
+    translator.write_to_cache('foo', 'bar')
+    assert translator.translator_request_necessary('foo') is False
+    translator.remove_from_cache('foo')
+    assert translator.translator_request_necessary('foo') is True
+    translator.delete_cache()
+
+
+def test_translator_same_language(mocker: MockerFixture):
+    """Check if the translator does not work entirely when using the same language twice."""
+    translator = CacheTranslator('xh', 'xh')
+    custom_translator = CallCounter(lambda a: a)
+    mocker.patch('deep_translator.GoogleTranslator.translate', custom_translator)
+    assert translator.translate('text') == 'text'
+    assert custom_translator.call_counter == 0
+    translator.delete_cache()

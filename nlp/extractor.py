@@ -1,13 +1,17 @@
+import re
 from decimal import Decimal
 
 from django.db.models import IntegerField, FloatField, BooleanField, DecimalField, ManyToManyField, ManyToManyRel, \
     ForeignKey, ManyToOneRel
 from spacy.tokens import Token
 
-from django_meta.project import AbstractModelField
-from nlp.generate.expression import ModelM2MAddExpression, ModelFactoryExpression
+from django_meta.project import AbstractModelField, ModelInterface
+from nlp.generate.argument import Kwarg
+from nlp.generate.expression import ModelM2MAddExpression, ModelFactoryExpression, ModelQuerysetFilterExpression
 from nlp.generate.variable import Variable
-from nlp.generate.warning import GenerationWarning, NO_VALUE_FOUND_CODE, BOOLEAN_NO_SOURCE, VARIABLE_NOT_FOUND
+from nlp.generate.warning import GenerationWarning, NO_VALUE_FOUND_CODE, BOOLEAN_NO_SOURCE, VARIABLE_NOT_FOUND, \
+    PERMISSION_NOT_FOUND
+from nlp.searcher import PermissionSearcher, NoConversionFound
 from nlp.vocab import POSITIVE_BOOLEAN_INDICATORS, NEGATIVE_BOOLEAN_INDICATORS
 from nlp.utils import get_verb_for_token, token_is_proper_noun, get_all_children, \
     get_noun_chunk_of_token, get_noun_chunks, is_quoted, get_noun_from_chunk, get_proper_noun_from_chunk, \
@@ -271,12 +275,74 @@ class ForeignKeyModelFieldExtractor(ModelFieldExtractor):
         raise ExtractionError(VARIABLE_NOT_FOUND)
 
 
+class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):
+    @classmethod
+    def fits_input(cls, field, *args, **kwargs):
+        from django.contrib.auth.models import Permission
+
+        return super().fits_input(field, *args, **kwargs) and field.related_model == Permission
+
+    def _extract_value(self):
+        return None
+
+    def get_permission_statement(self, searcher_input, statements):
+        from django.contrib.auth.models import Permission
+        factory_statement = statements[0]
+
+        try:
+            permission = PermissionSearcher(searcher_input, self.source.lang_).search(raise_exception=True)
+            permission_interface = ModelInterface.create_with_model(Permission)
+
+            permission_query = ModelQuerysetFilterExpression(
+                permission_interface,
+                [
+                    Kwarg('content_type__model', permission.content_type.model),
+                    Kwarg('content_type__app_label', permission.content_type.app_label),
+                    Kwarg('codename', permission.codename),
+                ]
+            )
+        except NoConversionFound:
+            permission_query = GenerationWarning.create_for_test_case(PERMISSION_NOT_FOUND, self.test_case)
+
+        m2m_expression = ModelM2MAddExpression(
+            model_instance_variable=factory_statement.variable,
+            field=self.field_name,
+            add_variable=permission_query,
+        )
+
+        return m2m_expression.as_statement()
+
+    def on_handled_by_converter(self, statements):
+        factory_statement = statements[0]
+
+        if not factory_statement.variable:
+            factory_statement.generate_variable(self.test_case)
+
+        for token in self.source.doc:
+            token_str = str(token)[1:-1] if is_quoted(token) else str(token)
+            reg_ex = re.compile('([a-z_]+)(\.)([a-z_]+)')
+
+            if reg_ex.match(token_str):
+                statement = self.get_permission_statement(token_str.split('.')[1].replace('_', ' '), statements)
+                statements.append(statement)
+                continue
+
+            token_words = token_str.split()
+            if is_quoted(token) and len(token_words) > 1:
+                statement = self.get_permission_statement(token_str, statements)
+                statements.append(statement)
+                continue
+
+        return statements
+
+
 MODEL_FIELD_EXTRACTORS = [
     IntegerModelFieldExtractor,
     BooleanModelFieldExtractor,
     ForeignKeyModelFieldExtractor,
     FloatModelFieldExtractor,
     DecimalModelFieldExtractor,
+    PermissionsM2MModelFieldExtractor,
     M2MModelFieldExtractor,
 ]
 

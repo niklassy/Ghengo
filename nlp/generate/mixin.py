@@ -8,6 +8,7 @@ class TemplateMixin(object):
     This mixin is used to convert any class into a template. The template is used for python code in this project.
     But in theory, this mixin can be used anywhere.
     """
+    # TODO: move intend to __init__
     template = ''
 
     def get_template(self):

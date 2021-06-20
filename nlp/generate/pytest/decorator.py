@@ -5,13 +5,23 @@ from nlp.generate.settings import INDENT_SPACES
 from nlp.generate.suite import Import
 
 
-class PyTestMarkDecorator(Decorator):
-    """A Pytest mark decorator (pytest.mark.XXX)."""
+class PyTestDecorator(Decorator):
     def __init__(self, name, arguments=None):
-        super().__init__('pytest.mark.{}'.format(name), arguments)
+        super().__init__('pytest.{}'.format(name), arguments)
 
     def on_add_to_test_case(self, test_case):
         test_case.test_suite.add_import(Import('pytest'))
+
+
+class PyTestFixtureDecorator(PyTestDecorator):
+    def __init__(self):
+        super().__init__('fixture')
+
+
+class PyTestMarkDecorator(PyTestDecorator):
+    """A Pytest mark decorator (pytest.mark.XXX)."""
+    def __init__(self, name, arguments=None):
+        super().__init__('mark.{}'.format(name), arguments)
 
 
 class PyTestParametrizeDecorator(PyTestMarkDecorator):

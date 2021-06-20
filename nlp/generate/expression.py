@@ -1,5 +1,6 @@
 from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
 from nlp.generate.statement import Statement
+from nlp.generate.suite import Import
 from nlp.generate.utils import camel_to_snake_case
 
 
@@ -21,6 +22,25 @@ class FunctionCallExpression(Expression):
             'fn_name': self.function_name,
             'kwargs': ', '.join([kwarg.to_template() for kwarg in self.function_kwargs]),
         }
+
+
+class ModelQuerysetBaseExpression(FunctionCallExpression):
+    def __init__(self, model_interface, function_name, function_kwargs):
+        self.model_interface = model_interface
+        super().__init__('{}.objects.{}'.format(model_interface.name, function_name), function_kwargs)
+
+    def get_template_context(self, indent):
+        context = super().get_template_context(indent)
+        context['model'] = self.model_interface.name
+        return context
+
+    def on_add_to_test_case(self, test_case):
+        test_case.test_suite.add_import(Import('django.contrib.auth.models', 'Permission'))
+
+
+class ModelQuerysetFilterExpression(ModelQuerysetBaseExpression):
+    def __init__(self, model_interface, function_kwargs):
+        super().__init__(model_interface, 'filter', function_kwargs)
 
 
 class ModelFactoryExpression(FunctionCallExpression):
@@ -47,3 +67,7 @@ class ModelM2MAddExpression(Expression):
             'field': self.field,
             'variable': self.add_variable,
         }
+
+    def on_add_to_test_case(self, test_case):
+        if isinstance(self.add_variable, OnAddToTestCaseListenerMixin):
+            self.add_variable.on_add_to_test_case(test_case)

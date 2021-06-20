@@ -13,6 +13,16 @@ class ModelInterface(object):
         self.model = model
         self.app = app
 
+    @classmethod
+    def create_with_model(cls, model):
+        app_label = model._meta.app_label
+
+        for app in list(apps.get_app_configs()):
+            if app.label == app_label:
+                return ModelInterface(model, app)
+
+        raise ValueError('No app was found.')
+
     @property
     def verbose_name(self):
         try:

@@ -5,6 +5,7 @@ from nlp.generate.settings import INDENT_SPACES
 NO_VALUE_FOUND_CODE = '001'
 BOOLEAN_NO_SOURCE = '002'
 VARIABLE_NOT_FOUND = '003'
+PERMISSION_NOT_FOUND = '004'
 
 WARNING_MESSAGES = {
     NO_VALUE_FOUND_CODE: 'No value was found for this field. One reason might be that the field does not exist '
@@ -14,6 +15,8 @@ WARNING_MESSAGES = {
     VARIABLE_NOT_FOUND: 'There should be a variable in this place, but nothing was found for it. Maybe you did '
                         'not define a variable for a reference or the value is not found. You could try to write '
                         'the variable reference in quotations. Like: `Given an order with the owner "Alice".`',
+    PERMISSION_NOT_FOUND: 'No value was found for the permission. Please make sure that the permission exists and '
+                          'is given in the format "{model}.{permission_name}" or as free text like "Can create orders"',
 }
 
 

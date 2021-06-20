@@ -55,4 +55,5 @@ class Tiler(object):
 
 
 class GivenTiler(Tiler):
+    # TODO: create converter for referencing earlier variables
     converter_classes = [ModelFactoryConverter]
