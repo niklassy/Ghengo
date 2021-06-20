@@ -16,11 +16,11 @@ def test_pytest_mark_decorator():
 def test_pytest_parametrize_decorator_context():
     """Check the parametrize decorator generates the correct context."""
     dec = PyTestParametrizeDecorator(['arg_1', 'arg_2'], [(1, 2), (3, 4)])
-    context = dec.get_template_context(0)
+    context = dec.get_template_context(0, 0)
     assert context['decorator_name'] == 'pytest.mark.parametrize'
     assert context['arguments'] == '(\n    \'arg_1, arg_2\',\n    [(1, 2), (3, 4)]\n)'
     dec_2 = PyTestParametrizeDecorator([], [])
-    context = dec_2.get_template_context(0)
+    context = dec_2.get_template_context(0, 0)
     assert context['decorator_name'] == 'pytest.mark.parametrize'
     assert context['arguments'] == ''
 

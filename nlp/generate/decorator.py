@@ -5,12 +5,14 @@ class Decorator(TemplateMixin, OnAddToTestCaseListenerMixin):
     template = '@{decorator_name}{arguments}'
 
     def __init__(self, name, arguments=None):
+        super().__init__()
         self.name = name
         self.arguments = arguments or []
 
-    def get_template_context(self, indent):
+    def get_template_context(self, line_indent, indent):
         if len(self.arguments) > 0:
-            arguments = '({})'.format(', '.join([argument.to_template(indent) for argument in self.arguments]))
+            arguments = '({})'.format(
+                ', '.join([argument.to_template(line_indent) for argument in self.arguments]))
         else:
             arguments = ''
 
