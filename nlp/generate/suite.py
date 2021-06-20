@@ -9,6 +9,7 @@ from nlp.generate.warning import GenerationWarningCollection
 
 class Import(TemplateMixin):
     def __init__(self, path: str, variables=None):
+        super().__init__()
         self.path = path
         if variables is None:
             variables = []
@@ -29,7 +30,7 @@ class Import(TemplateMixin):
 
         return 'from {path} import {variables}'
 
-    def get_template_context(self, indent):
+    def get_template_context(self, parent_intend):
         return {
             'path': self.path,
             'variables': ', '.join(self.variables),
@@ -46,6 +47,7 @@ class TestCaseBase(TemplateMixin):
         pass
 
     def __init__(self, name, test_suite):
+        super().__init__()
         self._name = name
         self.parameters = []
         self.decorators = []
@@ -77,13 +79,13 @@ class TestCaseBase(TemplateMixin):
             return [PassStatement()]
         return self._statements
 
-    def get_template_context(self, indent):
+    def get_template_context(self, parent_intend):
         return {
-            'decorators': '\n'.join(decorator.to_template(indent) for decorator in self.decorators),
+            'decorators': '\n'.join(decorator.to_template(parent_intend) for decorator in self.decorators),
             'decorator_separator': '\n' if len(self.decorators) > 0 else '',
             'name': to_function_name('test_{}'.format(self.name)),
             'parameters': ', '.join(para.to_template() for para in self.parameters),
-            'statements': '\n'.join(statement.to_template(indent + INDENT_SPACES) for statement in self.statements),
+            'statements': '\n'.join(statement.to_template(parent_intend + INDENT_SPACES) for statement in self.statements),
         }
 
     def get_variable_by_string(self, string, reference_string):
@@ -125,6 +127,7 @@ class TestCaseBase(TemplateMixin):
             raise ValueError('You can only add Statement instances.')
 
         self._statements.append(statement)
+        statement.indent = self.indent + INDENT_SPACES
         statement.on_add_to_test_case(self)
 
     def add_parameter(self, parameter):
@@ -142,17 +145,18 @@ class TestSuiteBase(TemplateMixin):
     type = None
 
     def __init__(self, name):
+        super().__init__()
         self.name = name
         self.warning_collection = GenerationWarningCollection()
         self.imports = []
         self.test_cases = []
 
-    def get_template_context(self, indent):
+    def get_template_context(self, parent_intend):
         return {
             'warning_collection': self.warning_collection.to_template(),
-            'imports': '\n'.join(import_entry.to_template(indent) for import_entry in self.imports),
+            'imports': '\n'.join(import_entry.to_template(parent_intend) for import_entry in self.imports),
             'separator': '\n\n\n' if len(self.imports) > 0 else '',
-            'test_cases': '\n\n\n'.join(test_case.to_template(indent) for test_case in self.test_cases)
+            'test_cases': '\n\n\n'.join(test_case.to_template(parent_intend) for test_case in self.test_cases)
         }
 
     def create_and_add_test_case(self, name) -> TestCaseBase:

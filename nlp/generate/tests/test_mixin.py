@@ -4,7 +4,7 @@ from nlp.generate.mixin import TemplateMixin
 class CustomTemplate(TemplateMixin):
     template = '{foo}{bar}'
 
-    def get_template_context(self, indent):
+    def get_template_context(self, parent_intend):
         return {'foo': 123, 'bar': 'asd'}
 
 

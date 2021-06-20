@@ -24,11 +24,12 @@ class GenerationWarningDescription(TemplateMixin):
     template = 'class GenerationWarning{code}:\n{text}\n\n{call}'
 
     def __init__(self, code):
+        super().__init__()
         self.code = code
 
-    def get_template_context(self, indent):
-        one_indent = self.get_indent_string(indent + INDENT_SPACES)
-        two_indents = self.get_indent_string(indent + (INDENT_SPACES * 2))
+    def get_template_context(self, parent_intend):
+        one_indent = self.get_indent_string(parent_intend + INDENT_SPACES)
+        two_indents = self.get_indent_string(parent_intend + (INDENT_SPACES * 2))
 
         message = WARNING_MESSAGES[self.code]
 
@@ -38,7 +39,7 @@ class GenerationWarningDescription(TemplateMixin):
                 message_lines[-1] += '{} '.format(word)
                 if len(message_lines[-1]) > 90:
                     message_lines.append('')
-            join_str = ' \\\n{}'.format(self.get_indent_string(indent + INDENT_SPACES + 7))
+            join_str = ' \\\n{}'.format(self.get_indent_string(parent_intend + INDENT_SPACES + 7))
             message = join_str.join('\'{}\''.format(line) for line in message_lines)
         else:
             message = '\'{}\''.format(message)
@@ -59,9 +60,10 @@ class GenerationWarning(TemplateMixin):
     template = 'GenerationWarning{code}()'
 
     def __init__(self, code):
+        super().__init__()
         self.code = code
 
-    def get_template_context(self, indent):
+    def get_template_context(self, parent_intend):
         return {'code': self.code}
 
     @classmethod
@@ -73,6 +75,7 @@ class GenerationWarning(TemplateMixin):
 
 class GenerationWarningCollection(TemplateMixin):
     def __init__(self):
+        super().__init__()
         self.warnings = []
 
     def get_template(self):
@@ -80,7 +83,7 @@ class GenerationWarningCollection(TemplateMixin):
             return ''
         return '\n\n\n{warnings}'
 
-    def get_template_context(self, indent):
+    def get_template_context(self, parent_intend):
         return {'warnings': '\n'.join([w.to_template() for w in self.warnings])}
 
     def add_warning(self, code):

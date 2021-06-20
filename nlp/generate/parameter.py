@@ -11,9 +11,10 @@ class Parameter(TemplateMixin):
     template = '{name}'
 
     def __init__(self, name):
+        super().__init__()
         self.name = name
 
-    def get_template_context(self, indent):
+    def get_template_context(self, parent_intend):
         return {'name': self.name}
 
     def __eq__(self, other):
