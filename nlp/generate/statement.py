@@ -1,5 +1,4 @@
 from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
-from nlp.generate.variable import Variable
 
 
 class Statement(TemplateMixin, OnAddToTestCaseListenerMixin):

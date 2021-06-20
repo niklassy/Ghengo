@@ -1,3 +1,4 @@
+import re
 from decimal import Decimal
 
 from django.db.models import IntegerField, FloatField, BooleanField, DecimalField, ManyToManyField, ManyToManyRel, \
@@ -5,7 +6,10 @@ from django.db.models import IntegerField, FloatField, BooleanField, DecimalFiel
 from spacy.tokens import Token
 
 from django_meta.project import AbstractModelField
+from nlp.generate.argument import Kwarg
 from nlp.generate.expression import ModelM2MAddExpression, ModelFactoryExpression
+from nlp.generate.pytest import FixtureFunctionCallExpression
+from nlp.generate.statement import Statement
 from nlp.generate.variable import Variable
 from nlp.generate.warning import GenerationWarning, NO_VALUE_FOUND_CODE, BOOLEAN_NO_SOURCE, VARIABLE_NOT_FOUND
 from nlp.vocab import POSITIVE_BOOLEAN_INDICATORS, NEGATIVE_BOOLEAN_INDICATORS
@@ -271,12 +275,47 @@ class ForeignKeyModelFieldExtractor(ModelFieldExtractor):
         raise ExtractionError(VARIABLE_NOT_FOUND)
 
 
+class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):
+    @classmethod
+    def fits_input(cls, field, *args, **kwargs):
+        from django.contrib.auth.models import Permission
+
+        return super().fits_input(field, *args, **kwargs) and field.related_model == Permission
+
+    def _extract_value(self):
+        return None
+
+    def on_handled_by_converter(self, statements):
+        factory_statement = statements[0]
+        from django.contrib.auth.models import Permission
+
+        if not factory_statement.variable:
+            factory_statement.generate_variable(self.test_case)
+
+        for token in self.source.doc:
+            token_str = str(token)[1:-1] if is_quoted(token) else str(token)
+            reg_ex = re.compile('([a-z_]+)(\.)([a-z_]+)')
+            if not reg_ex.match(token_str):
+                continue
+
+            statement = Statement(
+                FixtureFunctionCallExpression(
+                    'add_permission',
+                    [Kwarg('user', factory_statement.variable), Kwarg('permission_name', token_str)]
+                )
+            )
+            statements.append(statement)
+
+        return statements
+
+
 MODEL_FIELD_EXTRACTORS = [
     IntegerModelFieldExtractor,
     BooleanModelFieldExtractor,
     ForeignKeyModelFieldExtractor,
     FloatModelFieldExtractor,
     DecimalModelFieldExtractor,
+    PermissionsM2MModelFieldExtractor,
     M2MModelFieldExtractor,
 ]
 

@@ -4,5 +4,4 @@ Funktionalität: Tests
 #    Gegeben sei ein Benutzer Alice mit dem Benutzernamen alice, der Email a@local.local und dem Passwort Haus1234
 
   Szenario:
-    Gegeben sei eine Berechtigung 1  mit dem Codenamen "order.add.order"
-    Und ein Benutzer mit den Benutzerberechtigungen 1
+    Gegeben sei ein Benutzer mit den Berechtigungen "order.view_order" und "order.change_order"
