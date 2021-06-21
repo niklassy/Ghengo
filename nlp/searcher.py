@@ -1,6 +1,6 @@
 from django_meta.project import AbstractModelInterface, AbstractModelField
 from nlp.setup import Nlp
-from nlp.similarity import CosineSimilarity, ContainsSimilarity
+from nlp.similarity import CosineSimilarity, ContainsSimilarity, LevenshteinSimilarity
 from nlp.translator import CacheTranslator
 
 
@@ -73,34 +73,37 @@ class Searcher(object):
             if not keyword:
                 continue
 
-            translated_keyword = self.translator_to_src.translate(keyword.replace('_', ' '))
+            keyword_no_ws = keyword.replace('_', ' ')
+            translated_keyword = self.translator_to_src.translate(keyword_no_ws)
 
             # create documents for english and source language to get the similarity
-            comparisons.append((self.doc_en, self.nlp_en(keyword.replace('_', ' '))))
-            comparisons.append((self.doc_src_language, self.nlp_src_language(keyword.replace('_', ' '))))
+            comparisons.append((self.doc_en, self.nlp_en(keyword_no_ws)))  # en to en
+            comparisons.append((self.doc_src_language, self.nlp_src_language(keyword_no_ws)))  # src to src
             comparisons.append((self.doc_src_language, self.nlp_src_language(translated_keyword)))
 
         return comparisons
 
     def get_similarity(self, input_doc, target_doc):
         """Returns the similarity between two docs/ tokens in a range from 0 - 1."""
-        # TODO: implement levenshtein similarity (for typos)?
-        contains_similarity = ContainsSimilarity(input_doc, target_doc).get_similarity()
         cos_similarity = CosineSimilarity(input_doc, target_doc).get_similarity()
-
-        cos_weight = 0.7
-        contains_weight = 0.3
 
         # if cos is very sure, just use it
         if cos_similarity > 0.8:
             return cos_similarity
 
-        # if the documents have a similar length the contains similarity can be ignored
-        if len(input_doc) <= len(target_doc) + 2 or len(input_doc) >= len(target_doc) + 2:
-            contains_weight = 0
-            cos_weight = 1
+        cos_weight = 0.5
+        levenshtein_weight = 0.3
+        contains_weight = 0.2
 
-        total_similarity = (contains_similarity * contains_weight) + (cos_similarity * cos_weight)
+        contains_similarity = ContainsSimilarity(input_doc, target_doc).get_similarity()
+        levenshtein_similarity = LevenshteinSimilarity(input_doc, target_doc).get_similarity()
+        total_similarity = (
+            cos_similarity * cos_weight
+        ) + (
+            levenshtein_similarity * levenshtein_weight
+        ) + (
+            contains_similarity * contains_weight
+        )
 
         return total_similarity
 
@@ -164,6 +167,7 @@ class ModelSearcher(Searcher):
 
 class PermissionSearcher(Searcher):
     """Can search for specific permissions in Django."""
+
     def __init__(self, permission_text, language):
         from django.contrib.auth.models import Permission
         self.permission_model_cls = Permission
