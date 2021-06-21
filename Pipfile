@@ -14,6 +14,7 @@ spacy = "*"
 deep-translator = "*"
 unidecode = "*"
 pytest-mock = "*"
+python-levenshtein = "*"
 
 [dev-packages]
 

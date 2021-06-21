@@ -1,3 +1,6 @@
+from Levenshtein import ratio
+
+
 class Similarity(object):
     def __init__(self, input_1, input_2):
         self.input_1 = input_1
@@ -17,11 +20,36 @@ class CosineSimilarity(Similarity):
 
 
 class ContainsSimilarity(Similarity):
+    """Returns the similarity by checking if some words are inside the strings of the other."""
     def get_similarity(self):
-        if str(self.input_1) == str(self.input_2):
+        str_input_1 = str(self.input_1)
+        str_input_2 = str(self.input_2)
+
+        if str_input_1.lower() == str_input_2.lower():
             return 1
 
-        if str(self.input_1) in str(self.input_2) or str(self.input_2) in str(self.input_1):
+        if len(str_input_1) == len(str_input_2):
+            return 0
+
+        if len(str_input_1) > len(str_input_2):
+            shorter_string = str_input_2
+            longer_string = str_input_1
+        else:
+            shorter_string = str_input_1
+            longer_string = str_input_2
+
+        if shorter_string in longer_string:
             return 0.8
 
+        words = shorter_string.split()
+        hits = [word for word in words if word in longer_string]
+
+        if len(hits) > 0:
+            return float(len(hits) / len(words))
+
         return 0
+
+
+class LevenshteinSimilarity(Similarity):
+    def get_similarity(self):
+        return ratio(str(self.input_1), str(self.input_2))
