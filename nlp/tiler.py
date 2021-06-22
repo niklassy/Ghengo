@@ -1,4 +1,4 @@
-from nlp.converter import ModelFactoryConverter, Converter
+from nlp.converter import ModelFactoryConverter, Converter, ModelVariableReferenceConverter
 from nlp.setup import Nlp
 
 
@@ -55,5 +55,7 @@ class Tiler(object):
 
 
 class GivenTiler(Tiler):
-    # TODO: create converter for referencing earlier variables
-    converter_classes = [ModelFactoryConverter]
+    converter_classes = [
+        ModelVariableReferenceConverter,
+        ModelFactoryConverter,
+    ]

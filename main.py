@@ -75,5 +75,5 @@ if __name__ == '__main__':
     wie Kommentare behalten wollen, für weitere Informationen in der Zukunft.
     """
     c = GherkinToPyTestCompiler()
-    file_ast = c.compile_file('django_sample_project/features/testing.feature')
+    file_ast = c.compile_file('django_sample_project/features/variable_reference.feature')
     c.export_as_file('generated_tests/')

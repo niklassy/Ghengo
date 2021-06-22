@@ -1,4 +1,10 @@
+from nlp.generate.utils import to_function_name
 from nlp.vocab import NEGATIONS
+
+
+class NoToken:
+    def __eq__(self, other):
+        return False
 
 
 def get_non_stop_tokens(doc):
@@ -137,3 +143,12 @@ def get_root_of_token(token):
         return None
 
     return get_root_of_token(token.head)
+
+
+def token_to_function_name(token):
+    if isinstance(token, NoToken):
+        return ''
+    elif token.is_digit:
+        return str(token)
+    else:
+        return to_function_name(str(token))

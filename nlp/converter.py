@@ -8,12 +8,7 @@ from nlp.generate.variable import Variable
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher
 from nlp.extractor import ModelFieldExtractor, get_model_field_extractor
 from nlp.utils import get_noun_chunks, is_proper_noun_of, get_non_stop_tokens, \
-    get_noun_chunk_of_token, token_is_noun, get_root_of_token
-
-
-class NoToken:
-    def __eq__(self, other):
-        return False
+    get_noun_chunk_of_token, token_is_noun, get_root_of_token, NoToken, token_to_function_name, token_is_proper_noun
 
 
 class Converter(object):
@@ -88,9 +83,12 @@ class Converter(object):
         # some extractors add more statements, so add them here if needed
         extractor.on_handled_by_converter(statements)
 
+    def get_base_statements(self):
+        return []
+
     def get_statements_from_extractors(self, extractors):
         """Function to return statements based on extractors."""
-        statements = [self.build_statement()]
+        statements = self.get_base_statements()
 
         # go through each extractor and append its kwargs to the factory kwargs
         for extractor in extractors:
@@ -113,6 +111,9 @@ class ModelFactoryConverter(Converter):
         self._variable_name = None
         self._variable_token = None
         self._extractors = None
+
+    def get_base_statements(self):
+        return [self.build_statement()]
 
     def get_document_compatibility(self):
         compatibility = 1
@@ -192,7 +193,7 @@ class ModelFactoryConverter(Converter):
     def variable_token(self):
         if self._variable_token is None:
             for child in self.model_token.children:
-                future_name = self._get_variable_name(child)
+                future_name = token_to_function_name(child)
                 variable_in_tc = self.test_case.variable_defined(future_name, self.variable_reference_string)
 
                 # sometimes nlp gets confused about variables and what belongs to this model factory and
@@ -207,22 +208,17 @@ class ModelFactoryConverter(Converter):
 
         return self._variable_token
 
-    @classmethod
-    def _get_variable_name(cls, token):
-        """Helper function that translates a token into a variable name."""
-        if isinstance(token, NoToken):
-            return ''
-        elif token.is_digit:
-            return str(token)
-        else:
-            return to_function_name(str(token))
-
     @property
     def variable_name(self):
         """Returns the name of the variable that the factory statement will have (if any)."""
         if self._variable_name is None:
-            self._variable_name = self._get_variable_name(self.variable_token)
+            self._variable_name = token_to_function_name(self.variable_token)
         return self._variable_name
+
+    @property
+    def model_noun_chunk(self):
+        noun_chunks = self.get_noun_chunks()
+        return noun_chunks[0]
 
     @property
     def model_token(self):
@@ -232,7 +228,7 @@ class ModelFactoryConverter(Converter):
         if self._model_token is None:
             noun_chunks = self.get_noun_chunks()
             model_noun_chunk = noun_chunks[0]
-            self._model_token = model_noun_chunk.root
+            self._model_token = self.model_noun_chunk.root
         return self._model_token
 
     @property
@@ -310,3 +306,101 @@ class ModelFactoryConverter(Converter):
             return self.get_statements_from_extractors(self.extractors)
 
         return self._get_statements_with_datatable()
+
+
+class ModelVariableReferenceConverter(ModelFactoryConverter):
+    def __init__(self, document, related_object, django_project, test_case):
+        super().__init__(document, related_object, django_project, test_case)
+        self._model_determined = False
+        self._referenced_variable = None
+        self._referenced_variable_determined = False
+
+    def get_document_compatibility(self):
+        if self.referenced_variable:
+            return 1
+        return 0
+
+    @property
+    def variable_token(self):
+        if self._variable_token is None:
+            for statement in self.test_case.statements:
+                if not isinstance(statement.expression, ModelFactoryExpression):
+                    continue
+
+                model = self.model_interface or statement.expression.model_interface
+
+                for token in self.model_noun_chunk:
+
+                    future_name = token_to_function_name(token)
+                    variable_in_tc = self.test_case.variable_defined(future_name, model.name)
+
+                    if (token.is_digit or token_is_proper_noun(token)) and variable_in_tc:
+                        self._variable_token = token
+                        break
+
+                if self._variable_token is not None:
+                    break
+
+            if self._variable_token is None:
+                self._variable_token = NoToken()
+
+        return self._variable_token
+
+    @property
+    def referenced_variable(self):
+        if self._referenced_variable_determined is False:
+            variable_token = self.variable_token
+
+            for statement in self.test_case.statements:
+                if not isinstance(statement.expression, ModelFactoryExpression):
+                    continue
+
+                model = self.model_interface or statement.expression.model_interface
+                future_name = token_to_function_name(variable_token)
+
+                if statement.string_matches_variable(future_name, model.name):
+                    self._referenced_variable = statement.variable.copy()
+                    break
+
+            self._referenced_variable_determined = True
+        return self._referenced_variable
+
+    @property
+    def variable_name(self):
+        if self._variable_name is None:
+            referenced_variable = self.referenced_variable
+
+            if referenced_variable:
+                self._variable_name = referenced_variable.name
+            else:
+                self._variable_name = ''
+
+        return self._variable_name
+
+    @property
+    def model_interface(self):
+        if self._model_determined is False:
+            model_searcher = ModelSearcher(text=str(self.model_token.lemma_), src_language=self.language)
+            search_result_model = model_searcher.search(project_interface=self.django_project)
+            model = None
+
+            for statement in self.test_case.statements:
+                exp = statement.expression
+                if isinstance(exp, ModelFactoryExpression) and search_result_model == exp.model_interface:
+                    model = search_result_model
+                    break
+
+            self._model_determined = True
+            self._model = model
+        return self._model
+
+    @property
+    def extractors(self):
+        return []
+
+    def handle_extractor(self, extractor, statements):
+        value = extractor.extract_value()
+        statements.append(self.build_statement())
+
+    def get_base_statements(self):
+        return []
