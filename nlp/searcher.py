@@ -69,16 +69,18 @@ class Searcher(object):
         keywords = self.get_keywords(conversion_object)
         comparisons = []
 
-        for keyword in keywords:
-            if not keyword:
+        for keyword in set([k.replace('_', ' ') if k else None for k in keywords]):
+            if not keyword or keyword in [str(key) for _, key in comparisons]:
                 continue
 
-            keyword_no_ws = keyword.replace('_', ' ')
-            translated_keyword = self.translator_to_src.translate(keyword_no_ws)
+            translated_keyword = self.translator_to_src.translate(keyword)
 
             # create documents for english and source language to get the similarity
-            comparisons.append((self.doc_en, self.nlp_en(keyword_no_ws)))  # en to en
-            comparisons.append((self.doc_src_language, self.nlp_src_language(keyword_no_ws)))  # src to src
+            # en - keyword
+            comparisons.append((self.doc_en, self.nlp_en(keyword)))
+            # src - keyword
+            comparisons.append((self.doc_src_language, self.nlp_src_language(keyword)))
+            # src - keyword translated to src
             comparisons.append((self.doc_src_language, self.nlp_src_language(translated_keyword)))
 
         return comparisons
