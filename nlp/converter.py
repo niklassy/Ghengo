@@ -1,8 +1,8 @@
 from django_meta.project import AbstractModelInterface
-from nlp.generate.argument import Kwarg
+from nlp.generate.argument import Kwarg, Argument
 from nlp.generate.expression import ModelFactoryExpression
 from nlp.generate.importer import Importer
-from nlp.generate.statement import AssignmentStatement, Statement
+from nlp.generate.statement import AssignmentStatement, Statement, ModelFieldAssignmentStatement
 from nlp.generate.utils import to_function_name
 from nlp.generate.variable import Variable
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher
@@ -40,21 +40,21 @@ class Converter(object):
         """Returns all the noun chunks from the document."""
         return get_noun_chunks(self.document)
 
-    def build_statement(self):
+    def build_statement(self, *args, **kwargs):
         """Creates an instance of the statement that was defined by this converter."""
-        return self.statement_class(**self.get_statement_kwargs())
+        return self.statement_class(**self.get_statement_kwargs(*args, **kwargs))
 
-    def get_statement_kwargs(self):
+    def get_statement_kwargs(self, *args, **kwargs):
         """Returns the kwargs that are used to create a statement."""
         return {}
 
-    def get_expression_kwargs(self):
+    def get_expression_kwargs(self, *args, **kwargs):
         """Returns all kwargs that are used to create the expression."""
         return {}
 
-    def build_expression(self):
+    def build_expression(self, *args, **kwargs):
         """Returns an instance if the expression that this converter uses."""
-        return self.get_expression_class()(**self.get_expression_kwargs())
+        return self.get_expression_class()(**self.get_expression_kwargs(*args, **kwargs))
 
     def get_expression_class(self):
         """Returns the class of the expression that this converter uses."""
@@ -309,6 +309,9 @@ class ModelFactoryConverter(Converter):
 
 
 class ModelVariableReferenceConverter(ModelFactoryConverter):
+    expression_class = Argument
+    statement_class = ModelFieldAssignmentStatement
+
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
         self._model_determined = False
@@ -379,28 +382,52 @@ class ModelVariableReferenceConverter(ModelFactoryConverter):
 
     @property
     def model_interface(self):
+        if self._referenced_variable is not None and self._referenced_variable_determined:
+            self._model = self._referenced_variable.value.model_interface
+            return self._model
+
         if self._model_determined is False:
             model_searcher = ModelSearcher(text=str(self.model_token.lemma_), src_language=self.language)
-            search_result_model = model_searcher.search(project_interface=self.django_project)
             model = None
 
-            for statement in self.test_case.statements:
-                exp = statement.expression
-                if isinstance(exp, ModelFactoryExpression) and search_result_model == exp.model_interface:
-                    model = search_result_model
-                    break
+            try:
+                search_result_model = model_searcher.search(project_interface=self.django_project, raise_exception=True)
+            except NoConversionFound:
+                search_result_model = None
+
+            if search_result_model:
+                for statement in self.test_case.statements:
+                    exp = statement.expression
+                    if isinstance(exp, ModelFactoryExpression) and search_result_model.model == exp.model_interface.model:
+                        model = search_result_model
+                        break
 
             self._model_determined = True
             self._model = model
         return self._model
 
-    @property
-    def extractors(self):
-        return []
+    def get_expression_kwargs(self, *args, **kwargs):
+        return {'value': kwargs.get('value')}
+
+    def get_statement_kwargs(self, *args, **kwargs):
+        extractor = kwargs.get('extractor')
+        exp = self.build_expression(value=extractor.extract_value())
+
+        return {
+            'variable': self.referenced_variable,
+            'assigned_value': exp,
+            'field_name': extractor.field_name,
+        }
 
     def handle_extractor(self, extractor, statements):
-        value = extractor.extract_value()
-        statements.append(self.build_statement())
+        statement = self.build_statement(extractor=extractor)
+        statements.append(statement)
+
+    def get_statements_from_extractors(self, extractors):
+        statements = super().get_statements_from_extractors(extractors)
+        # TODO: add save statement
+        # statements.append()
+        return statements
 
     def get_base_statements(self):
         return []

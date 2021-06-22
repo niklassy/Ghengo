@@ -19,7 +19,7 @@ class Statement(TemplateMixin, OnAddToTestCaseListenerMixin):
     def on_add_to_test_case(self, test_case):
         self.test_case = test_case
 
-        if self.expression is not None:
+        if self.expression is not None and isinstance(self.expression, OnAddToTestCaseListenerMixin):
             self.expression.on_add_to_test_case(test_case)
 
     def string_matches_variable(self, string, reference_string):
@@ -72,6 +72,21 @@ class AssignmentStatement(Statement):
         context = super().get_template_context(line_indent, indent)
         context['variable'] = self.variable
 
+        return context
+
+
+class ModelFieldAssignmentStatement(Statement):
+    template = '{variable}.{field_name} = {expression}{comment}'
+
+    def __init__(self, variable, field_name, assigned_value):
+        self.field_name = field_name
+        self.variable = variable
+        super().__init__(assigned_value)
+
+    def get_template_context(self, line_indent, indent):
+        context = super().get_template_context(line_indent, indent)
+        context['variable'] = self.variable
+        context['field_name'] = self.field_name
         return context
 
 
