@@ -1,9 +1,10 @@
 from nlp.generate.expression import Expression
 from nlp.generate.mixin import TemplateMixin
+from nlp.generate.replaceable import Replaceable
 from nlp.generate.settings import INDENT_SPACES
 
 
-class Argument(TemplateMixin):
+class Argument(Replaceable, TemplateMixin):
     """
     Class that represents the values that are passed to a function during runtime.
 

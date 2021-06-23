@@ -1,13 +1,14 @@
 from nlp.generate.decorator import Decorator
 from nlp.generate.mixin import TemplateMixin
 from nlp.generate.parameter import Parameter
+from nlp.generate.replaceable import Replaceable
 from nlp.generate.settings import INDENT_SPACES
 from nlp.generate.statement import PassStatement, Statement
 from nlp.generate.utils import to_function_name
 from nlp.generate.warning import GenerationWarningCollection
 
 
-class Import(TemplateMixin):
+class Import(Replaceable, TemplateMixin):
     def __init__(self, path: str, variables=None):
         super().__init__()
         self.path = path
@@ -37,9 +38,7 @@ class Import(TemplateMixin):
         }
 
 
-class TestCaseBase(TemplateMixin):
-    type = None
-
+class TestCaseBase(Replaceable, TemplateMixin):
     class ParameterAlreadyPresent(Exception):
         pass
 
@@ -140,9 +139,8 @@ class TestCaseBase(TemplateMixin):
             raise self.ParameterAlreadyPresent()
 
 
-class TestSuiteBase(TemplateMixin):
+class TestSuiteBase(Replaceable, TemplateMixin):
     test_case_class = None
-    type = None
 
     def __init__(self, name):
         super().__init__()

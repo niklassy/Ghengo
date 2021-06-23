@@ -1,7 +1,8 @@
 from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
+from nlp.generate.replaceable import Replaceable
 
 
-class Decorator(TemplateMixin, OnAddToTestCaseListenerMixin):
+class Decorator(Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
     template = '@{decorator_name}{arguments}'
 
     def __init__(self, name, arguments=None):

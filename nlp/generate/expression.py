@@ -1,11 +1,12 @@
 from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
+from nlp.generate.replaceable import Replaceable
 from nlp.generate.settings import INDENT_SPACES
 from nlp.generate.statement import Statement
 from nlp.generate.suite import Import
 from nlp.generate.utils import camel_to_snake_case
 
 
-class Expression(TemplateMixin, OnAddToTestCaseListenerMixin):
+class Expression(Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
     def as_statement(self):
         """Expressions can be statements. This can be used to translate an expression into a Statement."""
         return Statement(self)

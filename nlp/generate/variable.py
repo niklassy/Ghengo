@@ -1,7 +1,8 @@
-from nlp.generate.utils import remove_non_alnum, to_function_name
+from nlp.generate.replaceable import Replaceable
+from nlp.generate.utils import to_function_name
 
 
-class Variable(object):
+class Variable(Replaceable):
     """
     This class represents a variable in a test case.
     """
