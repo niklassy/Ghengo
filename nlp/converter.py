@@ -2,8 +2,7 @@ from django_meta.project import AbstractModelInterface
 from nlp.generate.argument import Kwarg, Argument
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression
 from nlp.generate.importer import Importer
-from nlp.generate.statement import AssignmentStatement, Statement, ModelFieldAssignmentStatement
-from nlp.generate.utils import to_function_name
+from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement
 from nlp.generate.variable import Variable
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher
 from nlp.extractor import ModelFieldExtractor, get_model_field_extractor
@@ -22,9 +21,6 @@ class Converter(object):
         2) Extract the data to use that class/ element from the text
         3) Create the statements that will become templates sooner or later
     """
-    statement_class = Statement
-    expression_class = None
-
     def __init__(self, document, related_object, django_project, test_case):
         self.document = document
         self.django_project = django_project
@@ -40,33 +36,15 @@ class Converter(object):
         """Returns all the noun chunks from the document."""
         return get_noun_chunks(self.document)
 
-    def build_statement(self, *args, **kwargs):
-        """Creates an instance of the statement that was defined by this converter."""
-        return self.statement_class(**self.get_statement_kwargs(*args, **kwargs))
-
-    def get_statement_kwargs(self, *args, **kwargs):
-        """Returns the kwargs that are used to create a statement."""
-        return {}
-
-    def get_expression_kwargs(self, *args, **kwargs):
-        """Returns all kwargs that are used to create the expression."""
-        return {}
-
-    def build_expression(self, *args, **kwargs):
-        """Returns an instance if the expression that this converter uses."""
-        return self.get_expression_class()(**self.get_expression_kwargs(*args, **kwargs))
-
-    def get_expression_class(self):
-        """Returns the class of the expression that this converter uses."""
-        return Importer.get_class(self.expression_class, self.test_case.type)
-
     def convert_to_statements(self):
-        """
-        Converts the document to statements.
+        """Converts the document into statements."""
+        if not self.related_object.has_datatable:
+            return self.get_statements_from_extractors(self.extractors)
 
-        Returns:
-            a list of Statements
-        """
+        return self.get_statements_from_datatable()
+
+    def get_statements_from_datatable(self):
+        """If the converter supports special handling for datatables of a Step, overwrite this method."""
         return self.get_statements_from_extractors(self.extractors)
 
     def get_document_compatibility(self):
@@ -197,6 +175,9 @@ class ModelConverter(Converter):
     @property
     def fields(self):
         """Returns all the fields that the document references."""
+        if self.model_interface is None:
+            return []
+
         if self._fields is None:
             fields = []
 
@@ -226,6 +207,9 @@ class ModelConverter(Converter):
         """
         Returns all the extractors of this converter. The extractors are responsible to get the values for the fields.
         """
+        if len(self.fields) == 0:
+            return []
+
         if self._extractors is None:
             extractors = []
 
@@ -243,11 +227,19 @@ class ModelFactoryConverter(ModelConverter):
     """
     This converter will convert a document into a model factory statement and everything that belongs to it.
     """
-    statement_class = AssignmentStatement
-    expression_class = ModelFactoryExpression
-
     def prepare_statements(self, statements):
-        return [self.build_statement()]
+        """
+        Before working with the extractors, create an assignment statement with the model factory. That statement
+        will be used to add the values of the extractors.
+        """
+        expression_cls = Importer.get_class(ModelFactoryExpression, self.test_case.type)
+        expression = expression_cls(model_interface=self.model_interface, factory_kwargs=[])
+        variable = Variable(
+            name_predetermined=self.variable_name,
+            reference_string=self.variable_reference_string,
+        )
+        statement = AssignmentStatement(variable=variable, expression=expression)
+        return [statement]
 
     def get_document_compatibility(self):
         compatibility = 1
@@ -267,19 +259,11 @@ class ModelFactoryConverter(ModelConverter):
 
         return compatibility
 
-    def get_statement_kwargs(self):
-        expression = self.build_expression()
-        variable = Variable(
-            name_predetermined=self.variable_name,
-            reference_string=self.variable_reference_string,
-        )
-        return {'expression': expression, 'variable': variable}
-
-    def get_expression_kwargs(self):
-        return {'model_interface': self.model_interface, 'factory_kwargs': []}
-
     def handle_extractor(self, extractor, statements):
-        """Get the kwargs for the expression from the extractor."""
+        """
+        For each extractor, get the factory statement that was created in `prepare_statements`. After that
+        extract the value from the extractor and add it an a Kwarg to the factory.
+        """
         super().handle_extractor(extractor, statements)
         factory_kwargs = statements[0].expression.function_kwargs
 
@@ -290,7 +274,7 @@ class ModelFactoryConverter(ModelConverter):
         kwarg = Kwarg(extractor.field_name, extracted_value)
         factory_kwargs.append(kwarg)
 
-    def _get_statements_with_datatable(self):
+    def get_statements_from_datatable(self):
         """
         If a there is a data table on the step, it is assumed that it contains data to create the model entry.
         In that case, use the extractors that already exist and append the ones that are defined in the table.
@@ -319,17 +303,13 @@ class ModelFactoryConverter(ModelConverter):
 
         return statements
 
-    def convert_to_statements(self):
-        if not self.related_object.has_datatable:
-            return self.get_statements_from_extractors(self.extractors)
-
-        return self._get_statements_with_datatable()
-
 
 class ModelVariableReferenceConverter(ModelConverter):
-    expression_class = Argument
-    statement_class = ModelFieldAssignmentStatement
-
+    """
+    This converter is used in cases where steps simply reference other steps where a variable was defined:
+        - Given a user Alice ...
+        - And Alice has a password "Haus1234"
+    """
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
         self._model_determined = False
@@ -402,6 +382,8 @@ class ModelVariableReferenceConverter(ModelConverter):
 
     @property
     def model_interface(self):
+        """Returns the model interface for this converter."""
+        # if the referenced variable was found, return the model of that variable
         if self._referenced_variable is not None and self._referenced_variable_determined:
             self._model = self._referenced_variable.value.model_interface
             return self._model
@@ -410,38 +392,34 @@ class ModelVariableReferenceConverter(ModelConverter):
             model_searcher = ModelSearcher(text=str(self.model_token.lemma_), src_language=self.language)
             model = None
 
+            # try to search for a model
             try:
-                search_result_model = model_searcher.search(project_interface=self.django_project, raise_exception=True)
+                found_m_interface = model_searcher.search(project_interface=self.django_project, raise_exception=True)
             except NoConversionFound:
-                search_result_model = None
+                found_m_interface = None
 
-            if search_result_model:
+            # try to find a statement where the found model is saved in the expression
+            if found_m_interface:
                 for statement in self.test_case.statements:
                     exp = statement.expression
-                    if isinstance(exp, ModelFactoryExpression) and search_result_model.model == exp.model_interface.model:
-                        model = search_result_model
+                    if isinstance(exp, ModelFactoryExpression) and found_m_interface.model == exp.model_interface.model:
+                        model = found_m_interface
                         break
 
             self._model_determined = True
             self._model = model
         return self._model
 
-    def get_expression_kwargs(self, *args, **kwargs):
-        return {'value': kwargs.get('value')}
-
-    def get_statement_kwargs(self, *args, **kwargs):
-        extractor = kwargs.get('extractor')
-        exp = self.build_expression(value=extractor.extract_value())
-
-        return {
-            'variable': self.referenced_variable,
-            'assigned_value': exp,
-            'field_name': extractor.field_name,
-        }
-
     def handle_extractor(self, extractor, statements):
         """Each value that was extracted represents a statement in which the value is set on the model instance."""
-        statement = self.build_statement(extractor=extractor)
+        variable = self.referenced_variable
+        argument = Argument(value=extractor.extract_value())
+
+        statement = ModelFieldAssignmentStatement(
+            variable=variable,
+            assigned_value=argument,
+            field_name=extractor.field_name,
+        )
         statements.append(statement)
 
     def get_statements_from_extractors(self, extractors):
