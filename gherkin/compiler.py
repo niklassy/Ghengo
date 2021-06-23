@@ -129,11 +129,14 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         for step in scenario.steps:
             if isinstance(step, (When, Then)) and in_given_steps:
                 in_given_steps = False
-                continue
 
             if in_given_steps:
                 tiler = GivenTiler(
-                    ast_object=step, django_project=project, language=Settings.language, test_case=test_case)
+                    ast_object=step,
+                    django_project=project,
+                    language=Settings.language,
+                    test_case=test_case,
+                )
                 tiler.add_statements_to_test_case()
 
         return test_case

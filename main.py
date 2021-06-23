@@ -41,33 +41,6 @@ Feature: Ich bin etwas
             |    20 |   5 |   15 | 
 """
 
-invalid_doc = """
-Feature: asd
-    asdasd
-    asdasd
-    
-    Rule: asd
-    
-        Scenario: asd
-            Given ew
-            And qwe
-            When qwe
-            Then asd
-        
-        Scenario: qwe
-"""
-
-test = """
-Feature: asd
-
-    qweqwe
-    qwe
-    
-    # asasdda
-    
-    Scenario: asd
-"""
-
 
 if __name__ == '__main__':
     """
