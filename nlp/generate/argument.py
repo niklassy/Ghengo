@@ -1,3 +1,4 @@
+from nlp.generate.expression import Expression
 from nlp.generate.mixin import TemplateMixin
 from nlp.generate.settings import INDENT_SPACES
 

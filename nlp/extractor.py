@@ -33,6 +33,9 @@ class Extractor(object):
         self.source = source
         self.document = document
 
+    def __str__(self):
+        return '{} | {} -> {}'.format(self.__class__.__name__, str(self.source), self.extract_value())
+
     @classmethod
     def fits_input(cls, *args, **kwargs):
         return False

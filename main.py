@@ -41,33 +41,6 @@ Feature: Ich bin etwas
             |    20 |   5 |   15 | 
 """
 
-invalid_doc = """
-Feature: asd
-    asdasd
-    asdasd
-    
-    Rule: asd
-    
-        Scenario: asd
-            Given ew
-            And qwe
-            When qwe
-            Then asd
-        
-        Scenario: qwe
-"""
-
-test = """
-Feature: asd
-
-    qweqwe
-    qwe
-    
-    # asasdda
-    
-    Scenario: asd
-"""
-
 
 if __name__ == '__main__':
     """
@@ -75,5 +48,5 @@ if __name__ == '__main__':
     wie Kommentare behalten wollen, für weitere Informationen in der Zukunft.
     """
     c = GherkinToPyTestCompiler()
-    file_ast = c.compile_file('django_sample_project/features/testing.feature')
+    file_ast = c.compile_file('django_sample_project/features/variable_reference.feature')
     c.export_as_file('generated_tests/')

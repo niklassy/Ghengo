@@ -39,6 +39,19 @@ class FunctionCallExpression(Expression):
         }
 
 
+class ModelSaveExpression(FunctionCallExpression):
+    template = '{variable}.{fn_name}()'
+
+    def __init__(self, variable):
+        self.variable = variable
+        super().__init__('save', [])
+
+    def get_template_context(self, line_indent, indent):
+        context = super().get_template_context(line_indent, 0)
+        context['variable'] = self.variable
+        return context
+
+
 class ModelQuerysetBaseExpression(FunctionCallExpression):
     def __init__(self, model_interface, function_name, function_kwargs):
         self.model_interface = model_interface
