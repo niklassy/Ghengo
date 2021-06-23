@@ -5,4 +5,4 @@ Funktionalität: Reference
 
   Szenario: Ändern von ToDo - anderer Nutzer
     Gegeben seien der Benutzer Bob
-    Und Alice erhält das Passwort "Haus1234"
+    Und Alice erhält das Passwort "Haus1234" und den Benutzernamen Peter
