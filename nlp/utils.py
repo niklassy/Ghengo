@@ -146,6 +146,7 @@ def get_root_of_token(token):
 
 
 def token_to_function_name(token):
+    """Translates a token to a function name."""
     if isinstance(token, NoToken):
         return ''
     elif token.is_digit:

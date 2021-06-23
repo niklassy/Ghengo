@@ -107,16 +107,19 @@ class ModelConverter(Converter):
         self._variable_name = None
         self._variable_token = None
         self._extractors = None
+        self._fields = None
 
     @property
     def model_noun_chunk(self):
+        """Returns the noun chunk in which the model can be found."""
         noun_chunks = self.get_noun_chunks()
         return noun_chunks[0]
 
     @property
     def model_token(self):
         """
-        Returns the token that represents the model
+        Returns the token that represents the model. By default this is the root in the first noun chunk.
+        `Given a user ...`.
         """
         if self._model_token is None:
             self._model_token = self.model_noun_chunk.root
@@ -159,6 +162,9 @@ class ModelConverter(Converter):
 
     @property
     def variable_token(self):
+        """
+        Returns the variable that the document references. `Given a user *alice* with ...`
+        """
         if self._variable_token is None:
             for child in self.model_token.children:
                 future_name = token_to_function_name(child)
@@ -178,6 +184,7 @@ class ModelConverter(Converter):
 
     @property
     def variable_reference_string(self):
+        """Returns the reference string that is passed to the variable of this document."""
         return self.model_interface.name
 
     @property
@@ -188,8 +195,9 @@ class ModelConverter(Converter):
         return self._variable_name
 
     @property
-    def extractors(self):
-        if self._extractors is None:
+    def fields(self):
+        """Returns all the fields that the document references."""
+        if self._fields is None:
             fields = []
 
             for token in get_non_stop_tokens(self.document):
@@ -210,10 +218,18 @@ class ModelConverter(Converter):
                     continue
 
                 fields.append((field, token))
+            self._fields = fields
+        return self._fields
 
+    @property
+    def extractors(self):
+        """
+        Returns all the extractors of this converter. The extractors are responsible to get the values for the fields.
+        """
+        if self._extractors is None:
             extractors = []
 
-            for field, field_token in fields:
+            for field, field_token in self.fields:
                 extractor_cls = get_model_field_extractor(field)
                 extractors.append(
                     extractor_cls(self.test_case, field_token, self.model_interface, field, self.document)
@@ -327,6 +343,7 @@ class ModelVariableReferenceConverter(ModelConverter):
 
     @property
     def variable_token(self):
+        """Returns the variable token that holds the model instance that will be changed."""
         if self._variable_token is None:
             for statement in self.test_case.statements:
                 if not isinstance(statement.expression, ModelFactoryExpression):
@@ -353,6 +370,7 @@ class ModelVariableReferenceConverter(ModelConverter):
 
     @property
     def referenced_variable(self):
+        """Returns the variable that is referenced by the document and where fields should be changed."""
         if self._referenced_variable_determined is False:
             variable_token = self.variable_token
 
