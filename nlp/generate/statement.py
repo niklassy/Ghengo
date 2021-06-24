@@ -1,7 +1,8 @@
 from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
+from nlp.generate.replaceable import Replaceable
 
 
-class Statement(TemplateMixin, OnAddToTestCaseListenerMixin):
+class Statement(Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
     template = '{expression}{comment}'
 
     def __init__(self, expression, comment=None):

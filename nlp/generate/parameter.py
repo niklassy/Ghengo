@@ -1,7 +1,8 @@
 from nlp.generate.mixin import TemplateMixin
+from nlp.generate.replaceable import Replaceable
 
 
-class Parameter(TemplateMixin):
+class Parameter(Replaceable, TemplateMixin):
     """
     Class that represents the values that are defined by the function that it gets passed.
 

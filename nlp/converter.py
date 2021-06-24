@@ -1,7 +1,6 @@
 from django_meta.project import AbstractModelInterface
 from nlp.generate.argument import Kwarg, Argument
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression
-from nlp.generate.importer import Importer
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement
 from nlp.generate.variable import Variable
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher
@@ -232,8 +231,7 @@ class ModelFactoryConverter(ModelConverter):
         Before working with the extractors, create an assignment statement with the model factory. That statement
         will be used to add the values of the extractors.
         """
-        expression_cls = Importer.get_class(ModelFactoryExpression, self.test_case.type)
-        expression = expression_cls(model_interface=self.model_interface, factory_kwargs=[])
+        expression = ModelFactoryExpression(model_interface=self.model_interface, factory_kwargs=[])
         variable = Variable(
             name_predetermined=self.variable_name,
             reference_string=self.variable_reference_string,

@@ -8,7 +8,7 @@ from gherkin.ast import GherkinDocument, Language, \
     DocString, DataTable, TableCell, TableRow, \
     And, But, When, Given, Then, \
     ScenarioOutline, Rule, Scenario, Examples
-from gherkin.settings import Settings
+from settings import Settings
 
 
 class DescriptionGrammar(Grammar):

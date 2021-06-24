@@ -12,7 +12,7 @@ from gherkin.token import EOFToken, DescriptionToken, EndOfLineToken, RuleToken,
     DataTableToken, AndToken, ButToken, ExamplesToken, GivenToken, WhenToken, ThenToken, ScenarioOutlineToken, \
     ScenarioToken, BackgroundToken, FeatureToken, LanguageToken
 from gherkin.ast import Description, DataTable, DocString, And, But, Given, When, Then, Background
-from gherkin.settings import Settings
+from settings import Settings
 from test_utils import assert_callable_raises
 
 
@@ -846,13 +846,13 @@ def test_feature_grammar_valid():
     assert all([child.parent == output for child in output.children])
 
     # with background
-    Settings.language = Settings.DEFAULT_LANGUAGE
+    Settings.language = Settings.Defaults.LANGUAGE
     output = grammar.convert(get_sequence(base_sequence + background_sequence + scenario_sequence))
     assert output.name == 'name123'
     assert output.description == 'desc123'
     assert output.background is not None
     assert len(output.children) == 1
-    assert output.language == Settings.DEFAULT_LANGUAGE
+    assert output.language == Settings.Defaults.LANGUAGE
     assert all([child.parent == output for child in output.children])
     assert len(output.tags) == 0
 
@@ -870,7 +870,7 @@ def test_feature_grammar_valid():
     assert output.background is not None
     assert len(output.children) == 3
     assert all([child.parent == output for child in output.children])
-    assert output.language == Settings.DEFAULT_LANGUAGE
+    assert output.language == Settings.Defaults.LANGUAGE
 
     # with tags
     output = grammar.convert(get_sequence(
@@ -881,7 +881,7 @@ def test_feature_grammar_valid():
         + scenario_outline_sequence
         + scenario_sequence
     ))
-    assert output.language == Settings.DEFAULT_LANGUAGE
+    assert output.language == Settings.Defaults.LANGUAGE
     assert len(output.tags) == 1
     assert output.name == 'name123'
     assert output.description == 'desc123'

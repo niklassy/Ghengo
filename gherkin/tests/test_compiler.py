@@ -3,7 +3,7 @@ from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
 from gherkin.token import LanguageToken, EOFToken, EndOfLineToken, EmptyToken, CommentToken, RuleToken
 from gherkin.ast import Comment
-from gherkin.settings import Settings
+from settings import Settings
 from test_utils import assert_callable_raises
 
 
