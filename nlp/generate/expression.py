@@ -1,6 +1,6 @@
 from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
 from nlp.generate.replaceable import Replaceable
-from nlp.generate.settings import INDENT_SPACES
+from settings import INDENT_SPACES
 from nlp.generate.statement import Statement
 from nlp.generate.suite import Import
 from nlp.generate.utils import camel_to_snake_case

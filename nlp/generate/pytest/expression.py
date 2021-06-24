@@ -1,12 +1,12 @@
 from nlp.generate.expression import ModelFactoryExpression, FunctionCallExpression
 from nlp.generate.parameter import Parameter
 from nlp.generate.pytest.decorator import DjangoDBDecorator
-from nlp.generate.settings import GenerationSettings
+from settings import GenerationType
 
 
 class PyTestModelFactoryExpression(ModelFactoryExpression):
     replacement_for = ModelFactoryExpression
-    for_test_type = GenerationSettings.TestTypes.PY_TEST
+    for_test_type = GenerationType.PY_TEST
 
     def on_add_to_test_case(self, test_case):
         parameter = Parameter(self.factory_name)

@@ -1,4 +1,4 @@
-from nlp.generate.settings import GenerationSettings
+from settings import Settings
 
 
 class Replaceable(object):
@@ -12,7 +12,7 @@ class Replaceable(object):
 
     def __new__(cls, *args, **kwargs):
         for sub_class in cls.__subclasses__():
-            if sub_class.replacement_for == cls and GenerationSettings.test_type == sub_class.for_test_type:
+            if sub_class.replacement_for == cls and Settings.generate_test_type == sub_class.for_test_type:
                 return super().__new__(sub_class)
 
         return super().__new__(cls)

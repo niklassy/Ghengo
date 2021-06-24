@@ -3,7 +3,7 @@ import pytest
 from gherkin.token import FeatureToken, DataTableToken, RuleToken, ScenarioToken, ScenarioOutlineToken, \
     BackgroundToken, ExamplesToken, GivenToken, WhenToken, ThenToken, AndToken, ButToken, TagsToken, TagToken, \
     CommentToken, LanguageToken, EmptyToken, DescriptionToken
-from gherkin.settings import Settings
+from settings import Settings
 
 
 @pytest.mark.parametrize(

@@ -4,7 +4,7 @@ from typing import Optional
 from gherkin.compiler_base.token import Token
 from gherkin.config import GHERKIN_CONFIG
 from gherkin.compiler_base.line import Line
-from gherkin.settings import Settings
+from settings import Settings
 
 
 class GherkinToken(Token):

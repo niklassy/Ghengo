@@ -2,7 +2,7 @@ from nlp.generate.decorator import Decorator
 from nlp.generate.mixin import TemplateMixin
 from nlp.generate.parameter import Parameter
 from nlp.generate.replaceable import Replaceable
-from nlp.generate.settings import INDENT_SPACES
+from settings import INDENT_SPACES
 from nlp.generate.statement import PassStatement, Statement
 from nlp.generate.utils import to_function_name
 from nlp.generate.warning import GenerationWarningCollection

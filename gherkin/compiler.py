@@ -1,7 +1,7 @@
 from django_meta.project import DjangoProject
 from nlp.generate.pytest.decorator import PyTestMarkDecorator, PyTestParametrizeDecorator
 from nlp.generate.pytest.suite import PyTestTestSuite
-from nlp.generate.settings import GenerationSettings
+from settings import GenerationType
 from nlp.generate.utils import to_function_name
 from gherkin.compiler_base.compiler import Lexer, Compiler, Parser, CodeGenerator
 
@@ -13,7 +13,7 @@ from gherkin.grammar import GherkinDocumentGrammar
 from gherkin.token import FeatureToken, RuleToken, DescriptionToken, EOFToken, BackgroundToken, ScenarioToken, \
     CommentToken, GivenToken, ThenToken, WhenToken, EmptyToken, AndToken, ButToken, TagsToken, LanguageToken, \
     EndOfLineToken, ScenarioOutlineToken, DocStringToken, DataTableToken, ExamplesToken
-from gherkin.settings import Settings
+from settings import Settings
 from nlp.tiler import GivenTiler
 
 
@@ -43,7 +43,7 @@ class GherkinLexer(Lexer):
 
     def on_start_tokenize(self):
         # in case this tokenizing is done multiple times, reset the value before starting again
-        Settings.language = Settings.DEFAULT_LANGUAGE
+        Settings.language = Settings.Defaults.LANGUAGE
 
     def on_token_added(self, token):
         # the first line may contain the language, so if it is found, set it
@@ -149,7 +149,7 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         if not ast.feature:
             return ''
 
-        GenerationSettings.test_type = GenerationSettings.TestTypes.PY_TEST
+        Settings.test_type = GenerationType.PY_TEST
 
         # TODO: extract django project path from input
         project = DjangoProject('django_sample_project.apps.config.settings')
@@ -164,7 +164,7 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
                 for rule_child in child.scenario_definitions:
                     self.scenario_to_test_case(rule_child, suite, project)
 
-        GenerationSettings.test_type = GenerationSettings.DEFAULT_TEST_TYPE
+        Settings.generate_test_type = Settings.Defaults.GENERATE_TEST_TYPE
 
         return suite.to_template()
 

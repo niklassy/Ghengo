@@ -1,7 +1,6 @@
-from nlp.generate.expression import Expression
 from nlp.generate.mixin import TemplateMixin
 from nlp.generate.replaceable import Replaceable
-from nlp.generate.settings import INDENT_SPACES
+from settings import INDENT_SPACES
 
 
 class Argument(Replaceable, TemplateMixin):
