@@ -51,6 +51,9 @@ class Tiler(object):
             self.test_case.add_statement(statement)
 
     def get_statements(self):
+        if not self.best_converter:
+            return []
+
         return self.best_converter.convert_to_statements()
 
 
@@ -59,3 +62,7 @@ class GivenTiler(Tiler):
         ModelVariableReferenceConverter,
         ModelFactoryConverter,
     ]
+
+
+class WhenTiler(Tiler):
+    converter_classes = []

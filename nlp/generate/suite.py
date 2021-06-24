@@ -82,7 +82,7 @@ class TestCaseBase(Replaceable, TemplateMixin):
         return {
             'decorators': '\n'.join(decorator.to_template(line_indent) for decorator in self.decorators),
             'decorator_separator': '\n' if len(self.decorators) > 0 else '',
-            'name': to_function_name('test_{}'.format(self.name)),
+            'name': to_function_name('test_{}'.format(self.name.replace(' ', '_'))),
             'parameters': ', '.join(para.to_template() for para in self.parameters),
             'statements': '\n'.join(statement.to_template(
                 line_indent + INDENT_SPACES, line_indent + INDENT_SPACES) for statement in self.statements),
