@@ -1,6 +1,7 @@
 import importlib
 import inspect
 
+from django.contrib.auth.models import Permission
 from django.urls import reverse
 
 from django_meta.project import AbstractModelInterface, AbstractModelField, ViewSetInterface, UrlPatternInterface
@@ -175,11 +176,6 @@ class ModelSearcher(Searcher):
 class PermissionSearcher(Searcher):
     """Can search for specific permissions in Django."""
 
-    def __init__(self, permission_text, language):
-        from django.contrib.auth.models import Permission
-        self.permission_model_cls = Permission
-        super().__init__(permission_text, language)
-
     def get_convert_fallback(self):
         return None
 
@@ -187,7 +183,7 @@ class PermissionSearcher(Searcher):
         return [permission.codename, permission.name]
 
     def get_possible_results(self, *args, **kwargs):
-        return self.permission_model_cls.objects.all()
+        return Permission.objects.all()
 
 
 class UrlSearcher(Searcher):

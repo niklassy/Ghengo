@@ -1,11 +1,13 @@
 import importlib
 import inspect
-import os
 
 from django.apps import apps
-from django import setup
 from django.urls import URLPattern, URLResolver, get_resolver
+from rest_framework.views import APIView
+from rest_framework.viewsets import GenericViewSet
+from rest_framework.routers import APIRootView
 
+from django_meta.setup import setup_django
 from nlp.generate.utils import to_function_name
 
 
@@ -73,12 +75,12 @@ class UrlPatternInterface(object):
     @property
     def api_view(self):
         if self._api_view_determined is False:
-            from rest_framework.views import APIView
-            from rest_framework.viewsets import GenericViewSet
-            from rest_framework.routers import APIRootView
             view_cls = self._get_view_cls()
 
-            if inspect.isclass(view_cls) and issubclass(view_cls, APIView) and view_cls != APIRootView and not issubclass(view_cls, GenericViewSet):
+            is_valid_api_view = issubclass(view_cls, APIView) and view_cls != APIRootView
+            is_view_set = issubclass(view_cls, GenericViewSet)
+
+            if inspect.isclass(view_cls) and is_valid_api_view and not is_view_set:
                 self._api_view = ApiViewInterface(view_cls(request=None, format_kwargs=None))
             else:
                 self._api_view = None
@@ -89,7 +91,6 @@ class UrlPatternInterface(object):
     @property
     def view_set(self):
         if self._view_set_determined is False:
-            from rest_framework.viewsets import GenericViewSet
             view_cls = self._get_view_cls()
 
             if inspect.isclass(view_cls) and issubclass(view_cls, GenericViewSet):
@@ -254,8 +255,7 @@ class DjangoProject(object):
 
         # django needs to know where the settings are, so set it in the env and setup django afterwards
         print('Setting up Django....')
-        os.environ['DJANGO_SETTINGS_MODULE'] = settings_path
-        setup()
+        setup_django(settings_path)
         print('Finished setting up Django!')
 
     def get_reverse_keys(self):

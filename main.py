@@ -1,4 +1,4 @@
-from gherkin.compiler import GherkinToPyTestCompiler
+from django_meta.setup import setup_django
 
 feature_string = """# language: en
 
@@ -47,6 +47,14 @@ if __name__ == '__main__':
     Können leider nicht die Library verwenden, weil sie scheinbar Probleme hat und weil wir sämtliche Informationen
     wie Kommentare behalten wollen, für weitere Informationen in der Zukunft.
     """
+    # first, setup django before importing the rest of the project, or else we would get errors from django that
+    # the apps are not ready yet
+    setup_django('django_sample_project.apps.config.settings')
+
+    from django_meta.project import DjangoProject
+    from gherkin.compiler import GherkinToPyTestCompiler
+
+    DjangoProject('django_sample_project.apps.config.settings')
     c = GherkinToPyTestCompiler()
     file_ast = c.compile_file('django_sample_project/features/variable_reference.feature')
     c.export_as_file('generated_tests/')
