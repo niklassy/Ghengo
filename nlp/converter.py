@@ -1,4 +1,4 @@
-from django_meta.project import AbstractModelInterface
+from django_meta.model import AbstractModelInterface
 from nlp.generate.argument import Kwarg, Argument
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement

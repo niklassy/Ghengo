@@ -5,7 +5,7 @@ from django.db.models import IntegerField, FloatField, BooleanField, DecimalFiel
     ForeignKey, ManyToOneRel
 from spacy.tokens import Token
 
-from django_meta.project import AbstractModelField, ModelInterface
+from django_meta.model import AbstractModelField, ModelInterface
 from nlp.generate.argument import Kwarg
 from nlp.generate.expression import ModelM2MAddExpression, ModelFactoryExpression, ModelQuerysetFilterExpression
 from nlp.generate.variable import Variable

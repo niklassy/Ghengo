@@ -1,10 +1,7 @@
-import importlib
-import inspect
-
 from django.contrib.auth.models import Permission
-from django.urls import reverse
 
-from django_meta.project import AbstractModelInterface, AbstractModelField, ViewSetInterface, UrlPatternInterface
+from django_meta.api import UrlPatternInterface
+from django_meta.model import AbstractModelInterface, AbstractModelField
 from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity, ContainsSimilarity, LevenshteinSimilarity
 from nlp.translator import CacheTranslator

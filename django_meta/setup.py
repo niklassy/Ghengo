@@ -5,5 +5,8 @@ from django import setup
 
 def setup_django(settings_path):
     """Sets up django."""
-    os.environ['DJANGO_SETTINGS_MODULE'] = settings_path
-    setup()
+    if 'DJANGO_SETTINGS_MODULE' not in os.environ:
+        print('Setting up Django...')
+        os.environ['DJANGO_SETTINGS_MODULE'] = settings_path
+        setup()
+        print('Django is ready!')

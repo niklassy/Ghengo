@@ -2,7 +2,8 @@ from decimal import Decimal
 
 import pytest
 
-from django_meta.project import AbstractModelInterface, AbstractModelField, DjangoProject, ModelInterface
+from django_meta.model import AbstractModelInterface, AbstractModelField, ModelInterface
+from django_meta.project import DjangoProject
 from nlp.extractor import ModelFieldExtractor, Extractor, IntegerModelFieldExtractor, FloatModelFieldExtractor, \
     BooleanModelFieldExtractor, M2MModelFieldExtractor, ForeignKeyModelFieldExtractor
 from nlp.generate.argument import Kwarg
