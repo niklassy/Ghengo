@@ -1,4 +1,9 @@
-from django_meta.project import AbstractModelInterface, AbstractModelField
+import importlib
+import inspect
+
+from django.urls import reverse
+
+from django_meta.project import AbstractModelInterface, AbstractModelField, ViewSetInterface, UrlPatternInterface
 from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity, ContainsSimilarity, LevenshteinSimilarity
 from nlp.translator import CacheTranslator
@@ -183,3 +188,23 @@ class PermissionSearcher(Searcher):
 
     def get_possible_results(self, *args, **kwargs):
         return self.permission_model_cls.objects.all()
+
+
+class UrlSearcher(Searcher):
+    def __init__(self, text, language, django_project):
+        super().__init__(text, language)
+        self.django_project = django_project
+
+    def get_keywords(self, url_pattern):
+        return []
+
+    def get_possible_results(self, *args, **kwargs):
+        url_patterns = self.django_project.list_urls(as_pattern=True)
+        results = []
+        for pattern in url_patterns:
+            interface = UrlPatternInterface(pattern)
+            if interface.view_set is not None:
+                results.append(interface)
+
+        m = [i.methods for i in results]
+        return results

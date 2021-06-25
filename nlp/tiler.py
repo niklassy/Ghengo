@@ -1,4 +1,4 @@
-from nlp.converter import ModelFactoryConverter, Converter, ModelVariableReferenceConverter
+from nlp.converter import ModelFactoryConverter, Converter, ModelVariableReferenceConverter, RequestConverter
 from nlp.setup import Nlp
 
 
@@ -65,4 +65,4 @@ class GivenTiler(Tiler):
 
 
 class WhenTiler(Tiler):
-    converter_classes = []
+    converter_classes = [RequestConverter]

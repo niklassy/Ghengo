@@ -1,4 +1,5 @@
 import importlib
+import inspect
 import os
 
 from django.apps import apps
@@ -6,6 +7,107 @@ from django import setup
 from django.urls import URLPattern, URLResolver, get_resolver
 
 from nlp.generate.utils import to_function_name
+
+
+class UrlPatternInterface(object):
+    def __init__(self, url_pattern):
+        self.url_pattern = url_pattern
+        self._view_set = None
+        self._view_set_determined = False
+
+    @property
+    def reverse_name(self):
+        return self.url_pattern.name
+
+    @property
+    def view_set_name(self):
+        return self.reverse_name.split('-')[0]
+
+    @property
+    def url_name(self):
+        return '-'.join(self.reverse_name.split('-')[1:])
+
+    @property
+    def methods(self):
+        if self.view_set is None:
+            return []
+
+        methods = []
+        for _, method, url_name in self.view_set.get_all_actions():
+            if url_name == self.url_name and method not in methods:
+                methods.append(method)
+
+        return methods
+
+    @property
+    def view_set(self):
+        if self._view_set_determined is False:
+            from rest_framework.views import APIView
+            from rest_framework.viewsets import GenericViewSet
+
+            lookup_str = self.url_pattern.lookup_str
+
+            full_name_as_list = lookup_str.split('.')
+            full_name_as_list.reverse()
+
+            view_name = []
+            view_path = lookup_str.split('.')
+            module = None
+
+            for lookup_part in full_name_as_list:
+                view_name.append(lookup_part)
+                view_path = view_path[:-1]
+
+                try:
+                    module = importlib.import_module('.'.join(view_path))
+                    break
+                except ModuleNotFoundError:
+                    continue
+            view_name.reverse()
+            view_cls = getattr(module, view_name[0])
+
+            from rest_framework.routers import APIRootView
+            if view_cls == APIRootView:
+                self._view_set = None
+
+            # TODO: handle APIView and @api_view()
+            elif not inspect.isclass(view_cls) or not issubclass(view_cls, (APIView, GenericViewSet)):
+                self._view_set = None
+            else:
+                self._view_set = ViewSetInterface(view_cls(request=None, format_kwarg=None))
+        return self._view_set
+
+
+class ViewSetInterface(object):
+    def __init__(self, view_set):
+        self.view_set = view_set
+
+    def get_all_actions(self):
+        from rest_framework.routers import APIRootView
+        if isinstance(self.view_set, APIRootView):
+            return [('get', 'get')]
+
+        extra_actions = [
+            extra_action for extra_action in self.view_set.get_extra_actions()
+        ]
+        default_actions = [
+            ('list', 'get', 'list'),
+            ('retrieve', 'get', 'detail'),
+            ('partial_update', 'patch', 'detail'),
+            ('update', 'put', 'detail'),
+            ('create', 'post', 'detail'),
+        ]
+
+        actions = []
+        for default_action, method, url_name in default_actions:
+            if hasattr(self.view_set, default_action):
+                actions.append((default_action, method, url_name))
+
+        for extra_action in extra_actions:
+            for method in extra_action.mapping:
+                actions.append((extra_action.url_path, method, extra_action.url_name))
+
+        return actions
 
 
 class ModelInterface(object):
@@ -116,7 +218,7 @@ class DjangoProject(object):
         """Returns all keys that are used in the project that can be used via reverse"""
         return get_resolver().reverse_dict.keys()
 
-    def list_urls(self, url_pattern=None, acc=None):
+    def list_urls(self, url_pattern=None, url_list=None, as_pattern=False):
         """
         Returns all urls that are available in the project.
 
@@ -126,20 +228,27 @@ class DjangoProject(object):
         if url_pattern is None:
             url_pattern = __import__(self.settings.ROOT_URLCONF, {}, {}, ['']).urlpatterns
 
-        if acc is None:
-            acc = []
+        if url_list is None:
+            url_list = []
 
         if not url_pattern:
             return
 
-        entry = url_pattern[0]
-        if isinstance(entry, URLPattern):
-            yield acc + [str(entry.pattern)]
+        for url_entry in url_pattern:
+            if isinstance(url_entry, URLPattern):
+                if as_pattern:
+                    url_list.append(url_entry)
+                else:
+                    url_list.append(str(url_entry.pattern))
 
-        elif isinstance(entry, URLResolver):
-            yield from self.list_urls(entry.url_patterns, acc + [str(entry.pattern)])
+            elif isinstance(url_entry, URLResolver):
+                if as_pattern:
+                    self.list_urls(url_entry.url_patterns, url_list, as_pattern)
+                else:
+                    for pattern in url_entry.url_patterns:
+                        url_list.append(self.list_urls([pattern], [str(url_entry.pattern)], as_pattern))
 
-        yield from self.list_urls(url_pattern[1:], acc)
+        return url_list
 
     def get_apps(self, include_django=False, include_third_party=False, include_project=True, as_interface=False):
         """

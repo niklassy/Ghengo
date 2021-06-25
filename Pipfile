@@ -15,6 +15,7 @@ deep-translator = "*"
 unidecode = "*"
 pytest-mock = "*"
 python-levenshtein = "*"
+uritemplate = "*"
 
 [dev-packages]
 

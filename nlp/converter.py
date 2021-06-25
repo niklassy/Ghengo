@@ -3,7 +3,7 @@ from nlp.generate.argument import Kwarg, Argument
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement
 from nlp.generate.variable import Variable
-from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher
+from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher, UrlSearcher
 from nlp.extractor import ModelFieldExtractor, get_model_field_extractor
 from nlp.utils import get_noun_chunks, is_proper_noun_of, get_non_stop_tokens, \
     get_noun_chunk_of_token, token_is_noun, get_root_of_token, NoToken, token_to_function_name, token_is_proper_noun
@@ -425,3 +425,10 @@ class ModelVariableReferenceConverter(ModelConverter):
         statements = super().get_statements_from_extractors(extractors)
         statements.append(ModelSaveExpression(self.referenced_variable).as_statement())
         return statements
+
+
+class RequestConverter(Converter):
+    @property
+    def extractors(self):
+        UrlSearcher(str(self.document), self.language, self.django_project).search()
+        return []
