@@ -7,6 +7,7 @@ from nlp.generate.argument import Kwarg, Argument
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement
 from nlp.generate.variable import Variable
+from nlp.locator import RestActionLocator
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher, UrlSearcher
 from nlp.extractor import ModelFieldExtractor, get_model_field_extractor
 from nlp.setup import Nlp
@@ -438,7 +439,7 @@ class RequestConverter(Converter):
         super().__init__(document, related_object, django_project, test_case)
         self._user_token = None
         self._variable_token = None
-        self._action_token = None
+        self._method_token = None
         self._referenced_variable = None
         self._referenced_variable_determined = False
 
@@ -514,27 +515,12 @@ class RequestConverter(Converter):
         return self._user_token
 
     @property
-    def action_token(self):
-        if self._action_token is None:
-            for token in self.document:
-                translated_token = CacheTranslator(src_language=token.lang_, target_language='en').translate(str(token.lemma_))
-
-                # TODO: move into another class that is responsible for finding tokens??
-                for action in ('create', 'list', 'update', 'change', 'delete', 'remove', 'get', 'clear'):
-                    en_nlp = Nlp.for_language('en')
-                    similarity = CosineSimilarity(en_nlp(translated_token), en_nlp(action)).get_similarity()
-
-                    if similarity > 0.8:
-                        self._action_token = token
-                        break
-
-                if self._action_token is not None:
-                    break
-
-            if self._action_token is None:
-                self._action_token = NoToken()
-
-        return self._action_token
+    def method_token(self):
+        if self._method_token is None:
+            locator = RestActionLocator(self.document)
+            locator.locate()
+            self._method_token = locator.fittest_token
+        return self._method_token
 
     @property
     def from_anonymous_user(self):
@@ -551,6 +537,6 @@ class RequestConverter(Converter):
 
     @property
     def extractors(self):
-        a = self.action_token
+        a = self.method_token
         b = self.get_reverse_name()
         return []
