@@ -9,6 +9,9 @@ from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStat
 from nlp.generate.variable import Variable
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher, UrlSearcher
 from nlp.extractor import ModelFieldExtractor, get_model_field_extractor
+from nlp.setup import Nlp
+from nlp.similarity import CosineSimilarity
+from nlp.translator import CacheTranslator
 from nlp.utils import get_noun_chunks, is_proper_noun_of, get_non_stop_tokens, \
     get_noun_chunk_of_token, token_is_noun, get_root_of_token, NoToken, token_to_function_name, token_is_proper_noun
 
@@ -435,6 +438,7 @@ class RequestConverter(Converter):
         super().__init__(document, related_object, django_project, test_case)
         self._user_token = None
         self._variable_token = None
+        self._action_token = None
         self._referenced_variable = None
         self._referenced_variable_determined = False
 
@@ -446,13 +450,9 @@ class RequestConverter(Converter):
                 if not isinstance(statement.expression, ModelFactoryExpression):
                     continue
 
-                model = ModelInterface.create_with_model(
-                    apps.get_model(AUTH_USER_MODEL.split('.')[0], AUTH_USER_MODEL.split('.')[1])
-                )
-
                 for token in self.user_noun_chunk:
                     future_name = token_to_function_name(token)
-                    variable_in_tc = self.test_case.variable_defined(future_name, model.name)
+                    variable_in_tc = self.test_case.variable_defined(future_name, self.user_model_interface.name)
 
                     if (token.is_digit or token_is_proper_noun(token)) and variable_in_tc:
                         self._variable_token = token
@@ -467,6 +467,13 @@ class RequestConverter(Converter):
         return self._variable_token
 
     @property
+    def user_model_interface(self):
+        user_path = AUTH_USER_MODEL.split('.')
+        return ModelInterface.create_with_model(
+            apps.get_model(user_path[0], user_path[1])
+        )
+
+    @property
     def referenced_variable(self):
         """Returns the variable that is referenced by the document and where fields should be changed."""
         if self._referenced_variable_determined is False:
@@ -476,12 +483,8 @@ class RequestConverter(Converter):
                 if not isinstance(statement.expression, ModelFactoryExpression):
                     continue
 
-                model = ModelInterface.create_with_model(
-                    apps.get_model(AUTH_USER_MODEL.split('.')[0], AUTH_USER_MODEL.split('.')[1])
-                )
                 future_name = token_to_function_name(variable_token)
-
-                if statement.string_matches_variable(future_name, model.name):
+                if statement.string_matches_variable(future_name, self.user_model_interface.name):
                     self._referenced_variable = statement.variable.copy()
                     break
 
@@ -494,16 +497,60 @@ class RequestConverter(Converter):
         return noun_chunks[0]
 
     @property
+    def model_noun_chunk(self):
+        if self.from_anonymous_user:
+            return self.get_noun_chunks()[0]
+
+        return self.get_noun_chunks()[1]
+
+    @property
+    def model_token(self):
+        return self.model_noun_chunk.root
+
+    @property
     def user_token(self):
         if self._user_token is None:
             self._user_token = self.user_noun_chunk.root if self.referenced_variable else NoToken()
         return self._user_token
 
     @property
+    def action_token(self):
+        if self._action_token is None:
+            for token in self.document:
+                translated_token = CacheTranslator(src_language=token.lang_, target_language='en').translate(str(token.lemma_))
+
+                # TODO: move into another class that is responsible for finding tokens??
+                for action in ('create', 'list', 'update', 'change', 'delete', 'remove', 'get', 'clear'):
+                    en_nlp = Nlp.for_language('en')
+                    similarity = CosineSimilarity(en_nlp(translated_token), en_nlp(action)).get_similarity()
+
+                    if similarity > 0.8:
+                        self._action_token = token
+                        break
+
+                if self._action_token is not None:
+                    break
+
+            if self._action_token is None:
+                self._action_token = NoToken()
+
+        return self._action_token
+
+    @property
     def from_anonymous_user(self):
         return isinstance(self.user_token, NoToken)
 
+    def get_reverse_name(self):
+        # TODO: url searcher has to use the information about model (if existent), the method (verb used) and
+        #   maybe the reverse name to find the url that is meant
+        result = UrlSearcher(str(self.document), self.language, self.django_project).search()
+        return 1
+
+    def get_method(self):
+        pass
+
     @property
     def extractors(self):
-        UrlSearcher(str(self.document), self.language, self.django_project).search()
+        a = self.action_token
+        b = self.get_reverse_name()
         return []

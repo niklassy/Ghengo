@@ -213,6 +213,7 @@ class UrlSearcher(Searcher):
     def get_possible_results(self, *args, **kwargs):
         url_patterns = self.django_project.list_urls(as_pattern=True)
         results = []
+
         for pattern in url_patterns:
             interface = UrlPatternInterface(pattern)
             if interface.view_set is not None:
