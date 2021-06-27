@@ -1,4 +1,8 @@
-from django_meta.model import AbstractModelInterface
+from django.apps import apps
+from django.conf.global_settings import AUTH_USER_MODEL
+from django.contrib.auth.models import User
+
+from django_meta.model import AbstractModelInterface, ModelInterface
 from nlp.generate.argument import Kwarg, Argument
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement
@@ -330,7 +334,6 @@ class ModelVariableReferenceConverter(ModelConverter):
                 model = self.model_interface or statement.expression.model_interface
 
                 for token in self.model_noun_chunk:
-
                     future_name = token_to_function_name(token)
                     variable_in_tc = self.test_case.variable_defined(future_name, model.name)
 
@@ -428,6 +431,78 @@ class ModelVariableReferenceConverter(ModelConverter):
 
 
 class RequestConverter(Converter):
+    def __init__(self, document, related_object, django_project, test_case):
+        super().__init__(document, related_object, django_project, test_case)
+        self._user_token = None
+        self._variable_token = None
+        self._referenced_variable = None
+        self._referenced_variable_determined = False
+
+    @property
+    def variable_token(self):
+        """Returns the variable token that holds the model instance that will be changed."""
+        if self._variable_token is None:
+            for statement in self.test_case.statements:
+                if not isinstance(statement.expression, ModelFactoryExpression):
+                    continue
+
+                model = ModelInterface.create_with_model(
+                    apps.get_model(AUTH_USER_MODEL.split('.')[0], AUTH_USER_MODEL.split('.')[1])
+                )
+
+                for token in self.user_noun_chunk:
+                    future_name = token_to_function_name(token)
+                    variable_in_tc = self.test_case.variable_defined(future_name, model.name)
+
+                    if (token.is_digit or token_is_proper_noun(token)) and variable_in_tc:
+                        self._variable_token = token
+                        break
+
+                if self._variable_token is not None:
+                    break
+
+            if self._variable_token is None:
+                self._variable_token = NoToken()
+
+        return self._variable_token
+
+    @property
+    def referenced_variable(self):
+        """Returns the variable that is referenced by the document and where fields should be changed."""
+        if self._referenced_variable_determined is False:
+            variable_token = self.variable_token
+
+            for statement in self.test_case.statements:
+                if not isinstance(statement.expression, ModelFactoryExpression):
+                    continue
+
+                model = ModelInterface.create_with_model(
+                    apps.get_model(AUTH_USER_MODEL.split('.')[0], AUTH_USER_MODEL.split('.')[1])
+                )
+                future_name = token_to_function_name(variable_token)
+
+                if statement.string_matches_variable(future_name, model.name):
+                    self._referenced_variable = statement.variable.copy()
+                    break
+
+            self._referenced_variable_determined = True
+        return self._referenced_variable
+
+    @property
+    def user_noun_chunk(self):
+        noun_chunks = self.get_noun_chunks()
+        return noun_chunks[0]
+
+    @property
+    def user_token(self):
+        if self._user_token is None:
+            self._user_token = self.user_noun_chunk.root if self.referenced_variable else NoToken()
+        return self._user_token
+
+    @property
+    def from_anonymous_user(self):
+        return isinstance(self.user_token, NoToken)
+
     @property
     def extractors(self):
         UrlSearcher(str(self.document), self.language, self.django_project).search()

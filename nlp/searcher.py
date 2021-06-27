@@ -189,7 +189,26 @@ class UrlSearcher(Searcher):
         self.django_project = django_project
 
     def get_keywords(self, url_pattern):
-        return []
+        keywords = [
+            url_pattern.reverse_name,
+            url_pattern.model_interface.name,
+            url_pattern.model_interface.verbose_name
+        ]
+
+        if 'get' in url_pattern.methods:
+            keywords.append('get')
+            keywords.append('list')
+
+        if 'post' in url_pattern.methods:
+            keywords.append('create')
+
+        if 'put' in url_pattern.methods or 'patch' in url_pattern.methods:
+            keywords.append('update')
+
+        if 'delete' in url_pattern.methods:
+            keywords.append('delete')
+
+        return keywords
 
     def get_possible_results(self, *args, **kwargs):
         url_patterns = self.django_project.list_urls(as_pattern=True)
@@ -199,5 +218,4 @@ class UrlSearcher(Searcher):
             if interface.view_set is not None:
                 results.append(interface)
 
-        m = [i.methods for i in results]
         return results

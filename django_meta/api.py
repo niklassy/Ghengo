@@ -2,8 +2,11 @@ import importlib
 import inspect
 
 from rest_framework.routers import APIRootView
+from rest_framework.serializers import ModelSerializer
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
+
+from django_meta.model import ModelInterface
 
 
 class UrlPatternInterface(object):
@@ -17,6 +20,20 @@ class UrlPatternInterface(object):
     @property
     def reverse_name(self):
         return self.url_pattern.name
+
+    @property
+    def model_interface(self):
+        view_cls = self._get_view_cls()
+        view = view_cls(request=None, format_kwarg=None)
+        try:
+            serializer_cls = view.get_serializer_class()
+        except Exception:
+            return None
+
+        if not issubclass(serializer_cls, ModelSerializer):
+            return None
+
+        return ModelInterface.create_with_model(serializer_cls.Meta.model)
 
     @property
     def view_set_name(self):
