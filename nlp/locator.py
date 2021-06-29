@@ -99,7 +99,7 @@ class Locator(object):
 class RestActionLocator(Locator):
     """This locator finds a token that indicates a special REST action."""
     GET_VALUES = ['list', 'get', 'detail', 'fetch']
-    DELETE_VALUES = ['remove', 'delete', 'clear']
+    DELETE_VALUES = ['remove', 'delete', 'clear', 'destroy']
     UPDATE_VALUES = ['change', 'update', 'modify']
     CREATE_VALUES = ['create', 'generate']
 

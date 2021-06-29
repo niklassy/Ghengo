@@ -6,6 +6,9 @@ class NoToken:
     def __eq__(self, other):
         return False
 
+    def __bool__(self):
+        return False
+
 
 def get_non_stop_tokens(doc):
     """Reduce to the most important content."""

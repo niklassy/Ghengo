@@ -158,7 +158,7 @@ class ViewSetAdapter(object):
             ('partial_update', Methods.PATCH, 'detail'),
             ('update', Methods.PUT, 'detail'),
             ('create', Methods.POST, 'detail'),
-            ('delete', Methods.DELETE, 'detail'),
+            ('destroy', Methods.DELETE, 'detail'),
         ]
 
         actions = []

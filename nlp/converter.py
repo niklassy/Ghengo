@@ -431,15 +431,24 @@ class ModelVariableReferenceConverter(ModelConverter):
 
 
 class RequestConverter(Converter):
+    """
+    This converter is responsible to turn a document into statements that will do a request to the django REST api.
+    """
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
         self._model = None
         self._user_token = None
         self._variable_token = None
-        self._method_token = None
         self._referenced_variable = None
+        self._url_pattern_adapter = None
         self._referenced_variable_determined = False
         self._rest_locator = RestActionLocator(self.document)
+        self._rest_locator.locate()
+
+    def get_document_compatibility(self):
+        if not self.method_token:
+            return 0
+        return 1
 
     @property
     def variable_token(self):
@@ -521,14 +530,10 @@ class RequestConverter(Converter):
 
     @property
     def method_token(self):
-        if self._method_token is None:
-            self._rest_locator.locate()
-            self._method_token = self._rest_locator.fittest_token
-        return self._method_token
+        return self._rest_locator.fittest_token
 
     @property
     def method(self):
-        self._rest_locator.locate()
         return self._rest_locator.method
 
     @property
@@ -545,16 +550,15 @@ class RequestConverter(Converter):
     def from_anonymous_user(self):
         return isinstance(self.user_token, NoToken)
 
-    def get_reverse_name(self):
-        searcher = UrlSearcher(str(self.method_token), self.language, self.model_adapter, [self.method])
-        url_adapter = searcher.search(self.django_project)
-        # TODO: maybe handle fallback of searcher in future?
-        if url_adapter is None:
-            return None
-        return url_adapter.reverse_name
+    @property
+    def url_pattern_adapter(self):
+        if self._url_pattern_adapter is None:
+            searcher = UrlSearcher(str(self.method_token), self.language, self.model_adapter, [self.method])
+            self._url_pattern_adapter = searcher.search(self.django_project)
+        return self._url_pattern_adapter
 
     @property
     def extractors(self):
         a = self.method_token
-        b = self.get_reverse_name()
+        b = self.url_pattern_adapter
         return []
