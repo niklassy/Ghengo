@@ -9,6 +9,14 @@ from rest_framework.viewsets import GenericViewSet
 from django_meta.model import ModelInterface
 
 
+class Methods:
+    GET = 'get'
+    POST = 'post'
+    PATCH = 'patch'
+    PUT = 'put'
+    DELETE = 'delete'
+
+
 class UrlPatternInterface(object):
     def __init__(self, url_pattern):
         self.url_pattern = url_pattern
@@ -119,16 +127,13 @@ class ApiViewInterface(object):
     def __init__(self, api_view):
         self.api_view = api_view
 
-    @property
-    def methods(self):
-        return [method.lower() for method in self.api_view.allowed_methods if method.lower() != 'options']
-
     def get_all_actions(self):
         possible_actions = [
-            ('get', 'get', ''),
-            ('post', 'post', ''),
-            ('patch', 'patch', ''),
-            ('put', 'put', ''),
+            ('get', Methods.GET, ''),
+            ('post', Methods.POST, ''),
+            ('patch', Methods.PATCH, ''),
+            ('put', Methods.PUT, ''),
+            ('delete', Methods.DELETE, ''),
         ]
 
         actions = []
@@ -148,11 +153,12 @@ class ViewSetInterface(object):
             extra_action for extra_action in self.view_set.get_extra_actions()
         ]
         default_actions = [
-            ('list', 'get', 'list'),
-            ('retrieve', 'get', 'detail'),
-            ('partial_update', 'patch', 'detail'),
-            ('update', 'put', 'detail'),
-            ('create', 'post', 'detail'),
+            ('list', Methods.GET, 'list'),
+            ('retrieve', Methods.GET, 'detail'),
+            ('partial_update', Methods.PATCH, 'detail'),
+            ('update', Methods.PUT, 'detail'),
+            ('create', Methods.POST, 'detail'),
+            ('delete', Methods.DELETE, 'detail'),
         ]
 
         actions = []

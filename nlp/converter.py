@@ -437,11 +437,13 @@ class ModelVariableReferenceConverter(ModelConverter):
 class RequestConverter(Converter):
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
+        self._model = None
         self._user_token = None
         self._variable_token = None
         self._method_token = None
         self._referenced_variable = None
         self._referenced_variable_determined = False
+        self._rest_locator = RestActionLocator(self.document)
 
     @property
     def variable_token(self):
@@ -470,6 +472,7 @@ class RequestConverter(Converter):
     @property
     def user_model_interface(self):
         user_path = AUTH_USER_MODEL.split('.')
+
         return ModelInterface.create_with_model(
             apps.get_model(user_path[0], user_path[1])
         )
@@ -499,10 +502,16 @@ class RequestConverter(Converter):
 
     @property
     def model_noun_chunk(self):
-        if self.from_anonymous_user:
-            return self.get_noun_chunks()[0]
+        method_token_chunk = None
 
-        return self.get_noun_chunks()[1]
+        for chunk in self.get_noun_chunks():
+            if self.method_token in chunk:
+                method_token_chunk = chunk
+
+            if self.user_token not in chunk and self.method_token not in chunk:
+                return chunk
+
+        return method_token_chunk
 
     @property
     def model_token(self):
@@ -517,23 +526,36 @@ class RequestConverter(Converter):
     @property
     def method_token(self):
         if self._method_token is None:
-            locator = RestActionLocator(self.document)
-            locator.locate()
-            self._method_token = locator.fittest_token
+            self._rest_locator.locate()
+            self._method_token = self._rest_locator.fittest_token
         return self._method_token
+
+    @property
+    def method(self):
+        self._rest_locator.locate()
+        return self._rest_locator.method
+
+    @property
+    def model_interface(self):
+        """
+        Returns the model interface that represents the model.
+        """
+        if self._model is None:
+            model_searcher = ModelSearcher(text=str(self.model_token.lemma_), src_language=self.language)
+            self._model = model_searcher.search(project_interface=self.django_project)
+        return self._model
 
     @property
     def from_anonymous_user(self):
         return isinstance(self.user_token, NoToken)
 
     def get_reverse_name(self):
-        # TODO: url searcher has to use the information about model (if existent), the method (verb used) and
-        #   maybe the reverse name to find the url that is meant
-        result = UrlSearcher(str(self.document), self.language, self.django_project).search()
-        return 1
-
-    def get_method(self):
-        pass
+        searcher = UrlSearcher(str(self.method_token), self.language, self.model_interface, [self.method])
+        url_interface = searcher.search(self.django_project)
+        # TODO: maybe handle fallback of searcher in future?
+        if url_interface is None:
+            return None
+        return url_interface.reverse_name
 
     @property
     def extractors(self):

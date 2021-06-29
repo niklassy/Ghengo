@@ -1,6 +1,6 @@
 from django.contrib.auth.models import Permission
 
-from django_meta.api import UrlPatternInterface
+from django_meta.api import UrlPatternInterface, Methods
 from django_meta.model import AbstractModelInterface, AbstractModelField
 from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity, ContainsSimilarity, LevenshteinSimilarity
@@ -184,39 +184,53 @@ class PermissionSearcher(Searcher):
 
 
 class UrlSearcher(Searcher):
-    def __init__(self, text, language, django_project):
+    def __init__(self, text, language, model_interface, valid_methods):
         super().__init__(text, language)
-        self.django_project = django_project
+        self.model_interface = model_interface
+
+        if Methods.PUT in valid_methods:
+            valid_methods = valid_methods.copy()
+            valid_methods.append(Methods.PATCH)
+
+        self.valid_methods = valid_methods
+
+    def get_convert_fallback(self):
+        # TODO: maybe create a fallback??
+        return None
 
     def get_keywords(self, url_pattern):
-        keywords = [
-            url_pattern.reverse_name,
-            url_pattern.model_interface.name,
-            url_pattern.model_interface.verbose_name
-        ]
+        keywords = [url_pattern.url_name, url_pattern.reverse_name]
 
-        if 'get' in url_pattern.methods:
-            keywords.append('get')
-            keywords.append('list')
+        if Methods.GET in url_pattern.methods:
+            keywords += ['get', 'list', '{} list'.format(self.model_interface.name)]
 
-        if 'post' in url_pattern.methods:
+        if Methods.POST in url_pattern.methods:
             keywords.append('create')
 
-        if 'put' in url_pattern.methods or 'patch' in url_pattern.methods:
+        if Methods.POST in url_pattern.methods or Methods.PATCH in url_pattern.methods:
             keywords.append('update')
 
-        if 'delete' in url_pattern.methods:
+        if Methods.DELETE in url_pattern.methods:
             keywords.append('delete')
 
         return keywords
 
-    def get_possible_results(self, *args, **kwargs):
-        url_patterns = self.django_project.list_urls(as_pattern=True)
+    def get_possible_results(self, django_project, *args, **kwargs):
+        url_patterns = django_project.list_urls(as_pattern=True)
         results = []
 
         for pattern in url_patterns:
             interface = UrlPatternInterface(pattern)
+
             if interface.view_set is not None:
+                # if the url does not have a valid method, skip it
+                if not any([m in self.valid_methods for m in interface.methods]):
+                    continue
+
+                # if the model is not the same, skip it
+                if interface.model_interface.model != self.model_interface.model:
+                    continue
+
                 results.append(interface)
 
         return results

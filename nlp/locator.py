@@ -1,3 +1,4 @@
+from django_meta.api import Methods
 from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity
 from nlp.translator import CacheTranslator
@@ -35,6 +36,9 @@ class Locator(object):
 
     def locate(self):
         """Locate a token that fits the compare values best."""
+        if self._fittest_token is not None:
+            return
+
         for token in self.document:
             if not self.token_is_relevant(token):
                 continue
@@ -47,6 +51,12 @@ class Locator(object):
                         self._fittest_token = token
                         self._highest_similarity = similarity
                         self._best_compare_value = compare_value
+
+                        if similarity >= 1:
+                            break
+
+                if self._highest_similarity >= 1:
+                    break
 
         if self._highest_similarity < self.SIMILARITY_BENCHMARK or self._fittest_token is None:
             self._fittest_token = NoToken()
@@ -88,11 +98,32 @@ class Locator(object):
 
 class RestActionLocator(Locator):
     """This locator finds a token that indicates a special REST action."""
+    GET_VALUES = ['list', 'get', 'detail', 'fetch']
+    DELETE_VALUES = ['remove', 'delete', 'clear']
+    UPDATE_VALUES = ['change', 'update', 'modify']
+    CREATE_VALUES = ['create', 'generate']
+
+    @property
+    def method(self):
+        if self._best_compare_value in self.GET_VALUES:
+            return Methods.GET
+
+        if self._best_compare_value in self.DELETE_VALUES:
+            return Methods.DELETE
+
+        if self._best_compare_value in self.UPDATE_VALUES:
+            return Methods.PUT
+
+        if self._best_compare_value in self.CREATE_VALUES:
+            return Methods.POST
+
+        return None
+
     def token_is_relevant(self, token):
         """Only verbs and nouns are used to check which action is meant."""
         return token_is_verb(token) or token_is_noun(token)
 
     def get_compare_values(self):
         """Get words that can indicate a REST action."""
-        return ['create', 'list', 'update', 'change', 'delete', 'remove', 'get', 'clear']
+        return self.GET_VALUES + self.DELETE_VALUES + self.CREATE_VALUES + self.UPDATE_VALUES
 
