@@ -6,7 +6,7 @@ from rest_framework.serializers import ModelSerializer
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 
-from django_meta.model import ModelInterface
+from django_meta.model import ModelAdapter
 
 
 class Methods:
@@ -17,7 +17,7 @@ class Methods:
     DELETE = 'delete'
 
 
-class UrlPatternInterface(object):
+class UrlPatternAdapter(object):
     def __init__(self, url_pattern):
         self.url_pattern = url_pattern
         self._view_set = None
@@ -30,7 +30,7 @@ class UrlPatternInterface(object):
         return self.url_pattern.name
 
     @property
-    def model_interface(self):
+    def model_adapter(self):
         view_cls = self._get_view_cls()
         view = view_cls(request=None, format_kwarg=None)
         try:
@@ -41,7 +41,7 @@ class UrlPatternInterface(object):
         if not issubclass(serializer_cls, ModelSerializer):
             return None
 
-        return ModelInterface.create_with_model(serializer_cls.Meta.model)
+        return ModelAdapter.create_with_model(serializer_cls.Meta.model)
 
     @property
     def view_set_name(self):
@@ -101,7 +101,7 @@ class UrlPatternInterface(object):
             is_view_set = issubclass(view_cls, GenericViewSet)
 
             if inspect.isclass(view_cls) and is_valid_api_view and not is_view_set:
-                self._api_view = ApiViewInterface(view_cls(request=None, format_kwargs=None))
+                self._api_view = ApiViewAdapter(view_cls(request=None, format_kwargs=None))
             else:
                 self._api_view = None
 
@@ -114,7 +114,7 @@ class UrlPatternInterface(object):
             view_cls = self._get_view_cls()
 
             if inspect.isclass(view_cls) and issubclass(view_cls, GenericViewSet):
-                self._view_set = ViewSetInterface(view_cls(request=None, format_kwarg=None))
+                self._view_set = ViewSetAdapter(view_cls(request=None, format_kwarg=None))
             else:
                 self._view_set = None
 
@@ -123,7 +123,7 @@ class UrlPatternInterface(object):
         return self._view_set
 
 
-class ApiViewInterface(object):
+class ApiViewAdapter(object):
     def __init__(self, api_view):
         self.api_view = api_view
 
@@ -144,7 +144,7 @@ class ApiViewInterface(object):
         return actions
 
 
-class ViewSetInterface(object):
+class ViewSetAdapter(object):
     def __init__(self, view_set):
         self.view_set = view_set
 

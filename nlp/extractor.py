@@ -5,7 +5,7 @@ from django.db.models import IntegerField, FloatField, BooleanField, DecimalFiel
     ForeignKey, ManyToOneRel
 from spacy.tokens import Token
 
-from django_meta.model import AbstractModelField, ModelInterface
+from django_meta.model import AbstractModelFieldAdapter, ModelAdapter
 from nlp.generate.argument import Kwarg
 from nlp.generate.expression import ModelM2MAddExpression, ModelFactoryExpression, ModelQuerysetFilterExpression
 from nlp.generate.variable import Variable
@@ -93,9 +93,9 @@ class ModelFieldExtractor(Extractor):
     """
     field_classes = ()
 
-    def __init__(self, test_case, source, model_interface, field, document):
+    def __init__(self, test_case, source, model_adapter, field, document):
         super().__init__(test_case, source, document)
-        self.model_interface = model_interface
+        self.model_adapter = model_adapter
         self.field = field
         self.field_name = field.name
 
@@ -105,7 +105,7 @@ class ModelFieldExtractor(Extractor):
 
     def get_guessed_python_value(self, string):
         """Handle variables that were referenced in the past if we dont know the type of field that is used."""
-        if isinstance(self.field, AbstractModelField):
+        if isinstance(self.field, AbstractModelFieldAdapter):
             for statement in self.test_case.statements:
                 if statement.string_matches_variable(str(string), reference_string=None):
                     return statement.variable.copy()
@@ -248,7 +248,7 @@ class M2MModelFieldExtractor(ModelFieldExtractor):
                         continue
 
                     # check if the value can become the variable and if the expression has the same model
-                    expression_model = expression.model_interface.model
+                    expression_model = expression.model_adapter.model
                     variable_matches = statement.string_matches_variable(str(child), related_name)
                     if variable_matches and expression_model == related_model:
                         variable = statement.variable.copy()
@@ -274,7 +274,7 @@ class ForeignKeyModelFieldExtractor(ModelFieldExtractor):
             if not isinstance(statement.expression, ModelFactoryExpression) or not statement.variable:
                 continue
 
-            expression_model = statement.expression.model_interface.model
+            expression_model = statement.expression.model_adapter.model
             if statement.string_matches_variable(value, related_model.__name__) and expression_model == related_model:
                 return statement.variable.copy()
 
@@ -297,10 +297,10 @@ class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):
 
         try:
             permission = PermissionSearcher(searcher_input, self.source.lang_).search(raise_exception=True)
-            permission_interface = ModelInterface.create_with_model(Permission)
+            permission_adapter = ModelAdapter.create_with_model(Permission)
 
             permission_query = ModelQuerysetFilterExpression(
-                permission_interface,
+                permission_adapter,
                 [
                     Kwarg('content_type__model', permission.content_type.model),
                     Kwarg('content_type__app_label', permission.content_type.app_label),

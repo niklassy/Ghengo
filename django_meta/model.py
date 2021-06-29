@@ -3,12 +3,30 @@ from django.apps import apps
 from nlp.generate.utils import to_function_name
 
 
-class ModelInterface(object):
+class AbstractModelAdapter(object):
+    def __init__(self, name):
+        class_name = ''.join(x for x in name.title() if not x.isspace())
+        self.model = type(class_name, (), {})
+
+    def get_field(self, name):
+        return None
+
+    @property
+    def fields(self):
+        return []
+
+    @property
+    def name(self):
+        return self.model.__name__
+
+
+class ModelAdapter(AbstractModelAdapter):
     """
     This class is a wrapper around a Django model with several functions and properties that are useful for the
     application.
     """
     def __init__(self, model, app):
+        super().__init__(model.__name__)
         self.model = model
         self.app = app
 
@@ -18,7 +36,7 @@ class ModelInterface(object):
 
         for app in list(apps.get_app_configs()):
             if app.label == app_label:
-                return ModelInterface(model, app)
+                return ModelAdapter(model, app)
 
         raise ValueError('No app was found.')
 
@@ -28,10 +46,6 @@ class ModelInterface(object):
             return str(self.model._meta.verbose_name)
         except AttributeError:
             return None
-
-    @property
-    def name(self):
-        return self.model.__name__
 
     @property
     def fields(self):
@@ -45,27 +59,10 @@ class ModelInterface(object):
         return [getattr(field, 'verbose_name', None) or field.name for field in self.fields]
 
     def __repr__(self):
-        return 'ModelInterface - {}'.format(self.name)
+        return 'ModelAdapter - {}'.format(self.name)
 
 
-class AbstractModelInterface(ModelInterface):
-    """
-    This interface can be used for a Model that actually does not exist yet.
-    """
-    def __init__(self, name):
-        # convert to pascal case
-        class_name = ''.join(x for x in name.title() if not x.isspace())
-        super().__init__(type(class_name, (), {}), None)
-
-    def get_field(self, name):
-        return None
-
-    @property
-    def fields(self):
-        return []
-
-
-class AbstractModelField(object):
+class AbstractModelFieldAdapter(object):
     """
     This field can be used for a field in a model that does not exist yet.
     """

@@ -1,7 +1,7 @@
 from django.contrib.auth.models import Permission
 
-from django_meta.api import UrlPatternInterface, Methods
-from django_meta.model import AbstractModelInterface, AbstractModelField
+from django_meta.api import UrlPatternAdapter, Methods
+from django_meta.model import AbstractModelFieldAdapter, AbstractModelAdapter
 from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity, ContainsSimilarity, LevenshteinSimilarity
 from nlp.translator import CacheTranslator
@@ -150,24 +150,24 @@ class Searcher(object):
 
 class ModelFieldSearcher(Searcher):
     def get_convert_fallback(self):
-        return AbstractModelField(name=self.translator_to_en.translate(self.text))
+        return AbstractModelFieldAdapter(name=self.translator_to_en.translate(self.text))
 
     def get_keywords(self, field):
         return [field.name, getattr(field, 'verbose_name', None)]
 
-    def get_possible_results(self, model_interface):
-        return model_interface.fields
+    def get_possible_results(self, model_adapter):
+        return model_adapter.fields
 
 
 class ModelSearcher(Searcher):
     def get_convert_fallback(self):
-        return AbstractModelInterface(name=self.translator_to_en.translate(self.text))
+        return AbstractModelAdapter(name=self.translator_to_en.translate(self.text))
 
     def get_keywords(self, model):
         return [model.name, model.verbose_name]
 
-    def get_possible_results(self, project_interface):
-        return project_interface.get_models(as_interface=True, include_django=True)
+    def get_possible_results(self, project_adapter):
+        return project_adapter.get_models(as_adapter=True, include_django=True)
 
 
 class PermissionSearcher(Searcher):
@@ -184,9 +184,9 @@ class PermissionSearcher(Searcher):
 
 
 class UrlSearcher(Searcher):
-    def __init__(self, text, language, model_interface, valid_methods):
+    def __init__(self, text, language, model_adapter, valid_methods):
         super().__init__(text, language)
-        self.model_interface = model_interface
+        self.model_adapter = model_adapter
 
         if Methods.PUT in valid_methods:
             valid_methods = valid_methods.copy()
@@ -202,7 +202,7 @@ class UrlSearcher(Searcher):
         keywords = [url_pattern.url_name, url_pattern.reverse_name]
 
         if Methods.GET in url_pattern.methods:
-            keywords += ['get', 'list', '{} list'.format(self.model_interface.name)]
+            keywords += ['get', 'list', '{} list'.format(self.model_adapter.name)]
 
         if Methods.POST in url_pattern.methods:
             keywords.append('create')
@@ -220,17 +220,17 @@ class UrlSearcher(Searcher):
         results = []
 
         for pattern in url_patterns:
-            interface = UrlPatternInterface(pattern)
+            adapter = UrlPatternAdapter(pattern)
 
-            if interface.view_set is not None:
+            if adapter.view_set is not None:
                 # if the url does not have a valid method, skip it
-                if not any([m in self.valid_methods for m in interface.methods]):
+                if not any([m in self.valid_methods for m in adapter.methods]):
                     continue
 
                 # if the model is not the same, skip it
-                if interface.model_interface.model != self.model_interface.model:
+                if adapter.model_adapter.model != self.model_adapter.model:
                     continue
 
-                results.append(interface)
+                results.append(adapter)
 
         return results

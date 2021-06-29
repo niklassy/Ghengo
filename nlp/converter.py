@@ -1,8 +1,7 @@
 from django.apps import apps
 from django.conf.global_settings import AUTH_USER_MODEL
-from django.contrib.auth.models import User
 
-from django_meta.model import AbstractModelInterface, ModelInterface
+from django_meta.model import ModelAdapter, AbstractModelAdapter
 from nlp.generate.argument import Kwarg, Argument
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement
@@ -10,9 +9,6 @@ from nlp.generate.variable import Variable
 from nlp.locator import RestActionLocator
 from nlp.searcher import ModelSearcher, NoConversionFound, ModelFieldSearcher, UrlSearcher
 from nlp.extractor import ModelFieldExtractor, get_model_field_extractor
-from nlp.setup import Nlp
-from nlp.similarity import CosineSimilarity
-from nlp.translator import CacheTranslator
 from nlp.utils import get_noun_chunks, is_proper_noun_of, get_non_stop_tokens, \
     get_noun_chunk_of_token, token_is_noun, get_root_of_token, NoToken, token_to_function_name, token_is_proper_noun
 
@@ -112,37 +108,37 @@ class ModelConverter(Converter):
 
     def _search_for_field(self, span, token):
         """
-        Searches for a field with a given span and token inside the self.model_interface
+        Searches for a field with a given span and token inside the self.model_adapter
         """
         # all the following nouns will reference fields of that model, so find a field
         if span:
             field_searcher_span = ModelFieldSearcher(text=str(span), src_language=self.language)
 
             try:
-                return field_searcher_span.search(raise_exception=True, model_interface=self.model_interface)
+                return field_searcher_span.search(raise_exception=True, model_adapter=self.model_adapter)
             except NoConversionFound:
                 pass
 
             field_searcher_root = ModelFieldSearcher(text=str(span.root.lemma_), src_language=self.language)
             try:
-                return field_searcher_root.search(raise_exception=bool(token), model_interface=self.model_interface)
+                return field_searcher_root.search(raise_exception=bool(token), model_adapter=self.model_adapter)
             except NoConversionFound:
                 pass
 
         if token:
             field_searcher_token = ModelFieldSearcher(text=str(token), src_language=self.language)
-            return field_searcher_token.search(model_interface=self.model_interface)
+            return field_searcher_token.search(model_adapter=self.model_adapter)
 
         return None
 
     @property
-    def model_interface(self):
+    def model_adapter(self):
         """
-        Returns the model interface that represents the model.
+        Returns the model adapter that represents the model.
         """
         if self._model is None:
             model_searcher = ModelSearcher(text=str(self.model_token.lemma_), src_language=self.language)
-            self._model = model_searcher.search(project_interface=self.django_project)
+            self._model = model_searcher.search(project_adapter=self.django_project)
         return self._model
 
     @property
@@ -170,7 +166,7 @@ class ModelConverter(Converter):
     @property
     def variable_reference_string(self):
         """Returns the reference string that is passed to the variable of this document."""
-        return self.model_interface.name
+        return self.model_adapter.name
 
     @property
     def variable_name(self):
@@ -182,7 +178,7 @@ class ModelConverter(Converter):
     @property
     def fields(self):
         """Returns all the fields that the document references."""
-        if self.model_interface is None:
+        if self.model_adapter is None:
             return []
 
         if self._fields is None:
@@ -223,7 +219,7 @@ class ModelConverter(Converter):
             for field, field_token in self.fields:
                 extractor_cls = get_model_field_extractor(field)
                 extractors.append(
-                    extractor_cls(self.test_case, field_token, self.model_interface, field, self.document)
+                    extractor_cls(self.test_case, field_token, self.model_adapter, field, self.document)
                 )
 
             self._extractors = extractors
@@ -239,7 +235,7 @@ class ModelFactoryConverter(ModelConverter):
         Before working with the extractors, create an assignment statement with the model factory. That statement
         will be used to add the values of the extractors.
         """
-        expression = ModelFactoryExpression(model_interface=self.model_interface, factory_kwargs=[])
+        expression = ModelFactoryExpression(model_adapter=self.model_adapter, factory_kwargs=[])
         variable = Variable(
             name_predetermined=self.variable_name,
             reference_string=self.variable_reference_string,
@@ -250,7 +246,7 @@ class ModelFactoryConverter(ModelConverter):
     def get_document_compatibility(self):
         compatibility = 1
 
-        if isinstance(self.model_interface, AbstractModelInterface):
+        if isinstance(self.model_adapter, AbstractModelAdapter):
             compatibility *= 0.8
 
         # models are normally displayed by nouns
@@ -294,11 +290,11 @@ class ModelFactoryConverter(ModelConverter):
 
             for index, cell in enumerate(row.cells):
                 field_searcher = ModelFieldSearcher(column_names[index], src_language=self.language)
-                field = field_searcher.search(model_interface=self.model_interface)
+                field = field_searcher.search(model_adapter=self.model_adapter)
                 extractors_copy.append(
                     ModelFieldExtractor(
                         test_case=self.test_case,
-                        model_interface=self.model_interface,
+                        model_adapter=self.model_adapter,
                         field=field,
                         source=cell.value,
                         document=self.document,
@@ -335,7 +331,7 @@ class ModelVariableReferenceConverter(ModelConverter):
                 if not isinstance(statement.expression, ModelFactoryExpression):
                     continue
 
-                model = self.model_interface or statement.expression.model_interface
+                model = self.model_adapter or statement.expression.model_adapter
 
                 for token in self.model_noun_chunk:
                     future_name = token_to_function_name(token)
@@ -363,7 +359,7 @@ class ModelVariableReferenceConverter(ModelConverter):
                 if not isinstance(statement.expression, ModelFactoryExpression):
                     continue
 
-                model = self.model_interface or statement.expression.model_interface
+                model = self.model_adapter or statement.expression.model_adapter
                 future_name = token_to_function_name(variable_token)
 
                 if statement.string_matches_variable(future_name, model.name):
@@ -386,11 +382,11 @@ class ModelVariableReferenceConverter(ModelConverter):
         return self._variable_name
 
     @property
-    def model_interface(self):
-        """Returns the model interface for this converter."""
+    def model_adapter(self):
+        """Returns the model adapter for this converter."""
         # if the referenced variable was found, return the model of that variable
         if self._referenced_variable is not None and self._referenced_variable_determined:
-            self._model = self._referenced_variable.value.model_interface
+            self._model = self._referenced_variable.value.model_adapter
             return self._model
 
         if self._model_determined is False:
@@ -399,16 +395,16 @@ class ModelVariableReferenceConverter(ModelConverter):
 
             # try to search for a model
             try:
-                found_m_interface = model_searcher.search(project_interface=self.django_project, raise_exception=True)
+                found_m_adapter = model_searcher.search(project_adapter=self.django_project, raise_exception=True)
             except NoConversionFound:
-                found_m_interface = None
+                found_m_adapter = None
 
             # try to find a statement where the found model is saved in the expression
-            if found_m_interface:
+            if found_m_adapter:
                 for statement in self.test_case.statements:
                     exp = statement.expression
-                    if isinstance(exp, ModelFactoryExpression) and found_m_interface.model == exp.model_interface.model:
-                        model = found_m_interface
+                    if isinstance(exp, ModelFactoryExpression) and found_m_adapter.model == exp.model_adapter.model:
+                        model = found_m_adapter
                         break
 
             self._model_determined = True
@@ -455,7 +451,7 @@ class RequestConverter(Converter):
 
                 for token in self.user_noun_chunk:
                     future_name = token_to_function_name(token)
-                    variable_in_tc = self.test_case.variable_defined(future_name, self.user_model_interface.name)
+                    variable_in_tc = self.test_case.variable_defined(future_name, self.user_model_adapter.name)
 
                     if (token.is_digit or token_is_proper_noun(token)) and variable_in_tc:
                         self._variable_token = token
@@ -470,10 +466,10 @@ class RequestConverter(Converter):
         return self._variable_token
 
     @property
-    def user_model_interface(self):
+    def user_model_adapter(self):
         user_path = AUTH_USER_MODEL.split('.')
 
-        return ModelInterface.create_with_model(
+        return ModelAdapter.create_with_model(
             apps.get_model(user_path[0], user_path[1])
         )
 
@@ -488,7 +484,7 @@ class RequestConverter(Converter):
                     continue
 
                 future_name = token_to_function_name(variable_token)
-                if statement.string_matches_variable(future_name, self.user_model_interface.name):
+                if statement.string_matches_variable(future_name, self.user_model_adapter.name):
                     self._referenced_variable = statement.variable.copy()
                     break
 
@@ -536,13 +532,13 @@ class RequestConverter(Converter):
         return self._rest_locator.method
 
     @property
-    def model_interface(self):
+    def model_adapter(self):
         """
-        Returns the model interface that represents the model.
+        Returns the model adapter that represents the model.
         """
         if self._model is None:
             model_searcher = ModelSearcher(text=str(self.model_token.lemma_), src_language=self.language)
-            self._model = model_searcher.search(project_interface=self.django_project)
+            self._model = model_searcher.search(project_adapter=self.django_project)
         return self._model
 
     @property
@@ -550,12 +546,12 @@ class RequestConverter(Converter):
         return isinstance(self.user_token, NoToken)
 
     def get_reverse_name(self):
-        searcher = UrlSearcher(str(self.method_token), self.language, self.model_interface, [self.method])
-        url_interface = searcher.search(self.django_project)
+        searcher = UrlSearcher(str(self.method_token), self.language, self.model_adapter, [self.method])
+        url_adapter = searcher.search(self.django_project)
         # TODO: maybe handle fallback of searcher in future?
-        if url_interface is None:
+        if url_adapter is None:
             return None
-        return url_interface.reverse_name
+        return url_adapter.reverse_name
 
     @property
     def extractors(self):

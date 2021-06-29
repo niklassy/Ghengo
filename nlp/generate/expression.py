@@ -54,13 +54,13 @@ class ModelSaveExpression(FunctionCallExpression):
 
 
 class ModelQuerysetBaseExpression(FunctionCallExpression):
-    def __init__(self, model_interface, function_name, function_kwargs):
-        self.model_interface = model_interface
-        super().__init__('{}.objects.{}'.format(model_interface.name, function_name), function_kwargs)
+    def __init__(self, model_adapter, function_name, function_kwargs):
+        self.model_adapter = model_adapter
+        super().__init__('{}.objects.{}'.format(model_adapter.name, function_name), function_kwargs)
 
     def get_template_context(self, line_indent, indent):
         context = super().get_template_context(line_indent, indent)
-        context['model'] = self.model_interface.name
+        context['model'] = self.model_adapter.name
         return context
 
     def on_add_to_test_case(self, test_case):
@@ -68,18 +68,18 @@ class ModelQuerysetBaseExpression(FunctionCallExpression):
 
 
 class ModelQuerysetFilterExpression(ModelQuerysetBaseExpression):
-    def __init__(self, model_interface, function_kwargs):
-        super().__init__(model_interface, 'filter', function_kwargs)
+    def __init__(self, model_adapter, function_kwargs):
+        super().__init__(model_adapter, 'filter', function_kwargs)
 
 
 class ModelFactoryExpression(FunctionCallExpression):
-    def __init__(self, model_interface, factory_kwargs):
-        self.model_interface = model_interface
+    def __init__(self, model_adapter, factory_kwargs):
+        self.model_adapter = model_adapter
         super().__init__(self.factory_name, factory_kwargs)
 
     @property
     def factory_name(self):
-        return '{}_factory'.format(camel_to_snake_case(self.model_interface.name))
+        return '{}_factory'.format(camel_to_snake_case(self.model_adapter.name))
 
 
 class ModelM2MAddExpression(Expression):

@@ -1,17 +1,17 @@
-from django_meta.model import ModelInterface
+from django_meta.model import ModelAdapter
 
 
-class AppInterface(object):
+class AppAdapter(object):
     def __init__(self, app, project):
         self.app = app
         self.project = project
 
-    def get_models(self, as_interface=False):
+    def get_models(self, as_adapter=False):
         output = []
 
         for model in self.app.get_models():
-            if as_interface:
-                model = ModelInterface(model, self)
+            if as_adapter:
+                model = ModelAdapter(model, self)
             output.append(model)
 
         return output
