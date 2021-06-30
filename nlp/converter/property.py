@@ -13,12 +13,18 @@ from nlp.utils import token_to_function_name, NoToken, is_proper_noun_of, token_
 class NewModelProperty(ConverterProperty):
     """This property can be used to get the chunk, token and value to create a new model instance."""
     def get_chunk(self):
+        if len(self.converter.get_noun_chunks()) == 0:
+            return None
+
         return self.converter.get_noun_chunks()[0]
 
     def get_token(self):
-        return self.chunk.root
+        return self.chunk.root if self.chunk else NoToken()
 
     def get_value(self):
+        if not self.token:
+            return None
+
         searcher = ModelSearcher(text=str(self.token.lemma_), src_language=self.converter.language)
         return searcher.search(project_adapter=self.converter.django_project)
 
@@ -26,6 +32,9 @@ class NewModelProperty(ConverterProperty):
 class NewVariableProperty(ConverterProperty):
     """This property can be used to get extract the data to create a new variable."""
     def get_chunk(self):
+        if len(self.converter.get_noun_chunks()) == 0:
+            return None
+
         return self.converter.get_noun_chunks()[0]
 
     def variable_defined_in_test_case(self, token, reference_string):
@@ -79,6 +88,9 @@ class ReferenceVariableProperty(NewVariableProperty):
 
     def get_token(self):
         """The token of the variable must reference a variable that was previously defined."""
+        if not self.chunk:
+            return NoToken()
+
         for statement in self.converter.test_case.statements:
             if not isinstance(statement.expression, ModelFactoryExpression):
                 continue
@@ -102,9 +114,7 @@ class ReferenceVariableProperty(NewVariableProperty):
         Because this references a variable that is already defined in the test case, go over each statement and try
         to find a variable that matches the model and the function name of the token.
         """
-        variable_token = self.token
-
-        if not variable_token:
+        if not self.token:
             return None
 
         for statement in self.converter.test_case.statements:
@@ -112,7 +122,7 @@ class ReferenceVariableProperty(NewVariableProperty):
                 continue
 
             model = self.get_model_adapter(statement)
-            future_name = token_to_function_name(variable_token)
+            future_name = token_to_function_name(self.token)
 
             if statement.string_matches_variable(future_name, model.name):
                 return statement.variable.copy()

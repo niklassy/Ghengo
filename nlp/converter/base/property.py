@@ -1,4 +1,9 @@
 class ConverterProperty:
+    """
+    Converters have a pattern that repeats again and again: Finding a token, its chunk and the that is determined
+    from that. The key difference to Extractors: extractors are changing on runtime. ConverterProperties are information
+    the Converter MUST have in order to create statements. Extractors are additional information for these statements.
+    """
     def __init__(self, converter):
         self.converter = converter
         self.document = converter.document
@@ -23,6 +28,7 @@ class ConverterProperty:
 
     @property
     def chunk(self):
+        """The chunk in which the token can be found."""
         if self.chunk_determined is False:
             self._chunk = self.get_chunk()
             self.chunk_determined = True
@@ -33,6 +39,7 @@ class ConverterProperty:
 
     @property
     def token(self):
+        """The token that represents something."""
         if self.token_determined is False:
             self._token = self.get_token()
             self.token_determined = True
@@ -43,6 +50,7 @@ class ConverterProperty:
 
     @property
     def value(self):
+        """The value that is determined from the token or the chunk."""
         if self.value_determined is False:
             self._value = self.get_value()
             self.value_determined = True

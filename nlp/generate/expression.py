@@ -1,3 +1,4 @@
+from nlp.generate.argument import Argument
 from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
 from nlp.generate.replaceable import Replaceable
 from settings import INDENT_SPACES
@@ -70,6 +71,43 @@ class ModelQuerysetBaseExpression(FunctionCallExpression):
 class ModelQuerysetFilterExpression(ModelQuerysetBaseExpression):
     def __init__(self, model_adapter, function_kwargs):
         super().__init__(model_adapter, 'filter', function_kwargs)
+
+
+class APIClientExpression(FunctionCallExpression):
+    def __init__(self):
+        super().__init__('APIClient', [])
+
+    def on_add_to_test_case(self, test_case):
+        test_case.test_suite.add_import(Import('rest_framework.test', 'APIClient'))
+
+
+class APIClientAuthenticateExpression(FunctionCallExpression):
+    def __init__(self, client_variable, user_variable):
+        super().__init__('{}.force_authenticate'.format(client_variable), [Argument(user_variable)])
+
+
+class RequestExpression(FunctionCallExpression):
+    template = '{client_variable}.{fn_name}({long_content_start}{reverse}{kwargs}{long_content_end})'
+
+    def __init__(self, function_name, function_kwargs, reverse_name, client_variable):
+        super().__init__(function_name, function_kwargs)
+        self.client_variable = client_variable
+        self.reverse_name = reverse_name
+        self.reverse_fn_statement = FunctionCallExpression('reverse', [Argument(self.reverse_name)])
+
+    def get_template_context(self, line_indent, indent):
+        context = super().get_template_context(line_indent, indent)
+
+        context['reverse'] = self.reverse_fn_statement.to_template(line_indent, 0)
+        dict_content_str = ', '.join(['\'{}\': {}'.format(k.name, k.value) for k in self.function_kwargs])
+
+        # add `,` because it is an argument as well
+        context['kwargs'] = ', {' + dict_content_str + '}'
+        context['client_variable'] = self.client_variable
+        return context
+
+    def on_add_to_test_case(self, test_case):
+        test_case.test_suite.add_import(Import('django.urls', 'reverse'))
 
 
 class ModelFactoryExpression(FunctionCallExpression):

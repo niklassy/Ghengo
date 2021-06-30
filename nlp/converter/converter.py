@@ -5,8 +5,10 @@ from nlp.converter.property import NewModelProperty, NewVariableProperty, Refere
     MethodProperty
 from nlp.extractor import get_model_field_extractor, ModelFieldExtractor
 from nlp.generate.argument import Kwarg, Argument
-from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression
+from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression, RequestExpression, APIClientExpression, \
+    APIClientAuthenticateExpression
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement
+from nlp.generate.variable import Variable
 from nlp.searcher import ModelFieldSearcher, NoConversionFound, UrlSearcher
 from nlp.utils import get_non_stop_tokens, get_noun_chunk_of_token, token_is_noun, get_root_of_token, \
     NoToken
@@ -46,6 +48,19 @@ class ModelConverter(Converter):
 
         return None
 
+    def token_can_be_field(self, token):
+        if token == self.model.token or self.variable.token == token:
+            return False
+
+        if token.pos_ != 'ADJ' and token.pos_ != 'NOUN' and token.pos_ != 'VERB':
+            return False
+
+        # verbs with aux are fine (is done, ist abgeschlossen)
+        if token.pos_ == 'VERB' and token.head.pos_ != 'AUX':
+            return False
+
+        return True
+
     @property
     def fields(self):
         """Returns all the fields that the document references."""
@@ -56,14 +71,7 @@ class ModelConverter(Converter):
             fields = []
 
             for token in get_non_stop_tokens(self.document):
-                if token == self.model.token or self.variable.token == token:
-                    continue
-
-                if token.pos_ != 'ADJ' and token.pos_ != 'NOUN' and token.pos_ != 'VERB':
-                    continue
-
-                # verbs with aux are fine (is done, ist abgeschlossen)
-                if token.pos_ == 'VERB' and token.head.pos_ != 'AUX':
+                if not self.token_can_be_field(token):
                     continue
 
                 chunk = get_noun_chunk_of_token(token, self.document)
@@ -206,7 +214,7 @@ class ModelVariableReferenceConverter(ModelConverter):
         return statements
 
 
-class RequestConverter(Converter):
+class RequestConverter(ModelConverter):
     """
     This converter is responsible to turn a document into statements that will do a request to the django REST api.
     """
@@ -217,6 +225,12 @@ class RequestConverter(Converter):
         self.user = UserReferenceVariableProperty(self)
         self.model = ModelWithUserProperty(self)
         self.method = MethodProperty(self)
+
+    def token_can_be_field(self, token):
+        if token == self.method.token or token == self.user.token:
+            return False
+
+        return super().token_can_be_field(token)
 
     def get_document_compatibility(self):
         if not self.method.token:
@@ -230,12 +244,52 @@ class RequestConverter(Converter):
     @property
     def url_pattern_adapter(self):
         if self._url_pattern_adapter is None:
-            searcher = UrlSearcher(str(self.method.token), self.language, self.model.value, [self.method])
+            searcher = UrlSearcher(str(self.method.token), self.language, self.model.value, [self.method.value])
             self._url_pattern_adapter = searcher.search(self.django_project)
         return self._url_pattern_adapter
 
-    @property
-    def extractors(self):
-        a = self.method.token
-        b = self.url_pattern_adapter
-        return []
+    def prepare_statements(self, statements):
+        if not self.url_pattern_adapter:
+            return statements
+
+        # check if there is already a statement with a client that was created
+        variable_client = None
+        for statement in self.test_case.statements:
+            if isinstance(statement.expression, APIClientExpression):
+                variable_client = statement.variable
+
+        # if there is no client yet, create one
+        if variable_client is None:
+            expression_client_init = APIClientExpression()
+            variable_client = Variable('client', '')
+            statements.append(AssignmentStatement(expression_client_init, variable_client))
+
+        # if the request comes from a user, login with that user
+        if not self.from_anonymous_user:
+            statements.append(APIClientAuthenticateExpression(variable_client, self.user.value).as_statement())
+
+        # create the statement with the request
+        expression_request = RequestExpression(
+            self.method.value,
+            function_kwargs=[],
+            reverse_name=self.url_pattern_adapter.reverse_name,
+            client_variable=variable_client,
+        )
+        response_variable = Variable('response', '')
+        statement_request = AssignmentStatement(expression_request, response_variable)
+        statements.append(statement_request)
+
+        return statements
+
+    def handle_extractor(self, extractor, statements):
+        super().handle_extractor(extractor, statements)
+
+        extracted_value = extractor.extract_value()
+        if extracted_value is None:
+            return
+
+        # the request is always the last statement that was created in `prepare_statements`
+        request_kwargs = statements[-1].expression.function_kwargs
+
+        kwarg = Kwarg(extractor.field_name, extracted_value)
+        request_kwargs.append(kwarg)
