@@ -5,5 +5,6 @@ Funktionalität: Reference
 
   Szenario: Ändern von ToDo - anderer Nutzer
     Gegeben seien der Benutzer Bob
+    Und Bob das Passwort "Admin123" hat
     Und einen Auftrag 1
     Wenn ein Auftrag erstellt wird

@@ -1,4 +1,5 @@
-from nlp.converter import ModelFactoryConverter, Converter, ModelVariableReferenceConverter, RequestConverter
+from nlp.converter.base.converter import Converter
+from nlp.converter.converter import ModelVariableReferenceConverter, ModelFactoryConverter, RequestConverter
 from nlp.setup import Nlp
 
 

@@ -2,7 +2,7 @@ import pytest
 
 from django_meta.project import DjangoProject
 from gherkin.ast import Given, DataTable, TableRow, TableCell
-from nlp.converter import ModelFactoryConverter
+from nlp.converter.converter import ModelFactoryConverter
 from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.setup import Nlp
 from nlp.tests.utils import MockTranslator
@@ -94,7 +94,7 @@ def test_model_factory_converter_model_token(doc, expected_model_token_text, moc
         test_case,
     )
     mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
-    assert str(converter.model_token) == expected_model_token_text
+    assert str(converter.model.token) == expected_model_token_text
 
 
 @pytest.mark.parametrize(
@@ -119,7 +119,7 @@ def test_model_factory_converter_variable_name(doc, expected_variable_name, mock
         test_case,
     )
     mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
-    assert str(converter.variable_name) == expected_variable_name
+    assert str(converter.variable.name) == expected_variable_name
 
 
 def test_model_factory_converter_datatable(mocker):
@@ -141,4 +141,3 @@ def test_model_factory_converter_datatable(mocker):
         for kwarg_index, kwarg in enumerate(statement.expression.function_kwargs):
             assert kwarg.name == header.cells[kwarg_index].value
             assert kwarg.value.value == rows[statement_index].cells[kwarg_index].value
-
