@@ -68,19 +68,14 @@ class ReferenceVariableProperty(NewVariableProperty):
     """
     This property can be used when a variable is needed that was already created previously.
     """
-    def get_model(self, statement):
+    def get_model_adapter(self, statement):
         """
         Returns the model of the variable. By default it tries to access the model in the converter. If that
         is not available, use the model from the statement.
         """
-        return self.converter.model.value or statement.expression.model_adapter
-
-    def find_token_in(self):
-        """
-        Returns the chunk where the token of the variable can be found. By default the variable is in the model chunk
-        of the converter.
-        """
-        return self.converter.model.chunk
+        if hasattr(self.converter, 'model'):
+            return self.converter.model.value or statement.expression.model_adapter
+        return statement.expression.model_adapter
 
     def get_token(self):
         """The token of the variable must reference a variable that was previously defined."""
@@ -88,9 +83,9 @@ class ReferenceVariableProperty(NewVariableProperty):
             if not isinstance(statement.expression, ModelFactoryExpression):
                 continue
 
-            model = self.get_model(statement)
+            model = self.get_model_adapter(statement)
 
-            for token in self.find_token_in():
+            for token in self.chunk:
                 defined_in_tc = self.variable_defined_in_test_case(token, model.name)
                 if (token.is_digit or token_is_proper_noun(token)) and defined_in_tc:
                     return token
@@ -116,7 +111,7 @@ class ReferenceVariableProperty(NewVariableProperty):
             if not isinstance(statement.expression, ModelFactoryExpression):
                 continue
 
-            model = self.get_model(statement)
+            model = self.get_model_adapter(statement)
             future_name = token_to_function_name(variable_token)
 
             if statement.string_matches_variable(future_name, model.name):
@@ -169,20 +164,12 @@ class UserReferenceVariableProperty(ReferenceVariableProperty):
     """
     This property can be used when a variable is referenced from the model User.
     """
-    def find_token_in(self):
-        """The token in of the user must be in the same chunk."""
-        return self.chunk
-
-    @property
-    def model_adapter(self):
+    def get_model_adapter(self, statement):
         user_path = AUTH_USER_MODEL.split('.')
 
         return ModelAdapter.create_with_model(
             apps.get_model(user_path[0], user_path[1])
         )
-
-    def get_model(self, statement):
-        return self.model_adapter
 
 
 class ModelWithUserProperty(NewModelProperty):
@@ -198,6 +185,7 @@ class ModelWithUserProperty(NewModelProperty):
         method_token_chunk = None
 
         for chunk in self.converter.get_noun_chunks():
+            # in some cases the chunk might be the same as the method chunk (e.g. `Alice gets the order list`)
             if self.converter.method.token in chunk:
                 method_token_chunk = chunk
 
