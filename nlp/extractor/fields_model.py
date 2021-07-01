@@ -1,90 +1,21 @@
 import re
 from decimal import Decimal
 
-from django.db.models import IntegerField, FloatField, BooleanField, DecimalField, ManyToManyField, ManyToManyRel, \
-    ForeignKey, ManyToOneRel
-from spacy.tokens import Token
+from spacy.tokens.token import Token
 
 from django_meta.model import AbstractModelFieldAdapter, ModelAdapter
+from nlp.extractor.base import Extractor
+from nlp.extractor.exception import ExtractionError
+from nlp.extractor.utils import extract_boolean
 from nlp.generate.argument import Kwarg
-from nlp.generate.expression import ModelM2MAddExpression, ModelFactoryExpression, ModelQuerysetFilterExpression
+from nlp.generate.expression import ModelFactoryExpression, ModelM2MAddExpression, ModelQuerysetFilterExpression
 from nlp.generate.variable import Variable
-from nlp.generate.warning import GenerationWarning, NO_VALUE_FOUND_CODE, BOOLEAN_NO_SOURCE, VARIABLE_NOT_FOUND, \
-    PERMISSION_NOT_FOUND
+from nlp.generate.warning import NO_VALUE_FOUND_CODE, VARIABLE_NOT_FOUND, GenerationWarning, PERMISSION_NOT_FOUND
 from nlp.searcher import PermissionSearcher, NoConversionFound
-from nlp.vocab import POSITIVE_BOOLEAN_INDICATORS, NEGATIVE_BOOLEAN_INDICATORS
-from nlp.utils import get_verb_for_token, token_is_proper_noun, get_all_children, \
-    get_noun_chunk_of_token, get_noun_chunks, is_quoted, get_noun_from_chunk, get_proper_noun_from_chunk, \
-    token_is_negated
-
-
-class ExtractionError(Exception):
-    """Indicates the the extractor had trouble to get a value."""
-    def __init__(self, code):
-        self.code = code
-
-
-class Extractor(object):
-    """
-    Extractors turn Tokens and strings into Python values that can be used in the generate part.
-    """
-    def __init__(self, test_case, source, document):
-        self.test_case = test_case
-        self.source = source
-        self.document = document
-
-    def __str__(self):
-        return '{} | {} -> {}'.format(self.__class__.__name__, str(self.source), self.extract_value())
-
-    @classmethod
-    def fits_input(cls, *args, **kwargs):
-        return False
-
-    def get_guessed_python_value(self, string):
-        """
-        Uses a string as an input to get a python value that may fit that string.
-        """
-        value_str = str(string)
-
-        # remove any quotations
-        if is_quoted(value_str):
-            value_str = value_str[1:-1]
-
-            if value_str[0] == '<' and value_str[-1] == '>':
-                return Variable(value_str, '')
-
-        # try to get int
-        try:
-            return int(value_str)
-        except ValueError:
-            pass
-
-        # try float value
-        try:
-            return float(value_str)
-        except ValueError:
-            pass
-
-        # check if the value may be a boolean
-        bool_pos = POSITIVE_BOOLEAN_INDICATORS[self.document.lang_]
-        bool_neg = NEGATIVE_BOOLEAN_INDICATORS[self.document.lang_]
-        if value_str in bool_pos or value_str in bool_neg:
-            return value_str in bool_pos
-
-        # just return the value
-        return value_str
-
-    def _extract_value(self):
-        return self.get_guessed_python_value(self.source)
-
-    def extract_value(self):
-        try:
-            return self._extract_value()
-        except ExtractionError as e:
-            return GenerationWarning.create_for_test_case(e.code, self.test_case)
-
-    def on_handled_by_converter(self, statements):
-        pass
+from nlp.utils import token_is_negated, get_noun_chunks, get_noun_chunk_of_token, token_is_proper_noun, is_quoted, \
+    get_proper_noun_from_chunk, get_noun_from_chunk, get_all_children
+from django.db.models import IntegerField, FloatField, BooleanField, DecimalField, ManyToManyField, ManyToManyRel, \
+    ForeignKey, ManyToOneRel
 
 
 class ModelFieldExtractor(Extractor):
@@ -97,7 +28,11 @@ class ModelFieldExtractor(Extractor):
         super().__init__(test_case, source, document)
         self.model_adapter = model_adapter
         self.field = field
-        self.field_name = field.name
+
+        try:
+            self.field_name = field.name
+        except AttributeError:
+            self.field_name = None
 
     @classmethod
     def fits_input(cls, field, *args, **kwargs):
@@ -207,18 +142,7 @@ class BooleanModelFieldExtractor(ModelFieldExtractor):
     field_classes = (BooleanField,)
 
     def _extract_value(self):
-        if isinstance(self.source, str) or self.source is None:
-            verb = None
-        else:
-            verb = get_verb_for_token(self.source)
-
-        if verb is None:
-            if self.source is None:
-                raise ExtractionError(BOOLEAN_NO_SOURCE)
-
-            return str(self.source) in POSITIVE_BOOLEAN_INDICATORS[self.document.lang_]
-
-        return not token_is_negated(verb) and not token_is_negated(self.source)
+        return extract_boolean(self.source, self.document)
 
 
 class M2MModelFieldExtractor(ModelFieldExtractor):

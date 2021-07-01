@@ -90,7 +90,7 @@ def test_get_verb_for_token():
     token_child = MockToken(head=token, pos_='PROPN')
     assert get_verb_for_token(token_child) == token
     assert get_verb_for_token(token) == token
-    assert get_verb_for_token(MockToken(head=None, pos_=None)) is None
+    assert not get_verb_for_token(MockToken(head=None, pos_=None))
 
 
 def test_get_proper_noun_of_chunk():

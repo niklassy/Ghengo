@@ -1,21 +1,25 @@
-from django_meta.model import AbstractModelAdapter
+from django_meta.api import UrlPatternAdapter
+from django_meta.model import AbstractModelAdapter, AbstractModelFieldAdapter
 from nlp.converter.base.converter import Converter
 from nlp.converter.property import NewModelProperty, NewVariableProperty, ReferenceVariableProperty, \
     ReferenceModelProperty, UserReferenceVariableProperty, ModelWithUserProperty, \
     MethodProperty
-from nlp.extractor import get_model_field_extractor, ModelFieldExtractor
+from nlp.extractor.fields_rest_api import get_api_model_field_extractor
+from nlp.extractor.fields_model import get_model_field_extractor, ModelFieldExtractor
 from nlp.generate.argument import Kwarg, Argument
 from nlp.generate.attribute import Attribute
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression, RequestExpression, APIClientExpression, \
     APIClientAuthenticateExpression
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement
 from nlp.generate.variable import Variable
-from nlp.searcher import ModelFieldSearcher, NoConversionFound, UrlSearcher
+from nlp.searcher import ModelFieldSearcher, NoConversionFound, UrlSearcher, SerializerFieldSearcher
 from nlp.utils import get_non_stop_tokens, get_noun_chunk_of_token, token_is_noun, get_root_of_token, \
     NoToken
 
 
 class ModelConverter(Converter):
+    field_searcher_classes = [ModelFieldSearcher]
+
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
         self._extractors = None
@@ -23,29 +27,38 @@ class ModelConverter(Converter):
         self.model = NewModelProperty(self)
         self.variable = NewVariableProperty(self)
 
+    def get_searcher_kwargs(self):
+        return {'model_adapter': self.model.value}
+
     def _search_for_field(self, span, token):
         """
         Searches for a field with a given span and token inside the self.model_adapter
         """
-        # all the following nouns will reference fields of that model, so find a field
-        if span:
-            field_searcher_span = ModelFieldSearcher(text=str(span), src_language=self.language)
+        for index, searcher_class in enumerate(self.field_searcher_classes):
+            no_fallback = index < len(self.field_searcher_classes) - 1
+            searcher_kwargs = self.get_searcher_kwargs()
 
-            try:
-                return field_searcher_span.search(raise_exception=True, model_adapter=self.model.value)
-            except NoConversionFound:
-                pass
+            # all the following nouns will reference fields of that model, so find a field
+            if span:
+                field_searcher_span = searcher_class(text=str(span), src_language=self.language)
 
-            field_searcher_root = ModelFieldSearcher(text=str(span.root.lemma_), src_language=self.language)
-            try:
-                return field_searcher_root.search(
-                    raise_exception=bool(token), model_adapter=self.model.value)
-            except NoConversionFound:
-                pass
+                try:
+                    return field_searcher_span.search(raise_exception=True, **searcher_kwargs)
+                except NoConversionFound:
+                    pass
 
-        if token:
-            field_searcher_token = ModelFieldSearcher(text=str(token), src_language=self.language)
-            return field_searcher_token.search(model_adapter=self.model.value)
+                field_searcher_root = searcher_class(text=str(span.root.lemma_), src_language=self.language)
+                try:
+                    return field_searcher_root.search(raise_exception=bool(token), **searcher_kwargs)
+                except NoConversionFound:
+                    pass
+
+            if token:
+                field_searcher_token = searcher_class(text=str(token), src_language=self.language)
+                try:
+                    return field_searcher_token.search(raise_exception=no_fallback, **searcher_kwargs)
+                except NoConversionFound:
+                    pass
 
         return None
 
@@ -85,6 +98,9 @@ class ModelConverter(Converter):
             self._fields = fields
         return self._fields
 
+    def get_extractor_class(self, field):
+        return get_model_field_extractor(field)
+
     @property
     def extractors(self):
         """
@@ -97,7 +113,7 @@ class ModelConverter(Converter):
             extractors = []
 
             for field, field_token in self.fields:
-                extractor_cls = get_model_field_extractor(field)
+                extractor_cls = self.get_extractor_class(field)
                 extractors.append(
                     extractor_cls(self.test_case, field_token, self.model.value, field, self.document)
                 )
@@ -193,7 +209,6 @@ class ModelVariableReferenceConverter(ModelConverter):
         super().__init__(document, related_object, django_project, test_case)
         self.variable = ReferenceVariableProperty(self)
         self.model = ReferenceModelProperty(self)
-        a = 1
 
     def get_document_compatibility(self):
         if self.variable.value:
@@ -220,6 +235,8 @@ class RequestConverter(ModelConverter):
     """
     This converter is responsible to turn a document into statements that will do a request to the django REST api.
     """
+    field_searcher_classes = [SerializerFieldSearcher, ModelFieldSearcher]
+
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
         self._url_pattern_adapter = None
@@ -228,6 +245,20 @@ class RequestConverter(ModelConverter):
         self.model = ModelWithUserProperty(self)
         self.method = MethodProperty(self)
         self.model_variable = ReferenceVariableProperty(self)
+
+    def get_searcher_kwargs(self):
+        kwargs = super().get_searcher_kwargs()
+        kwargs['serializer'] = self.url_pattern_adapter.get_serializer_class(self.method.value)()
+        return kwargs
+
+    def get_extractor_class(self, field):
+        # if the field is referencing the model, use the extractors normally
+        if isinstance(field, AbstractModelFieldAdapter):
+            return super().get_extractor_class(field)
+
+        # if the field is referencing fields that exist on the serializer, use the extractors that are defined for
+        # serializers
+        return get_api_model_field_extractor(field)
 
     def token_can_be_field(self, token):
         if self.method.token == token or self.user.token == token or self.model_variable.token == token:
@@ -245,7 +276,7 @@ class RequestConverter(ModelConverter):
         return isinstance(self.user.token, NoToken)
 
     @property
-    def url_pattern_adapter(self):
+    def url_pattern_adapter(self) -> UrlPatternAdapter:
         if self._url_pattern_adapter is None:
             searcher = UrlSearcher(str(self.method.token), self.language, self.model.value, [self.method.value])
             self._url_pattern_adapter = searcher.search(self.django_project)

@@ -2,8 +2,9 @@ import pytest
 
 from django_meta.model import AbstractModelFieldAdapter, ModelAdapter, AbstractModelAdapter
 from django_meta.project import DjangoProject
-from nlp.extractor import ModelFieldExtractor, Extractor, IntegerModelFieldExtractor, FloatModelFieldExtractor, \
-    BooleanModelFieldExtractor, M2MModelFieldExtractor, ForeignKeyModelFieldExtractor
+from nlp.extractor.base import Extractor
+from nlp.extractor.fields_model import ModelFieldExtractor, IntegerModelFieldExtractor, FloatModelFieldExtractor, \
+    BooleanModelFieldExtractor, ForeignKeyModelFieldExtractor, M2MModelFieldExtractor
 from nlp.generate.argument import Kwarg
 from nlp.generate.expression import ModelM2MAddExpression
 from nlp.generate.pytest import PyTestModelFactoryExpression

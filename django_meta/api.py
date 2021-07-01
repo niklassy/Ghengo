@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 
 from django_meta.model import ModelAdapter
+from nlp.generate.utils import to_function_name
 
 
 class Methods:
@@ -60,6 +61,21 @@ class UrlPatternAdapter(object):
     @property
     def url_name(self):
         return '-'.join(self.reverse_name.split('-')[1:])
+
+    @property
+    def all_api_actions(self):
+        if self.api_view is not None:
+            return self.api_view.get_all_actions()
+
+        return self.view_set.get_all_actions()
+
+    def get_serializer_class(self, for_method):
+        for fn_name, method, url_name in self.all_api_actions:
+            if for_method == method and url_name == self.url_name:
+                view_cls = self._get_view_cls()
+                view = view_cls(request=None, format_kwarg=None, action=fn_name)
+                return view.get_serializer_class()
+        return None
 
     @property
     def methods(self):
@@ -181,3 +197,22 @@ class ViewSetAdapter(object):
                 actions.append((extra_action.url_path, method, extra_action.url_name))
 
         return actions
+
+
+class AbstractApiFieldAdapter(object):
+    def __init__(self, name):
+        self.name = to_function_name(name)
+        self.source = self.name
+        self.verbose_name = self.name
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.name == other.name
+
+
+class ApiFieldAdapter(AbstractApiFieldAdapter):
+    def __init__(self, api_field):
+        super().__init__(api_field.source)
+        self.field = api_field
+        self.name = api_field.source

@@ -1,6 +1,6 @@
 from django.contrib.auth.models import Permission
 
-from django_meta.api import UrlPatternAdapter, Methods
+from django_meta.api import UrlPatternAdapter, Methods, AbstractApiFieldAdapter, ApiFieldAdapter
 from django_meta.model import AbstractModelFieldAdapter, AbstractModelAdapter
 from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity, ContainsSimilarity, LevenshteinSimilarity
@@ -155,8 +155,22 @@ class ModelFieldSearcher(Searcher):
     def get_keywords(self, field):
         return [field.name, getattr(field, 'verbose_name', None)]
 
-    def get_possible_results(self, model_adapter):
+    def get_possible_results(self, model_adapter, **kwargs):
         return model_adapter.fields
+
+
+class SerializerFieldSearcher(Searcher):
+    def get_convert_fallback(self):
+        return AbstractApiFieldAdapter(name=self.translator_to_en.translate(self.text))
+
+    def get_keywords(self, field):
+        return [field.source]
+
+    def get_possible_results(self, serializer, **kwargs):
+        if not serializer:
+            return []
+
+        return list(serializer.fields.fields.values())
 
 
 class ModelSearcher(Searcher):
@@ -166,7 +180,7 @@ class ModelSearcher(Searcher):
     def get_keywords(self, model):
         return [model.name, model.verbose_name]
 
-    def get_possible_results(self, project_adapter):
+    def get_possible_results(self, project_adapter, **kwargs):
         return project_adapter.get_models(as_adapter=True, include_django=True)
 
 

@@ -45,7 +45,7 @@ def get_verb_for_token(token):
         return token
 
     if token.head is None or token.head == token:
-        return None
+        return NoToken()
 
     return get_verb_for_token(token.head)
 
