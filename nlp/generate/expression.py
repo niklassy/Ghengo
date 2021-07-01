@@ -86,23 +86,42 @@ class APIClientAuthenticateExpression(FunctionCallExpression):
         super().__init__('{}.force_authenticate'.format(client_variable), [Argument(user_variable)])
 
 
+class ReverseCallExpression(FunctionCallExpression):
+    template = '{fn_name}({reverse_name}{kwargs})'
+
+    def __init__(self, reverse_name, reverse_kwargs):
+        super().__init__('reverse', reverse_kwargs)
+        self.reverse_name = Argument(reverse_name)
+
+    def get_template_context(self, line_indent, indent):
+        context = super().get_template_context(line_indent, indent)
+        context['reverse_name'] = self.reverse_name.to_template(line_indent, 0)
+
+        if len(self.function_kwargs) > 0:
+            dict_content_str = ', '.join(['\'{}\': {}'.format(k.name, k.value) for k in self.function_kwargs])
+            context['kwargs'] = ', {' + dict_content_str + '}'
+        else:
+            context['kwargs'] = ''
+
+        return context
+
+
 class RequestExpression(FunctionCallExpression):
     template = '{client_variable}.{fn_name}({long_content_start}{reverse}{kwargs}{long_content_end})'
 
-    def __init__(self, function_name, function_kwargs, reverse_name, client_variable):
+    def __init__(self, function_name, function_kwargs, reverse_name, client_variable, reverse_kwargs):
         super().__init__(function_name, function_kwargs)
         self.client_variable = client_variable
-        self.reverse_name = reverse_name
-        self.reverse_fn_statement = FunctionCallExpression('reverse', [Argument(self.reverse_name)])
+        self.reverse_expression = ReverseCallExpression(reverse_name, reverse_kwargs)
 
     def get_template_context(self, line_indent, indent):
         context = super().get_template_context(line_indent, indent)
 
-        context['reverse'] = self.reverse_fn_statement.to_template(line_indent, 0)
+        context['reverse'] = self.reverse_expression.to_template(line_indent, 0)
         dict_content_str = ', '.join(['\'{}\': {}'.format(k.name, k.value) for k in self.function_kwargs])
 
         # add `,` because it is an argument as well
-        context['kwargs'] = ', {' + dict_content_str + '}'
+        context['kwargs'] = ', {' + dict_content_str + '}' if dict_content_str else ''
         context['client_variable'] = self.client_variable
         return context
 

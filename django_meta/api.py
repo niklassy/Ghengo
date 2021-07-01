@@ -1,6 +1,7 @@
 import importlib
 import inspect
 
+from django.urls import get_resolver, get_urlconf
 from rest_framework.routers import APIRootView
 from rest_framework.serializers import ModelSerializer
 from rest_framework.views import APIView
@@ -42,6 +43,15 @@ class UrlPatternAdapter(object):
             return None
 
         return ModelAdapter.create_with_model(serializer_cls.Meta.model)
+
+    @property
+    def route_kwargs(self):
+        resolver = get_resolver(get_urlconf())
+
+        try:
+            return resolver.reverse_dict[self.reverse_name][0][0][1]
+        except IndexError:
+            return []
 
     @property
     def view_set_name(self):

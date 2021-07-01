@@ -47,12 +47,16 @@ class NewVariableProperty(ConverterProperty):
         """Returns the reference string that is passed to the variable of this document."""
         return self.converter.model.value.name
 
+    def get_token_possibilities(self):
+        """Returns an Iterable of all Tokens that are possible as a value."""
+        return self.converter.model.token.children
+
     def get_token(self):
         """
         Returns the token that represents the variable. Because this is a completely new variable, try to search
         for variables that are digits or proper nouns that are NOT defined as a variable yet.
         """
-        for child in self.converter.model.token.children:
+        for child in self.get_token_possibilities():
             variable_in_tc = self.variable_defined_in_test_case(child, self.reference_string)
 
             # sometimes nlp gets confused about variables and what belongs to this model factory and
@@ -77,6 +81,10 @@ class ReferenceVariableProperty(NewVariableProperty):
     """
     This property can be used when a variable is needed that was already created previously.
     """
+    def get_token_possibilities(self):
+        """Since we are referencing a variable, try the model token children and the own chunk."""
+        return [c for c in self.converter.model.token.children] + [t for t in self.chunk]
+
     def get_model_adapter(self, statement):
         """
         Returns the model of the variable. By default it tries to access the model in the converter. If that
@@ -95,10 +103,12 @@ class ReferenceVariableProperty(NewVariableProperty):
             if not isinstance(statement.expression, ModelFactoryExpression):
                 continue
 
-            model = self.get_model_adapter(statement)
+            model_adapter = self.get_model_adapter(statement)
+            if model_adapter.model != statement.expression.model_adapter.model:
+                continue
 
-            for token in self.chunk:
-                defined_in_tc = self.variable_defined_in_test_case(token, model.name)
+            for token in self.get_token_possibilities():
+                defined_in_tc = self.variable_defined_in_test_case(token, model_adapter.name)
                 if (token.is_digit or token_is_proper_noun(token)) and defined_in_tc:
                     return token
 
@@ -180,6 +190,10 @@ class UserReferenceVariableProperty(ReferenceVariableProperty):
         return ModelAdapter.create_with_model(
             apps.get_model(user_path[0], user_path[1])
         )
+
+    def get_token_possibilities(self):
+        """In this case, the user is the model, so search for the token in the own chunk only."""
+        return self.chunk
 
 
 class ModelWithUserProperty(NewModelProperty):

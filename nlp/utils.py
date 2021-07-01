@@ -3,6 +3,8 @@ from nlp.vocab import NEGATIONS
 
 
 class NoToken:
+    children = []
+
     def __eq__(self, other):
         return False
 

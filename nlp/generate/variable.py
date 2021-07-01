@@ -25,7 +25,12 @@ class Variable(Replaceable):
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
-        return other.name == self.name and self.value == other.value
+
+        return all([
+            self.name == other.name,
+            self.value == other.value,
+            self.reference_string.lower() == other.reference_string.lower(),
+        ])
 
     def __str__(self):
         return self.name

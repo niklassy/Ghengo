@@ -5,6 +5,7 @@ from nlp.converter.property import NewModelProperty, NewVariableProperty, Refere
     MethodProperty
 from nlp.extractor import get_model_field_extractor, ModelFieldExtractor
 from nlp.generate.argument import Kwarg, Argument
+from nlp.generate.attribute import Attribute
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression, RequestExpression, APIClientExpression, \
     APIClientAuthenticateExpression
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement
@@ -192,6 +193,7 @@ class ModelVariableReferenceConverter(ModelConverter):
         super().__init__(document, related_object, django_project, test_case)
         self.variable = ReferenceVariableProperty(self)
         self.model = ReferenceModelProperty(self)
+        a = 1
 
     def get_document_compatibility(self):
         if self.variable.value:
@@ -225,9 +227,10 @@ class RequestConverter(ModelConverter):
         self.user = UserReferenceVariableProperty(self)
         self.model = ModelWithUserProperty(self)
         self.method = MethodProperty(self)
+        self.model_variable = ReferenceVariableProperty(self)
 
     def token_can_be_field(self, token):
-        if token == self.method.token or token == self.user.token:
+        if self.method.token == token or self.user.token == token or self.model_variable.token == token:
             return False
 
         return super().token_can_be_field(token)
@@ -268,12 +271,18 @@ class RequestConverter(ModelConverter):
         if not self.from_anonymous_user:
             statements.append(APIClientAuthenticateExpression(variable_client, self.user.value).as_statement())
 
+        # check if a primary key is needed in the request, and if yes collect it from the model variable
+        reverse_kwargs = []
+        if self.model_variable.token and 'pk' in self.url_pattern_adapter.route_kwargs:
+            reverse_kwargs.append(Kwarg('pk', Attribute(self.model_variable.value, 'pk')))
+
         # create the statement with the request
         expression_request = RequestExpression(
             self.method.value,
             function_kwargs=[],
             reverse_name=self.url_pattern_adapter.reverse_name,
             client_variable=variable_client,
+            reverse_kwargs=reverse_kwargs,
         )
         response_variable = Variable('response', '')
         statement_request = AssignmentStatement(expression_request, response_variable)
@@ -289,7 +298,14 @@ class RequestConverter(ModelConverter):
             return
 
         # the request is always the last statement that was created in `prepare_statements`
-        request_kwargs = statements[-1].expression.function_kwargs
-
+        request_expression = statements[-1].expression
         kwarg = Kwarg(extractor.field_name, extracted_value)
-        request_kwargs.append(kwarg)
+
+        # some data may be passed via the url or the body, so check if the defined field exists on the url; if yes
+        # add it to the reverse expression instead
+        if extractor.field_name in self.url_pattern_adapter.route_kwargs:
+            kwarg_list = request_expression.reverse_expression.function_kwargs
+        else:
+            kwarg_list = request_expression.function_kwargs
+
+        kwarg_list.append(kwarg)
