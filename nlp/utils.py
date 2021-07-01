@@ -11,6 +11,9 @@ class NoToken:
     def __bool__(self):
         return False
 
+    def __str__(self):
+        return ''
+
 
 def get_non_stop_tokens(doc):
     """Reduce to the most important content."""

@@ -1,32 +1,38 @@
 from rest_framework.fields import Field as RestApiField, BooleanField
 
 from django_meta.api import AbstractApiFieldAdapter
-from nlp.extractor.fields_model import ModelFieldExtractor
-from nlp.extractor.utils import extract_boolean
+from nlp.extractor.base import FieldExtractor
+from nlp.extractor.exception import ExtractionError
+from nlp.extractor.output import VariableOutput, BooleanOutput
 
 
-class ApiModelFieldExtractor(ModelFieldExtractor):
+class ApiModelFieldExtractor(FieldExtractor):
     field_classes = (RestApiField,)
+    default_field_class = AbstractApiFieldAdapter
 
-    def __init__(self, test_case, source, model_adapter, field, document):
-        super().__init__(test_case, source, model_adapter, field, document)
-        self.field_name = field.source
+    def __init__(self, test_case, source, field, document):
+        super().__init__(test_case, source, field, document)
+        self.field_name = self.field.source
 
-    def get_guessed_python_value(self, string):
-        """Handle variables that were referenced in the past if we dont know the type of field that is used."""
+    def _extract_value(self):
+        extracted_value = super()._extract_value()
+
+        # if the field does not exist yet, see if there is any variable in the test case that matches the variable.
+        # If yes, we assume that the variable is meant
         if isinstance(self.field, AbstractApiFieldAdapter):
-            for statement in self.test_case.statements:
-                if statement.string_matches_variable(str(string), reference_string=None):
-                    return statement.variable.copy()
+            variable_output = VariableOutput(self.source, self.document, self.test_case.statements)
 
-        return super().get_guessed_python_value(string)
+            try:
+                return variable_output.get_output()
+            except ExtractionError:
+                pass
+
+        return extracted_value
 
 
 class BooleanApiModelFieldExtractor(ApiModelFieldExtractor):
     field_classes = (BooleanField,)
-
-    def _extract_value(self):
-        return extract_boolean(self.source, self.document)
+    output_class = BooleanOutput
 
 
 API_FIELD_EXTRACTORS = [

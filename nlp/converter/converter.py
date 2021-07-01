@@ -101,6 +101,19 @@ class ModelConverter(Converter):
     def get_extractor_class(self, field):
         return get_model_field_extractor(field)
 
+    def get_extractor_kwargs(self, field, field_token, extractor_cls):
+        kwargs = {
+            'test_case': self.test_case,
+            'source': field_token,
+            'field': field,
+            'document': self.document,
+        }
+
+        if issubclass(extractor_cls, ModelFieldExtractor) or extractor_cls == ModelFieldExtractor:
+            kwargs['model_adapter'] = self.model.value
+
+        return kwargs
+
     @property
     def extractors(self):
         """
@@ -114,9 +127,7 @@ class ModelConverter(Converter):
 
             for field, field_token in self.fields:
                 extractor_cls = self.get_extractor_class(field)
-                extractors.append(
-                    extractor_cls(self.test_case, field_token, self.model.value, field, self.document)
-                )
+                extractors.append(extractor_cls(**self.get_extractor_kwargs(field, field_token, extractor_cls)))
 
             self._extractors = extractors
         return self._extractors

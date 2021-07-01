@@ -1,155 +1,65 @@
 import re
-from decimal import Decimal
-
-from spacy.tokens.token import Token
 
 from django_meta.model import AbstractModelFieldAdapter, ModelAdapter
-from nlp.extractor.base import Extractor
-from nlp.extractor.exception import ExtractionError
-from nlp.extractor.utils import extract_boolean
+from nlp.extractor.base import FieldExtractor
+from nlp.extractor.output import IntegerOutput, FloatOutput, DecimalOutput, BooleanOutput, NoneOutput, \
+    ModelVariableOutput
 from nlp.generate.argument import Kwarg
 from nlp.generate.expression import ModelFactoryExpression, ModelM2MAddExpression, ModelQuerysetFilterExpression
 from nlp.generate.variable import Variable
-from nlp.generate.warning import NO_VALUE_FOUND_CODE, VARIABLE_NOT_FOUND, GenerationWarning, PERMISSION_NOT_FOUND
+from nlp.generate.warning import GenerationWarning, PERMISSION_NOT_FOUND
 from nlp.searcher import PermissionSearcher, NoConversionFound
-from nlp.utils import token_is_negated, get_noun_chunks, get_noun_chunk_of_token, token_is_proper_noun, is_quoted, \
-    get_proper_noun_from_chunk, get_noun_from_chunk, get_all_children
+from nlp.utils import token_is_proper_noun, is_quoted, get_all_children
 from django.db.models import IntegerField, FloatField, BooleanField, DecimalField, ManyToManyField, ManyToManyRel, \
     ForeignKey, ManyToOneRel
 
 
-class ModelFieldExtractor(Extractor):
+class ModelFieldExtractor(FieldExtractor):
     """
     Extracts the value from a token for a given field of a model.
     """
-    field_classes = ()
+    default_field_class = AbstractModelFieldAdapter
 
     def __init__(self, test_case, source, model_adapter, field, document):
-        super().__init__(test_case, source, document)
+        super().__init__(test_case=test_case, source=source, document=document, field=field)
         self.model_adapter = model_adapter
-        self.field = field
-
-        try:
-            self.field_name = field.name
-        except AttributeError:
-            self.field_name = None
-
-    @classmethod
-    def fits_input(cls, field, *args, **kwargs):
-        return isinstance(field, cls.field_classes)
-
-    def get_guessed_python_value(self, string):
-        """Handle variables that were referenced in the past if we dont know the type of field that is used."""
-        if isinstance(self.field, AbstractModelFieldAdapter):
-            for statement in self.test_case.statements:
-                if statement.string_matches_variable(str(string), reference_string=None):
-                    return statement.variable.copy()
-
-        return super().get_guessed_python_value(string)
-
-    def _extract_value(self):
-        if not isinstance(self.source, Token):
-            return super()._extract_value()
-
-        # if the token is an adjective or verb, it will most likely be a boolean field
-        if self.source.pos_ == 'ADJ' or self.source.pos_ == 'VERB':
-            return not token_is_negated(self.source)
-
-        document = self.source.doc
-        noun_chunks = get_noun_chunks(document)
-        chunk = get_noun_chunk_of_token(self.source, self.source.doc)
-        chunk_index = noun_chunks.index(chunk)
-        value = None
-
-        try:
-            next_token = document[self.source.i + 1]
-        except IndexError:
-            next_token = None
-
-        # check if any children is a digit or a proper noun, if yes they are the value
-        for child in self.source.children:
-            if child.is_digit or token_is_proper_noun(child):
-                value = child
-                break
-
-        # as an alternative, if the next token is in quotes it should be the value
-        if value is None and is_quoted(next_token):
-            value = next_token
-
-        # if still nothing is found, the value might be in a previous noun chunk
-        try:
-            previous_chunk = noun_chunks[chunk_index - 1]
-            previous_propn = get_proper_noun_from_chunk(previous_chunk)
-            if value is None and get_noun_from_chunk(previous_chunk) is None and previous_propn:
-                value = previous_propn
-        except IndexError:
-            pass
-
-        if value is None:
-            raise ExtractionError(NO_VALUE_FOUND_CODE)
-
-        return self.get_guessed_python_value(value)
+        self.field_name = self.field.name
 
 
-class NumberModelFieldExtractor(ModelFieldExtractor):
-    def _extract_value(self):
-        try:
-            default_value = super()._extract_value()
-        except ExtractionError:
-            default_value = None
-
-        if isinstance(self.source, str) and default_value:
-            return str(default_value)
-
-        root = self.source
-        for child in get_all_children(root):
-            if child.is_digit:
-                return str(child)
-
-        # check if the default value can be used instead
-        if default_value:
-            try:
-                float(default_value)
-                return default_value
-            except ValueError:
-                pass
-
-        raise ExtractionError(NO_VALUE_FOUND_CODE)
-
-
-class IntegerModelFieldExtractor(NumberModelFieldExtractor):
+class IntegerModelFieldExtractor(ModelFieldExtractor):
     field_classes = (IntegerField,)
-
-    def _extract_value(self):
-        return int(super()._extract_value())
+    output_class = IntegerOutput
 
 
-class FloatModelFieldExtractor(NumberModelFieldExtractor):
+class FloatModelFieldExtractor(ModelFieldExtractor):
     field_classes = (FloatField,)
-
-    def _extract_value(self):
-        return float(super()._extract_value())
+    output_class = FloatOutput
 
 
-class DecimalModelFieldExtractor(NumberModelFieldExtractor):
+class DecimalModelFieldExtractor(ModelFieldExtractor):
     field_classes = (DecimalField,)
-
-    def _extract_value(self):
-        return Decimal(super()._extract_value())
+    output_class = DecimalOutput
 
 
 class BooleanModelFieldExtractor(ModelFieldExtractor):
     field_classes = (BooleanField,)
+    output_class = BooleanOutput
 
-    def _extract_value(self):
-        return extract_boolean(self.source, self.document)
+
+class ForeignKeyModelFieldExtractor(ModelFieldExtractor):
+    field_classes = (ForeignKey,)
+    output_class = ModelVariableOutput
+
+    def get_output_kwargs(self):
+        kwargs = super().get_output_kwargs()
+        kwargs['statements'] = self.test_case.statements
+        kwargs['model'] = self.field.related_model
+        return kwargs
 
 
 class M2MModelFieldExtractor(ModelFieldExtractor):
     field_classes = (ManyToManyField, ManyToManyRel, ManyToOneRel)
-
-    def _extract_value(self):
-        return None
+    output_class = NoneOutput
 
     def on_handled_by_converter(self, statements):
         factory_statement = statements[0]
@@ -186,34 +96,12 @@ class M2MModelFieldExtractor(ModelFieldExtractor):
                 statements.append(m2m_expression.as_statement())
 
 
-class ForeignKeyModelFieldExtractor(ModelFieldExtractor):
-    field_classes = (ForeignKey,)
-
-    def _extract_value(self):
-        value = super()._extract_value()
-        related_model = self.field.related_model
-
-        # search for a previous statement where an entry of that model was created and use its variable
-        for statement in self.test_case.statements:
-            if not isinstance(statement.expression, ModelFactoryExpression) or not statement.variable:
-                continue
-
-            expression_model = statement.expression.model_adapter.model
-            if statement.string_matches_variable(value, related_model.__name__) and expression_model == related_model:
-                return statement.variable.copy()
-
-        raise ExtractionError(VARIABLE_NOT_FOUND)
-
-
 class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):
     @classmethod
     def fits_input(cls, field, *args, **kwargs):
         from django.contrib.auth.models import Permission
 
         return super().fits_input(field, *args, **kwargs) and field.related_model == Permission
-
-    def _extract_value(self):
-        return None
 
     def get_permission_statement(self, searcher_input, statements):
         from django.contrib.auth.models import Permission

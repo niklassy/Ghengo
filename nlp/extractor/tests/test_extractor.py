@@ -66,32 +66,32 @@ def test_model_field_extractor_extract_char():
 
     # check normal string
     doc = nlp('Gegeben sei ein Benutzer mit dem Namen Alice')
-    extractor = ModelFieldExtractor(test_case, doc[6], model_adapter, field, document)
+    extractor = ModelFieldExtractor(test_case, doc[6], model_adapter, field, doc)
     assert extractor.extract_value() == 'Alice'
 
     # check stirng with quotations
     doc = nlp('Gegeben sei ein Benutzer mit dem Namen "Alice"')
-    extractor = ModelFieldExtractor(test_case, doc[6], model_adapter, field, document)
+    extractor = ModelFieldExtractor(test_case, doc[6], model_adapter, field, doc)
     assert extractor.extract_value() == 'Alice'
 
     # check bool true
     doc = nlp('Gegeben sei ein aktiver Benutzer')
-    extractor = ModelFieldExtractor(test_case, doc[3], model_adapter, field, document)
+    extractor = ModelFieldExtractor(test_case, doc[3], model_adapter, field, doc)
     assert extractor.extract_value() is True
 
     # check bool False
     doc = nlp('Gegeben sei ein nicht aktiver Benutzer')
-    extractor = ModelFieldExtractor(test_case, doc[4], model_adapter, field, document)
+    extractor = ModelFieldExtractor(test_case, doc[4], model_adapter, field, doc)
     assert extractor.extract_value() is False
 
     # check int
     doc = nlp('Gegeben sei ein nicht aktiver Benutzer mit dem Namen Alice und dem Rang 7')
-    extractor = ModelFieldExtractor(test_case, doc[12], model_adapter, field, document)
+    extractor = ModelFieldExtractor(test_case, doc[12], model_adapter, field, doc)
     assert extractor.extract_value() == 7
 
     # check float
     doc = nlp('Gegeben sei ein nicht aktiver Benutzer mit dem Namen Alice und dem Rang 7.987123')
-    extractor = ModelFieldExtractor(test_case, doc[12], model_adapter, field, document)
+    extractor = ModelFieldExtractor(test_case, doc[12], model_adapter, field, doc)
     assert extractor.extract_value() == 7.987123
 
     # check variable that is referenced
@@ -100,7 +100,7 @@ def test_model_field_extractor_extract_char():
         variable=Variable('Bob', 'Order'),      # <-- variable defined
     ))
     doc = nlp('Gegeben sei ein Benutzer mit dem Auftrag Bob')   # <-- Bob references that variable
-    extractor = ModelFieldExtractor(test_case, doc[6], model_adapter, field, document)
+    extractor = ModelFieldExtractor(test_case, doc[6], model_adapter, field, doc)
     assert isinstance(extractor.extract_value(), Variable)
     assert extractor.extract_value().name == 'bob'
 
@@ -111,9 +111,20 @@ def test_model_field_extractor_extract_number():
 
     doc = nlp('Gegeben sei ein Todo aus dem System 3')
     extractor = IntegerModelFieldExtractor(
-        default_test_case, doc[6], model_adapter, ToDo._meta.get_field('system'), doc)
+        test_case=default_test_case,
+        source=doc[6],
+        model_adapter=model_adapter,
+        field=ToDo._meta.get_field('system'),
+        document=doc
+    )
     assert extractor.extract_value() == 3
-    extractor_2 = ModelFieldExtractor(default_test_case, '3', document[3], model_adapter, field)
+    extractor_2 = ModelFieldExtractor(
+        test_case=default_test_case,
+        source='3',
+        model_adapter=model_adapter,
+        field=field,
+        document=document
+    )
     assert extractor_2.extract_value() == 3
 
 
