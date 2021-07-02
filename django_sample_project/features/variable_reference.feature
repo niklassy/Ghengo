@@ -7,4 +7,4 @@ Funktionalität: Reference
     Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "order.add_order"
     Und Bob das Passwort "Admin123" hat
     Und einen Auftrag 1
-    Wenn Alice einen Auftrag erstellt, der keine Kohle nutzt
+    Wenn Alice einen Auftrag erstellt, der keine Kohle nutzt mit dem Namen "Hallo"

@@ -6,7 +6,8 @@ from django_sample_project.apps.order.models import Order
 
 class OrderSerializer(ModelSerializer):
     uses_coal = serializers.BooleanField()
+    name = serializers.ModelField(Order.name)
 
     class Meta:
         model = Order
-        fields = ['id', 'uses_coal']
+        fields = ['id', 'uses_coal', 'name']
