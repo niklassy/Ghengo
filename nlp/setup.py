@@ -14,11 +14,16 @@ class _Nlp(object):
         matcher.add(
             'QUOTED',
             [
-               [
-                   {'ORTH': {'IN': ['"', "'"]}},
-                   {'OP': '+', 'LENGTH': {'>': 0}, 'ORTH': {'NOT_IN': ['"', "'"]}},
-                   {'ORTH': {'IN': ['"', "'"]}}
-               ],
+                [
+                    {'ORTH': {'IN': ['"']}},
+                    {'OP': '+', 'LENGTH': {'>': 0}},
+                    {'ORTH': {'IN': ['"']}}
+                ],
+                [
+                    {'ORTH': {'IN': ["'"]}},
+                    {'OP': '+', 'LENGTH': {'>': 0}},
+                    {'ORTH': {'IN': ["'"]}}
+                ],
             ]
         )
 
@@ -35,6 +40,10 @@ class _Nlp(object):
                 # every second entry will be between two strings:
                 # "foo" bar "baz" => would normally return [foo, bar, baz]; so skip the second entry here
                 if index % 2 == 1:
+                    continue
+
+                # if there are some nested quotation marks "'abc'", skip the inner ones
+                if any([s.start < span.start and s.end > span.end for s in matched_spans]):
                     continue
 
                 with doc.retokenize() as retokenizer:

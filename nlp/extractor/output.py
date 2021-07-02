@@ -1,3 +1,4 @@
+import ast
 from decimal import Decimal
 
 from spacy.tokens.token import Token
@@ -49,6 +50,14 @@ class ExtractorOutput(object):
         try:
             return float(value_str)
         except ValueError:
+            pass
+
+        # check for iterables
+        try:
+            literal_value = ast.literal_eval(value_str)
+            if isinstance(literal_value, (list, tuple, set)):
+                return literal_value
+        except (ValueError, SyntaxError):
             pass
 
         # check if the value may be a boolean
