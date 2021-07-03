@@ -3,7 +3,7 @@ import re
 from django_meta.model import AbstractModelFieldAdapter, ModelAdapter
 from nlp.extractor.base import FieldExtractor
 from nlp.extractor.output import IntegerOutput, FloatOutput, DecimalOutput, BooleanOutput, NoneOutput, \
-    ModelVariableOutput
+    ModelVariableOutput, ManyOutput
 from nlp.generate.argument import Kwarg
 from nlp.generate.expression import ModelFactoryExpression, ModelM2MAddExpression, ModelQuerysetFilterExpression
 from nlp.generate.variable import Variable
@@ -67,33 +67,23 @@ class M2MModelFieldExtractor(ModelFieldExtractor):
         if not factory_statement.variable:
             factory_statement.generate_variable(self.test_case)
 
-        for child in get_all_children(self.source):
-            if not child:
-                continue
+        extractor_output = ManyOutput(
+            source=self.source,
+            document=self.document,
+            test_case=self.test_case,
+            child_output_class=ModelVariableOutput,
+            child_kwargs={'statements': self.test_case.statements, 'model': self.field.related_model}
+        )
 
-            if child.is_digit or token_is_proper_noun(child):
-                related_model = self.field.related_model
-                related_name = related_model.__name__
-                variable = Variable(name_predetermined=str(child), reference_string=related_name)
+        output_list = extractor_output.get_output()
 
-                for statement in self.test_case.statements:
-                    expression = statement.expression
-                    if not isinstance(expression, ModelFactoryExpression):
-                        continue
-
-                    # check if the value can become the variable and if the expression has the same model
-                    expression_model = expression.model_adapter.model
-                    variable_matches = statement.string_matches_variable(str(child), related_name)
-                    if variable_matches and expression_model == related_model:
-                        variable = statement.variable.copy()
-                        break
-
-                m2m_expression = ModelM2MAddExpression(
-                    model_instance_variable=factory_statement.variable,
-                    field=self.field_name,
-                    add_variable=variable
-                )
-                statements.append(m2m_expression.as_statement())
+        for variable in output_list:
+            m2m_expression = ModelM2MAddExpression(
+                model_instance_variable=factory_statement.variable,
+                field=self.field_name,
+                add_variable=variable,
+            )
+            statements.append(m2m_expression.as_statement())
 
 
 class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):

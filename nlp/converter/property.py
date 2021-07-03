@@ -45,11 +45,18 @@ class NewVariableProperty(ConverterProperty):
     @property
     def reference_string(self):
         """Returns the reference string that is passed to the variable of this document."""
-        return self.converter.model.value.name
+        return self.converter.model.value.name if self.converter.model.value else ''
 
     def get_token_possibilities(self):
         """Returns an Iterable of all Tokens that are possible as a value."""
-        return self.converter.model.token.children
+        model_token = self.converter.model.token
+        model_children = [child for child in model_token.children]
+        try:
+            # check the token afterwards too in case NLP does not recognize `1` as a child
+            after_model_token = self.document[model_token.i + 1]
+            return model_children + [after_model_token]
+        except IndexError:
+            return model_children
 
     def get_token(self):
         """
@@ -91,7 +98,7 @@ class ReferenceVariableProperty(NewVariableProperty):
         is not available, use the model from the statement.
         """
         if hasattr(self.converter, 'model'):
-            return self.converter.model.value or statement.expression.model_adapter
+            return self.converter.model.value
         return statement.expression.model_adapter
 
     def get_token(self):
@@ -104,7 +111,7 @@ class ReferenceVariableProperty(NewVariableProperty):
                 continue
 
             model_adapter = self.get_model_adapter(statement)
-            if model_adapter.model != statement.expression.model_adapter.model:
+            if not model_adapter or model_adapter.model != statement.expression.model_adapter.model:
                 continue
 
             for token in self.get_token_possibilities():

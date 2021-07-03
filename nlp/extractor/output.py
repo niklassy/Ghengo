@@ -7,7 +7,7 @@ from nlp.extractor.exception import ExtractionError
 from nlp.extractor.vocab import POSITIVE_BOOLEAN_INDICATORS, NEGATIVE_BOOLEAN_INDICATORS
 from nlp.generate.expression import ModelFactoryExpression
 from nlp.generate.variable import Variable
-from nlp.generate.warning import NO_VALUE_FOUND_CODE, BOOLEAN_NO_SOURCE, VARIABLE_NOT_FOUND
+from nlp.generate.warning import NO_VALUE_FOUND_CODE, BOOLEAN_NO_SOURCE, VARIABLE_NOT_FOUND, GenerationWarning
 from nlp.utils import is_quoted, get_all_children, get_verb_for_token, token_is_negated, get_proper_noun_from_chunk, \
     get_noun_from_chunk, token_is_proper_noun, get_noun_chunk_of_token, get_noun_chunks
 
@@ -17,9 +17,10 @@ class ExtractorOutput(object):
     This class represents the output from an extractor. It converts the source into a valid python value.
     The value can be accessed via `get_output`.
     """
-    def __init__(self, source, document):
+    def __init__(self, source, document, source_represents_output=False):
         self.source = source
         self.document = document
+        self.source_represents_output = source_represents_output
 
     def guess_output_type(self, input_value):
         """
@@ -75,6 +76,10 @@ class ExtractorOutput(object):
         to guess the token that holds the value. It will also turn that token into a value that is used in
         `guess_output_type` to guess the value.
         """
+        # in some cases the parent might force that the source is the output
+        if self.source_represents_output:
+            return str(self.source)
+
         # if the token is an adjective or verb, it will most likely be a boolean field
         if token.pos_ == 'ADJ' or token.pos_ == 'VERB':
             return not token_is_negated(token)
@@ -217,8 +222,8 @@ class VariableOutput(ExtractorOutput):
     This will always return a variable. Since variables always reference an earlier statement, this output
     needs the statements. It will search for a statement with a similar variable and returns it if possible.
     """
-    def __init__(self, source, document, statements):
-        super().__init__(source, document)
+    def __init__(self, source, document, statements, source_represents_output=False):
+        super().__init__(source, document, source_represents_output=source_represents_output)
         self.statements = statements
 
     def statement_matches_output(self, statement, output):
@@ -247,8 +252,8 @@ class ModelVariableOutput(VariableOutput):
     This output works exactly the same as `VariableOutput`. The difference is that is only returns variables
     of a given model. That model must be given to this class on init.
     """
-    def __init__(self, source, document, statements, model):
-        super().__init__(source, document, statements)
+    def __init__(self, source, document, statements, model, source_represents_output=False):
+        super().__init__(source, document, statements, source_represents_output=source_represents_output)
         self.model = model
 
     def skip_statement(self, statement):
@@ -261,3 +266,42 @@ class ModelVariableOutput(VariableOutput):
         statement_variable_matches = statement.string_matches_variable(output, reference_string=self.model.__name__)
 
         return expression_model == self.model and statement_variable_matches
+
+
+class ManyOutput(ExtractorOutput):
+    def __init__(self, source, document, test_case, child_output_class, child_kwargs=None):
+        super().__init__(source, document)
+        self.child_output_class = child_output_class
+        self.child_kwargs = child_kwargs if child_kwargs is not None else {}
+        self.test_case = test_case
+
+    def skip_token(self, token):
+        # in case the child output class is for variables, skip tokens that are
+        # unlikely to be one
+        if issubclass(self.child_output_class, VariableOutput) or self.child_output_class == VariableOutput:
+            return not token.is_digit and not token_is_proper_noun(token)
+
+        return False
+
+    def get_output(self, token=None):
+        output = []
+
+        for child in get_all_children(token or self.source):
+            if not child or self.skip_token(child):
+                continue
+
+            child_output_cls = self.child_output_class
+            init_kwargs = self.child_kwargs.copy()
+            init_kwargs['source'] = child
+            init_kwargs['document'] = self.document
+            init_kwargs['source_represents_output'] = True
+            output_instance = child_output_cls(**init_kwargs)
+            try:
+                child_output = output_instance.get_output()
+            except ExtractionError as e:
+                child_output = GenerationWarning.create_for_test_case(e.code, self.test_case)
+
+            if child_output:
+                output.append(child_output)
+
+        return output
