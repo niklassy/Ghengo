@@ -38,7 +38,7 @@ class _Nlp(object):
             matched_spans.reverse()
             for index, span in enumerate(matched_spans):
                 # every second entry will be between two strings:
-                # "foo" bar "baz" => would normally return [foo, bar, baz]; so skip the second entry here
+                # "foo" bar "baz" => would normally return ["foo", " bar ", "baz"]; so skip the second entry here
                 if index % 2 == 1:
                     continue
 

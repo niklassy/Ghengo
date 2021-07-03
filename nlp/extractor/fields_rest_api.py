@@ -1,10 +1,14 @@
 from rest_framework.fields import Field as RestApiField, BooleanField, IntegerField, FloatField, DecimalField, \
-    ReadOnlyField, HiddenField, ModelField
+    HiddenField, ModelField
+from rest_framework.relations import PrimaryKeyRelatedField, ManyRelatedField
 
 from django_meta.api import AbstractApiFieldAdapter
 from nlp.extractor.base import FieldExtractor
+from nlp.extractor.exception import ExtractionError
 from nlp.extractor.fields_model import get_model_field_extractor
-from nlp.extractor.output import BooleanOutput, IntegerOutput, FloatOutput, DecimalOutput, NoneOutput
+from nlp.extractor.output import BooleanOutput, IntegerOutput, FloatOutput, DecimalOutput, NoneOutput, \
+    ModelVariableOutput, ExtractorOutput
+from nlp.generate.attribute import Attribute
 
 
 class ApiModelFieldExtractor(FieldExtractor):
@@ -37,9 +41,17 @@ class DecimalApiModelFieldExtractor(ApiModelFieldExtractor):
 
 
 class NoneApiModelFieldExtractor(ApiModelFieldExtractor):
-    """ReadOnly and HiddenField should not post data to serializers."""
-    field_classes = (ReadOnlyField, HiddenField)
+    """HiddenField should not post data to serializers."""
+    field_classes = (HiddenField,)
     output_class = NoneOutput
+
+    @classmethod
+    def fits_input(cls, field, *args, **kwargs):
+        """All fields that are marked as read_only should not be used in REST API calls."""
+        if field.read_only:
+            return True
+
+        return super().fits_input(field, *args, **kwargs)
 
 
 class ModelApiFieldExtractor(ApiModelFieldExtractor):
@@ -51,8 +63,42 @@ class ModelApiFieldExtractor(ApiModelFieldExtractor):
         Since the model field from the rest framework uses this field, we need to find the model field,
         get the extractor for that and use the output class from there.
         """
+        if self.field.read_only:
+            return NoneOutput
+
         model_field_extractor = get_model_field_extractor(self.field.model_field)
         return model_field_extractor.output_class
+
+
+class ForeignKeyApiFieldExtractor(ApiModelFieldExtractor):
+    field_classes = (PrimaryKeyRelatedField,)
+    output_class = ModelVariableOutput
+
+    def get_output_kwargs(self):
+        kwargs = super().get_output_kwargs()
+        kwargs['model'] = self.field.get_queryset().model
+        kwargs['statements'] = self.test_case.statements
+        return kwargs
+
+    def _extract_value(self):
+        """We want to handle Variable references but also give the option to simply set values like `1`."""
+        try:
+            value = super()._extract_value()
+        except ExtractionError:
+            # if no variable is found that fits, simply try to set a normal value
+            default_kwargs = super().get_output_kwargs()
+            return ExtractorOutput(**default_kwargs).get_output()
+        else:
+            # if a variable was found, we want to use the pk of that variable
+            return Attribute(value, 'pk')
+
+
+class Many2ManyApiFieldExtractor(ApiModelFieldExtractor):
+    field_classes = (ManyRelatedField,)
+
+    def get_output_class(self):
+        # TODO!!!
+        pass
 
 
 class FieldCompatibilityNotes:
@@ -70,7 +116,7 @@ class FieldCompatibilityNotes:
 
         => SimpleUploadedFile("file.mp4", "file_content", content_type="video/mp4")
 
-    ListField, DictField:
+    ListField, DictField, DefaultSerializer, ListSerializer, ModelSerializer:
         All of these act as nested data. It can be a challenge to explain the data in human language.
         There should be support to create
 
@@ -86,12 +132,13 @@ class FieldCompatibilityNotes:
 
 
 API_FIELD_EXTRACTORS = [
+    NoneApiModelFieldExtractor,
     BooleanApiModelFieldExtractor,
     IntegerApiModelFieldExtractor,
     FloatApiModelFieldExtractor,
     DecimalApiModelFieldExtractor,
-    NoneApiModelFieldExtractor,
     ModelApiFieldExtractor,
+    ForeignKeyApiFieldExtractor,
 ]
 
 
