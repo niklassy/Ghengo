@@ -6,6 +6,7 @@ NO_VALUE_FOUND_CODE = '001'
 BOOLEAN_NO_SOURCE = '002'
 VARIABLE_NOT_FOUND = '003'
 PERMISSION_NOT_FOUND = '004'
+DICT_AS_STRING = '005'
 
 WARNING_MESSAGES = {
     NO_VALUE_FOUND_CODE: 'No value was found for this field. One reason might be that the field does not exist '
@@ -17,6 +18,8 @@ WARNING_MESSAGES = {
                         'the variable reference in quotations. Like: `Given an order with the owner "Alice".`',
     PERMISSION_NOT_FOUND: 'No value was found for the permission. Please make sure that the permission exists and '
                           'is given in the format "{model}.{permission_name}" or as free text like "Can create orders"',
+    DICT_AS_STRING: 'Because explaining nested structures can be hard to explained via normal language and extracted '
+                    'right now you have to set the values for fields as strings. Like \'{"foo": 123}\'.',
 }
 
 

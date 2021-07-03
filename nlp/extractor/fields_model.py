@@ -3,15 +3,14 @@ import re
 from django_meta.model import AbstractModelFieldAdapter, ModelAdapter
 from nlp.extractor.base import FieldExtractor
 from nlp.extractor.output import IntegerOutput, FloatOutput, DecimalOutput, BooleanOutput, NoneOutput, \
-    ModelVariableOutput, ManyOutput
+    ModelVariableOutput, ManyOutput, StringOutput
 from nlp.generate.argument import Kwarg
-from nlp.generate.expression import ModelFactoryExpression, ModelM2MAddExpression, ModelQuerysetFilterExpression
-from nlp.generate.variable import Variable
+from nlp.generate.expression import ModelM2MAddExpression, ModelQuerysetFilterExpression
 from nlp.generate.warning import GenerationWarning, PERMISSION_NOT_FOUND
 from nlp.searcher import PermissionSearcher, NoConversionFound
-from nlp.utils import token_is_proper_noun, is_quoted, get_all_children
+from nlp.utils import is_quoted
 from django.db.models import IntegerField, FloatField, BooleanField, DecimalField, ManyToManyField, ManyToManyRel, \
-    ForeignKey, ManyToOneRel
+    ForeignKey, ManyToOneRel, CharField, TextField
 
 
 class ModelFieldExtractor(FieldExtractor):
@@ -24,6 +23,11 @@ class ModelFieldExtractor(FieldExtractor):
         super().__init__(test_case=test_case, source=source, document=document, field=field)
         self.model_adapter = model_adapter
         self.field_name = self.field.name
+
+
+class StringModelFieldExtractor(ModelFieldExtractor):
+    field_classes = (CharField, TextField)
+    output_class = StringOutput
 
 
 class IntegerModelFieldExtractor(ModelFieldExtractor):
@@ -152,6 +156,7 @@ MODEL_FIELD_EXTRACTORS = [
     DecimalModelFieldExtractor,
     PermissionsM2MModelFieldExtractor,
     M2MModelFieldExtractor,
+    StringModelFieldExtractor,
 ]
 
 

@@ -109,6 +109,9 @@ class CacheTranslator(object):
         """
         Translates a given text.
         """
+        if text in '!"#$%&\'()*+,-./:;<=>?@[]^_`{|}~\\':
+            return text
+
         if self.translator is None:
             translation = text
         elif self.translator_request_necessary(text):

@@ -67,7 +67,11 @@ class ModelConverter(Converter):
             return False
 
         if token.pos_ != 'ADJ' and token.pos_ != 'NOUN' and token.pos_ != 'VERB':
-            return False
+            if token.pos_ != 'PROPN':
+                return False
+
+            if self.token_can_be_field(token.head):
+                return False
 
         # verbs with aux are fine (is done, ist abgeschlossen)
         if token.pos_ == 'VERB' and token.head.pos_ != 'AUX':

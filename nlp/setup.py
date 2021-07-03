@@ -37,9 +37,14 @@ class _Nlp(object):
                 matched_spans.append(span)
             matched_spans.reverse()
             for index, span in enumerate(matched_spans):
+                span_str = str(span)
                 # every second entry will be between two strings:
-                # "foo" bar "baz" => would normally return ["foo", " bar ", "baz"]; so skip the second entry here
-                if index % 2 == 1:
+                # "foo" bar "baz" => would normally return ['"foo"', '" bar "', '"baz"']; so skip the second entry here
+                if span_str[1] == span_str[-2] == ' ':
+                    continue
+
+                quotation_character = span_str[0]
+                if str(span).count(quotation_character) > 2:
                     continue
 
                 # if there are some nested quotation marks "'abc'", skip the inner ones

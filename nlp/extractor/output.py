@@ -7,7 +7,8 @@ from nlp.extractor.exception import ExtractionError
 from nlp.extractor.vocab import POSITIVE_BOOLEAN_INDICATORS, NEGATIVE_BOOLEAN_INDICATORS
 from nlp.generate.expression import ModelFactoryExpression
 from nlp.generate.variable import Variable
-from nlp.generate.warning import NO_VALUE_FOUND_CODE, BOOLEAN_NO_SOURCE, VARIABLE_NOT_FOUND, GenerationWarning
+from nlp.generate.warning import NO_VALUE_FOUND_CODE, BOOLEAN_NO_SOURCE, VARIABLE_NOT_FOUND, GenerationWarning, \
+    DICT_AS_STRING
 from nlp.utils import is_quoted, get_all_children, get_verb_for_token, token_is_negated, get_proper_noun_from_chunk, \
     get_noun_from_chunk, token_is_proper_noun, get_noun_chunk_of_token, get_noun_chunks
 
@@ -138,6 +139,21 @@ class NoneOutput(ExtractorOutput):
         return None
 
 
+class StringOutput(ExtractorOutput):
+    def get_output(self, token=None):
+        return str(super().get_output(token))
+
+
+class DictOutput(ExtractorOutput):
+    def get_output(self, token=None):
+        output = super().get_output(token)
+
+        if not isinstance(output, dict):
+            raise ExtractionError(DICT_AS_STRING)
+
+        return output
+
+
 class NumberAsStringOutput(ExtractorOutput):
     """
     This output is a base class for several numbers. Numbers can be found in different places than other data.
@@ -149,8 +165,9 @@ class NumberAsStringOutput(ExtractorOutput):
         except ExtractionError:
             default_value = None
 
-        # if the output is a string and not a Token, just use it, since we can't analyze it anymore
-        if isinstance(self.source, str) and default_value:
+        # if the output is a string and not a Token, just use it, since we can't analyze it anymore, also return
+        # if the source represents the output
+        if (isinstance(self.source, str) and default_value) or self.source_represents_output:
             return str(default_value)
 
         # try to find any child that is a digit
@@ -203,16 +220,25 @@ class BooleanOutput(ExtractorOutput):
         To determine if true or false should be returned, check if the token is negated. If a string is given instead
         search for indicators that it is positive.
         """
+        if self.source_represents_output:
+            token = self.source
+        else:
+            token = token or self.source
+
         if isinstance(token, str) or token is None:
             verb = None
         else:
             verb = get_verb_for_token(token)
 
-        if not verb:
+        if not verb or self.source_represents_output:
             if not token:
                 raise ExtractionError(BOOLEAN_NO_SOURCE)
 
-            return str(token) in POSITIVE_BOOLEAN_INDICATORS[self.document.lang_]
+            str_token = str(token)
+            if is_quoted(token):
+                str_token = str_token[1:-1]
+
+            return str_token in POSITIVE_BOOLEAN_INDICATORS[self.document.lang_]
 
         return not token_is_negated(verb) and not token_is_negated(token)
 
@@ -269,11 +295,19 @@ class ModelVariableOutput(VariableOutput):
 
 
 class ManyOutput(ExtractorOutput):
-    def __init__(self, source, document, test_case, child_output_class, child_kwargs=None):
-        super().__init__(source, document)
+    def __init__(
+            self,
+            source,
+            document,
+            test_case,
+            child_output_class,
+            child_kwargs=None,
+            source_represents_output=False,
+    ):
+        super().__init__(source, document, source_represents_output=source_represents_output)
+        self.test_case = test_case
         self.child_output_class = child_output_class
         self.child_kwargs = child_kwargs if child_kwargs is not None else {}
-        self.test_case = test_case
 
     def skip_token(self, token):
         # in case the child output class is for variables, skip tokens that are
@@ -281,7 +315,11 @@ class ManyOutput(ExtractorOutput):
         if issubclass(self.child_output_class, VariableOutput) or self.child_output_class == VariableOutput:
             return not token.is_digit and not token_is_proper_noun(token)
 
-        return False
+        # numbers can be digits
+        if issubclass(self.child_output_class, NumberAsStringOutput):
+            return not is_quoted(token) and not token.is_digit
+
+        return not is_quoted(token)
 
     def get_output(self, token=None):
         output = []

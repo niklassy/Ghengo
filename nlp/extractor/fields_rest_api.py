@@ -1,14 +1,16 @@
 from rest_framework.fields import Field as RestApiField, BooleanField, IntegerField, FloatField, DecimalField, \
-    HiddenField, ModelField
+    HiddenField, ModelField, ListField, CharField, DictField, JSONField
 from rest_framework.relations import PrimaryKeyRelatedField, ManyRelatedField
+from rest_framework.serializers import Serializer
 
 from django_meta.api import AbstractApiFieldAdapter
 from nlp.extractor.base import FieldExtractor
 from nlp.extractor.exception import ExtractionError
 from nlp.extractor.fields_model import get_model_field_extractor
 from nlp.extractor.output import BooleanOutput, IntegerOutput, FloatOutput, DecimalOutput, NoneOutput, \
-    ModelVariableOutput, ExtractorOutput
+    ModelVariableOutput, ExtractorOutput, ManyOutput, VariableOutput, StringOutput, DictOutput
 from nlp.generate.attribute import Attribute
+from nlp.generate.warning import GenerationWarning
 
 
 class ApiModelFieldExtractor(FieldExtractor):
@@ -54,6 +56,11 @@ class NoneApiModelFieldExtractor(ApiModelFieldExtractor):
         return super().fits_input(field, *args, **kwargs)
 
 
+class StringModelFieldExtractor(ApiModelFieldExtractor):
+    field_classes = (CharField,)
+    output_class = StringOutput
+
+
 class ModelApiFieldExtractor(ApiModelFieldExtractor):
     field_classes = (ModelField,)
     output_class = None
@@ -93,12 +100,37 @@ class ForeignKeyApiFieldExtractor(ApiModelFieldExtractor):
             return Attribute(value, 'pk')
 
 
-class Many2ManyApiFieldExtractor(ApiModelFieldExtractor):
-    field_classes = (ManyRelatedField,)
+class ListApiFieldExtractor(ApiModelFieldExtractor):
+    field_classes = (ListField, ManyRelatedField)
+    output_class = ManyOutput
 
-    def get_output_class(self):
-        # TODO!!!
-        pass
+    def get_output_kwargs(self):
+        kwargs = super().get_output_kwargs()
+        kwargs['test_case'] = self.test_case
+
+        if hasattr(self.field, 'child'):
+            child_field = self.field.child
+        else:
+            child_field = self.field.child_relation
+
+        child_output_class = get_api_model_field_extractor(child_field).output_class
+        kwargs['child_output_class'] = child_output_class
+
+        child_kwargs = {}
+
+        if child_output_class == VariableOutput or issubclass(child_output_class, VariableOutput):
+            child_kwargs['statements'] = self.test_case.statements
+
+        if child_output_class == ModelVariableOutput or issubclass(child_output_class, ModelVariableOutput):
+            child_kwargs['model'] = child_field.get_queryset().model
+
+        kwargs['child_kwargs'] = child_kwargs
+        return kwargs
+
+
+class DictApiFieldExtractor(ApiModelFieldExtractor):
+    field_classes = (DictField, Serializer, JSONField)
+    output_class = DictOutput
 
 
 class FieldCompatibilityNotes:
@@ -116,9 +148,16 @@ class FieldCompatibilityNotes:
 
         => SimpleUploadedFile("file.mp4", "file_content", content_type="video/mp4")
 
-    ListField, DictField, DefaultSerializer, ListSerializer, ModelSerializer:
-        All of these act as nested data. It can be a challenge to explain the data in human language.
-        There should be support to create
+    DictField, Serializer, ListSerializer (used with many=True with serializers), ModelSerializer:
+        All of these hold nested data. It is challenging to transform a sentence into valid data. E.g. look at the
+        following sentence:
+            When Alice creates an order with a name "bar", a user with a first name "Peter"
+             and a to-do with a name "foo" and the status 20.
+
+        The sentence becomes very complex and it is hard to understand: does the status refer to to-do or the order?
+        We can't rely on existing fields because these fields might not exist yet.
+
+        So for now, if you use one of these you need to pass the value in strings as a dict.
 
     JSONField:
         JSONFields can be complex to explain in human language. So for now JSONFields can only add
@@ -139,6 +178,9 @@ API_FIELD_EXTRACTORS = [
     DecimalApiModelFieldExtractor,
     ModelApiFieldExtractor,
     ForeignKeyApiFieldExtractor,
+    ListApiFieldExtractor,
+    StringModelFieldExtractor,
+    DictApiFieldExtractor,
 ]
 
 
