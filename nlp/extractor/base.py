@@ -43,17 +43,11 @@ class Extractor(object):
         """
         return False
 
-    def _get_output_value(self, output_instance=None, token=None):
+    def _get_output_value(self, output_instance, token):
         """
         Is responsible for getting the value from the output instance. This method can also be overwritten if
         the extractor wants to change the value before returning it.
         """
-        if token is None:
-            token = self.source
-
-        if output_instance is None:
-            output_instance = self.get_output_instance()
-
         return output_instance.get_output(token)
 
     def _extract_value(self, output_instance=None, token=None):
@@ -61,6 +55,12 @@ class Extractor(object):
         A private method for extracting the value. It handles the case where the extractor searches for multiple
         values (defined by `self.many`).
         """
+        if token is None:
+            token = self.source
+
+        if output_instance is None:
+            output_instance = self.get_output_instance()
+
         try:
             return self._get_output_value(output_instance, token)
         except ExtractionError as e:
@@ -191,7 +191,7 @@ class FieldExtractor(Extractor):
     def fits_input(cls, field, *args, **kwargs):
         return isinstance(field, cls.field_classes)
 
-    def _get_output_value(self, output_instance=None, token=None):
+    def _get_output_value(self, output_instance, token):
         output_value = super()._get_output_value(output_instance=output_instance, token=token)
 
         # if the field does not exist yet, see if there is any variable in the test case that matches the variable.

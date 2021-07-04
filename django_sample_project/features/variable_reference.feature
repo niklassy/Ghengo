@@ -15,10 +15,10 @@ Funktionalität: Reference
     Wenn Alice einen Auftrag mit den Sammlungen 1 und 2 erstellt
 
 
-  Szenario: M2M Model
-    Gegeben sei ein Auftrag 1
-    Und ein Auftrag 2
-    Und ein ToDo mit den Aufträgen 1 und 2
+  #Szenario: M2M Model
+  #  Gegeben sei ein Auftrag 1
+  #  Und ein Auftrag 2
+  #  Und ein ToDo mit den Aufträgen 1 und 2
 
 #  Szenario: Ändern von ToDo - anderer Nutzer
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "order.add_order"
