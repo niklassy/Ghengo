@@ -18,10 +18,23 @@ class ExtractorOutput(object):
     This class represents the output from an extractor. It converts the source into a valid python value.
     The value can be accessed via `get_output`.
     """
-    def __init__(self, source, document, source_represents_output=False):
+    def __init__(self, source, document):
         self.source = source
         self.document = document
-        self.source_represents_output = source_represents_output
+        self.source_represents_output = False
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+
+        return self.get_output() == other.get_output() and self.source == other.source
+
+    @classmethod
+    def copy_from(cls, extractor_output):
+        """Copies an output instance from another one. It moves all attributes over to the new instance."""
+        copy = cls(document=extractor_output.document, source=extractor_output.source)
+        copy.source_represents_output = extractor_output.source_represents_output
+        return copy
 
     def guess_output_type(self, input_value):
         """
@@ -248,9 +261,20 @@ class VariableOutput(ExtractorOutput):
     This will always return a variable. Since variables always reference an earlier statement, this output
     needs the statements. It will search for a statement with a similar variable and returns it if possible.
     """
-    def __init__(self, source, document, statements, source_represents_output=False):
-        super().__init__(source, document, source_represents_output=source_represents_output)
+    def __init__(self, source, document, statements):
+        super().__init__(source, document)
         self.statements = statements
+
+    @classmethod
+    def copy_from(cls, extractor_output):
+        copy = super().copy_from(extractor_output)
+
+        if hasattr(extractor_output, 'statements'):
+            copy.statements = extractor_output.statements
+        else:
+            copy.statements = []
+
+        return copy
 
     def statement_matches_output(self, statement, output):
         """Can be used to define if a the variable of a statement is okay and can be returned."""
@@ -278,9 +302,20 @@ class ModelVariableOutput(VariableOutput):
     This output works exactly the same as `VariableOutput`. The difference is that is only returns variables
     of a given model. That model must be given to this class on init.
     """
-    def __init__(self, source, document, statements, model, source_represents_output=False):
-        super().__init__(source, document, statements, source_represents_output=source_represents_output)
+    def __init__(self, source, document, statements, model):
+        super().__init__(source, document, statements)
         self.model = model
+
+    @classmethod
+    def copy_from(cls, extractor_output):
+        copy = super().copy_from(extractor_output)
+
+        if hasattr(extractor_output, 'model'):
+            copy.model = extractor_output.model
+        else:
+            copy.model = None
+
+        return copy
 
     def skip_statement(self, statement):
         """Skip statements that don't create a model."""

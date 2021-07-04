@@ -92,11 +92,7 @@ class ForeignKeyApiFieldExtractor(ApiModelFieldExtractor):
             value = super()._get_output_value(output_instance=output_instance, token=token)
         except ExtractionError:
             # if no variable is found that fits, simply try to set a normal value
-            default_kwargs = super().get_output_kwargs()
-            new_output = ExtractorOutput(**default_kwargs)
-
-            new_output.source = token
-            new_output.source_represents_output = output_instance.source_represents_output
+            new_output = ExtractorOutput.copy_from(output_instance)
 
             return new_output.get_output()
         else:
