@@ -1,9 +1,9 @@
 import re
 
 from django_meta.model import AbstractModelFieldAdapter, ModelAdapter
-from nlp.extractor.base import FieldExtractor
-from nlp.extractor.output import IntegerOutput, FloatOutput, DecimalOutput, BooleanOutput, NoneOutput, \
-    ModelVariableOutput, ManyOutput, StringOutput
+from nlp.extractor.base import FieldExtractor, ManyExtractorMixin
+from nlp.extractor.output import IntegerOutput, FloatOutput, DecimalOutput, BooleanOutput, \
+    ModelVariableOutput, StringOutput
 from nlp.generate.argument import Kwarg
 from nlp.generate.expression import ModelM2MAddExpression, ModelQuerysetFilterExpression
 from nlp.generate.warning import GenerationWarning, PERMISSION_NOT_FOUND
@@ -61,27 +61,27 @@ class ForeignKeyModelFieldExtractor(ModelFieldExtractor):
         return kwargs
 
 
-class M2MModelFieldExtractor(ModelFieldExtractor):
+class M2MModelFieldExtractor(ManyExtractorMixin, ForeignKeyModelFieldExtractor):
     field_classes = (ManyToManyField, ManyToManyRel, ManyToOneRel)
-    output_class = NoneOutput
+    child_extractor_class = ForeignKeyModelFieldExtractor
+
+    def get_child_extractor_kwargs(self):
+        kwargs = super().get_child_extractor_kwargs()
+        kwargs['field'] = self.field
+        kwargs['model_adapter'] = self.model_adapter
+        return kwargs
+
+    def extract_value(self):
+        return None
 
     def on_handled_by_converter(self, statements):
         factory_statement = statements[0]
+        values = self._extract_value()      # <- will return a list of values since self.many is True
 
         if not factory_statement.variable:
             factory_statement.generate_variable(self.test_case)
 
-        extractor_output = ManyOutput(
-            source=self.source,
-            document=self.document,
-            test_case=self.test_case,
-            child_output_class=ModelVariableOutput,
-            child_kwargs={'statements': self.test_case.statements, 'model': self.field.related_model}
-        )
-
-        output_list = extractor_output.get_output()
-
-        for variable in output_list:
+        for variable in values:
             m2m_expression = ModelM2MAddExpression(
                 model_instance_variable=factory_statement.variable,
                 field=self.field_name,

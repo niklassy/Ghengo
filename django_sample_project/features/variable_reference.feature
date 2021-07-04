@@ -9,8 +9,10 @@ Funktionalität: Reference
 #    Und einen Auftrag 1
 #    Wenn Alice einen Auftrag erstellt, der keine Kohle nutzt mit dem Besitzer 1
 
-#  Szenario: M2M Relation
-#    Wenn Alice einen Auftrag mit den Sammlungen 1 und 2 erstellt
+  Szenario: M2M Relation
+    Gegeben sei ein Todo 1
+    Und ein Todo 2
+    Wenn Alice einen Auftrag mit den Sammlungen 1 und 2 erstellt
 
 
   Szenario: M2M Model

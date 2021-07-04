@@ -4,13 +4,12 @@ from rest_framework.relations import PrimaryKeyRelatedField, ManyRelatedField
 from rest_framework.serializers import Serializer
 
 from django_meta.api import AbstractApiFieldAdapter
-from nlp.extractor.base import FieldExtractor
+from nlp.extractor.base import FieldExtractor, ManyExtractorMixin
 from nlp.extractor.exception import ExtractionError
 from nlp.extractor.fields_model import get_model_field_extractor
 from nlp.extractor.output import BooleanOutput, IntegerOutput, FloatOutput, DecimalOutput, NoneOutput, \
-    ModelVariableOutput, ExtractorOutput, ManyOutput, VariableOutput, StringOutput, DictOutput
+    ModelVariableOutput, ExtractorOutput, VariableOutput, StringOutput, DictOutput
 from nlp.generate.attribute import Attribute
-from nlp.generate.warning import GenerationWarning
 
 
 class ApiModelFieldExtractor(FieldExtractor):
@@ -87,44 +86,52 @@ class ForeignKeyApiFieldExtractor(ApiModelFieldExtractor):
         kwargs['statements'] = self.test_case.statements
         return kwargs
 
-    def _extract_value(self):
+    def _get_output_value(self, output_instance=None, token=None):
         """We want to handle Variable references but also give the option to simply set values like `1`."""
         try:
-            value = super()._extract_value()
+            value = super()._get_output_value(output_instance=output_instance, token=token)
         except ExtractionError:
             # if no variable is found that fits, simply try to set a normal value
             default_kwargs = super().get_output_kwargs()
-            return ExtractorOutput(**default_kwargs).get_output()
+            new_output = ExtractorOutput(**default_kwargs)
+
+            new_output.source = token
+            new_output.source_represents_output = output_instance.source_represents_output
+
+            return new_output.get_output()
         else:
             # if a variable was found, we want to use the pk of that variable
             return Attribute(value, 'pk')
 
 
-class ListApiFieldExtractor(ApiModelFieldExtractor):
+class ListApiFieldExtractor(ManyExtractorMixin, ApiModelFieldExtractor):
     field_classes = (ListField, ManyRelatedField)
-    output_class = ManyOutput
+
+    def get_child_field(self):
+        if hasattr(self.field, 'child'):
+            return self.field.child
+
+        return self.field.child_relation
+
+    def get_child_extractor_class(self):
+        return get_api_model_field_extractor(self.get_child_field())
+
+    def get_child_extractor_kwargs(self):
+        kwargs = super().get_child_extractor_kwargs()
+        kwargs['field'] = self.get_child_field()
+        return kwargs
 
     def get_output_kwargs(self):
         kwargs = super().get_output_kwargs()
-        kwargs['test_case'] = self.test_case
-
-        if hasattr(self.field, 'child'):
-            child_field = self.field.child
-        else:
-            child_field = self.field.child_relation
-
-        child_output_class = get_api_model_field_extractor(child_field).output_class
-        kwargs['child_output_class'] = child_output_class
-
-        child_kwargs = {}
+        child_field = self.get_child_field()
+        child_output_class = self.get_output_class()
 
         if child_output_class == VariableOutput or issubclass(child_output_class, VariableOutput):
-            child_kwargs['statements'] = self.test_case.statements
+            kwargs['statements'] = self.test_case.statements
 
         if child_output_class == ModelVariableOutput or issubclass(child_output_class, ModelVariableOutput):
-            child_kwargs['model'] = child_field.get_queryset().model
+            kwargs['model'] = child_field.get_queryset().model
 
-        kwargs['child_kwargs'] = child_kwargs
         return kwargs
 
 
