@@ -118,7 +118,7 @@ class RequestExpression(FunctionCallExpression):
         context = super().get_template_context(line_indent, indent)
 
         context['reverse'] = self.reverse_expression.to_template(line_indent, 0)
-        dict_content_str = ', '.join(['\'{}\': {}'.format(k.name, k.value) for k in self.function_kwargs])
+        dict_content_str = ', '.join(['\'{}\': {}'.format(k.name, k.value.to_template(line_indent)) for k in self.function_kwargs])
 
         # add `,` because it is an argument as well
         context['kwargs'] = ', {' + dict_content_str + '}' if dict_content_str else ''
