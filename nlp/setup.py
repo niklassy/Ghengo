@@ -35,24 +35,28 @@ class _Nlp(object):
             for match_id, start, end in matches:
                 span = doc[start:end]
                 matched_spans.append(span)
+
             matched_spans.reverse()
-
-            for span in matched_spans:
-                # if there are some nested quotation marks "'abc'", skip the inner ones
-                if any([s.start < span.start and s.end > span.end for s in matched_spans]):
-                    matched_spans.remove(span)
-
-            for index, span in enumerate(matched_spans):
+            clean_matched_spans = []
+            for i, span in enumerate(matched_spans):
                 span_str = str(span)
-                # every second entry will be between two strings:
-                # "foo" bar "baz" => would normally return ['"foo"', '" bar "', '"baz"']; so skip the second entry here
-                if span_str[1] == span_str[-2] == ' ':
-                    continue
 
+                # if there are more than 2 of the quotation, skip it
                 quotation_character = span_str[0]
-                if str(span).count(quotation_character) > 2:
+                if span_str.count(quotation_character) > 2:
                     continue
 
+                # if the span is contained in another cleaned one, skip it
+                if any([span.start >= s.start and span.end <= s.end for s in clean_matched_spans]):
+                    continue
+
+                # check if the span starts with a token that was already handled
+                if any([s.start <= span.start <= s.end or s.start <= span.end <= s.end for s in clean_matched_spans]):
+                    continue
+
+                clean_matched_spans.append(span)
+
+            for index, span in enumerate(clean_matched_spans):
                 with doc.retokenize() as retokenizer:
                     # merge into one token after collecting all matches
                     retokenizer.merge(span)

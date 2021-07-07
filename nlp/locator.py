@@ -101,7 +101,7 @@ class RestActionLocator(Locator):
     GET_VALUES = ['list', 'get', 'detail', 'fetch']
     DELETE_VALUES = ['remove', 'delete', 'clear', 'destroy']
     UPDATE_VALUES = ['change', 'update', 'modify']
-    CREATE_VALUES = ['create', 'generate']
+    CREATE_VALUES = ['create', 'generate', 'add']
 
     @property
     def method(self):

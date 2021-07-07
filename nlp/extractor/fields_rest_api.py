@@ -55,7 +55,7 @@ class NoneApiModelFieldExtractor(ApiModelFieldExtractor):
         return super().fits_input(field, *args, **kwargs)
 
 
-class StringModelFieldExtractor(ApiModelFieldExtractor):
+class StringApiModelFieldExtractor(ApiModelFieldExtractor):
     field_classes = (CharField,)
     output_class = StringOutput
 
@@ -181,7 +181,7 @@ API_FIELD_EXTRACTORS = [
     ModelApiFieldExtractor,
     ForeignKeyApiFieldExtractor,
     ListApiFieldExtractor,
-    StringModelFieldExtractor,
+    StringApiModelFieldExtractor,
     DictApiFieldExtractor,
 ]
 

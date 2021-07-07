@@ -63,10 +63,14 @@ class ModelConverter(Converter):
         return None
 
     def token_can_be_field(self, token):
+        # first word is always a keyword from Gherkin
+        if self.document[0] == token:
+            return False
+
         if token == self.model.token or self.variable.token == token:
             return False
 
-        if token.pos_ != 'ADJ' and token.pos_ != 'NOUN' and token.pos_ != 'VERB':
+        if token.pos_ != 'ADJ' and token.pos_ != 'NOUN' and token.pos_ != 'VERB' and token.pos_ != 'ADV':
             if token.pos_ != 'PROPN':
                 return False
 

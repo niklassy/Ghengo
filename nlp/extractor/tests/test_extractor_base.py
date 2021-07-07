@@ -1,7 +1,7 @@
 import pytest
 
 from django_meta.model import AbstractModelFieldAdapter, AbstractModelAdapter
-from nlp.extractor.base import Extractor
+from nlp.extractor.base import Extractor, ManyExtractor
 from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.setup import Nlp
 
@@ -39,3 +39,16 @@ def test_output_instance():
     assert isinstance(output_instance, extractor.output_class)
     assert output_instance.document == document
     assert output_instance.source == '1'
+
+
+@pytest.mark.parametrize(
+    'doc, token_index, expected_output', [
+        (nlp('Wenn sie einen Auftrag mit den Sammlungen 1, 2 und 3 erstellt'), 6, [1, 2, 3]),
+        (nlp('Wenn sie einen Auftrag mit den Sammlungen Alice und Bob erstellt'), 6, ['Alice', 'Bob']),
+        (nlp('Wenn sie einen Auftrag mit den Sammlungen "{\'1\': 1}" erstellt'), 6, [{'1': 1}]),
+    ]
+)
+def test_many_extractor_mixin(doc, token_index, expected_output):
+    """Check that many values are correctly handled."""
+    extractor = ManyExtractor(default_test_case, doc[token_index], doc)
+    assert extractor.extract_value() == expected_output

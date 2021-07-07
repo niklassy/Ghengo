@@ -1,7 +1,7 @@
 from nlp.extractor.exception import ExtractionError
 from nlp.extractor.output import ExtractorOutput, VariableOutput, NumberAsStringOutput
 from nlp.generate.warning import GenerationWarning
-from nlp.utils import get_all_children, is_quoted, token_is_proper_noun
+from nlp.utils import get_all_children, is_quoted, token_is_proper_noun, NoToken
 
 
 class Extractor(object):
@@ -10,11 +10,10 @@ class Extractor(object):
     """
     output_class = ExtractorOutput
 
-    def __init__(self, test_case, source, document, many=False):
+    def __init__(self, test_case, source, document):
         self.test_case = test_case
         self.source = source
         self.document = document
-        self.many = many
 
     def __str__(self):
         return '{} | {} -> {}'.format(self.__class__.__name__, str(self.source), self._extract_value())
@@ -90,7 +89,7 @@ class ManyExtractorMixin(object):
     This mixin will search for an extractor that would handle the input normally. It then repeatedly calls that
     extractor to get the output value from it.
     """
-    child_extractor_class = None
+    child_extractor_class = Extractor
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -174,6 +173,11 @@ class ManyExtractorMixin(object):
             output.append(value)
 
         return output
+
+
+class ManyExtractor(ManyExtractorMixin, Extractor):
+    """A extractor base class that can be used for lists."""
+    pass
 
 
 class FieldExtractor(Extractor):

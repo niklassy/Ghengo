@@ -204,6 +204,8 @@ class AbstractApiFieldAdapter(object):
         self.name = to_function_name(name)
         self.source = self.name
         self.verbose_name = self.name
+        self.read_only = False
+        self.model_field = None
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
