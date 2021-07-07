@@ -36,6 +36,12 @@ class _Nlp(object):
                 span = doc[start:end]
                 matched_spans.append(span)
             matched_spans.reverse()
+
+            for span in matched_spans:
+                # if there are some nested quotation marks "'abc'", skip the inner ones
+                if any([s.start < span.start and s.end > span.end for s in matched_spans]):
+                    matched_spans.remove(span)
+
             for index, span in enumerate(matched_spans):
                 span_str = str(span)
                 # every second entry will be between two strings:
@@ -45,10 +51,6 @@ class _Nlp(object):
 
                 quotation_character = span_str[0]
                 if str(span).count(quotation_character) > 2:
-                    continue
-
-                # if there are some nested quotation marks "'abc'", skip the inner ones
-                if any([s.start < span.start and s.end > span.end for s in matched_spans]):
                     continue
 
                 with doc.retokenize() as retokenizer:

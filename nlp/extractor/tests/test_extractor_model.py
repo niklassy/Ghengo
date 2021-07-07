@@ -2,7 +2,6 @@ import pytest
 
 from django_meta.model import AbstractModelFieldAdapter, ModelAdapter, AbstractModelAdapter
 from django_meta.project import DjangoProject
-from nlp.extractor.base import Extractor
 from nlp.extractor.fields_model import ModelFieldExtractor, IntegerModelFieldExtractor, FloatModelFieldExtractor, \
     BooleanModelFieldExtractor, ForeignKeyModelFieldExtractor, M2MModelFieldExtractor
 from nlp.generate.argument import Kwarg
@@ -20,25 +19,6 @@ model_adapter = AbstractModelAdapter('Order')
 field = AbstractModelFieldAdapter('name')
 nlp = Nlp.for_language('de')
 document = nlp('Sie hat 3 Äpfel.')
-
-
-@pytest.mark.parametrize(
-    'value, expected_value', [
-        ('1', 1),
-        ('Wahr', True),
-        ('False', False),
-        ('falsch', False),
-        ('0.33', 0.33),
-        ('Some string', 'Some string'),
-        ('"Some string"', 'Some string'),
-        ('\'Some string\'', 'Some string'),
-    ]
-)
-def test_extract_python_value(value, expected_value):
-    """Check that the default extract value returns python values depending on the input."""
-    extractor = Extractor(default_test_case, value, document)
-    assert extractor.extract_value() == expected_value
-    assert type(extractor.extract_value()) == type(expected_value)
 
 
 @pytest.mark.parametrize(
@@ -168,7 +148,7 @@ def test_model_field_extractor_extract_boolean():
     extractor = BooleanModelFieldExtractor(default_test_case, 'true', model_adapter, bool_field, doc)
     assert extractor.extract_value() is True
     extractor = BooleanModelFieldExtractor(default_test_case, None, model_adapter, bool_field, doc)
-    assert isinstance(extractor.extract_value(), GenerationWarning)
+    assert extractor.extract_value() is False
 
 
 def test_model_field_extractor_extract_fk():
