@@ -16,7 +16,7 @@ Funktionalität: Reference
 
 
   Szenario: M2M Model
-    Gegeben sei ein Auftrag 1
+    Gegeben sei ein Auftrag 1, der Fußball spielt und fliegt
     Und ein Auftrag 2
     Und ein ToDo mit den Aufträgen 1 und 2
 

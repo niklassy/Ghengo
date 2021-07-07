@@ -1,4 +1,4 @@
 NEGATIONS = {
     'de': ['kein', 'nicht'],
-    'en': ['not'],
+    'en': ['not', 'no'],
 }

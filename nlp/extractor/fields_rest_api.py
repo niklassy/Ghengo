@@ -119,14 +119,13 @@ class ListApiFieldExtractor(ManyExtractorMixin, ApiModelFieldExtractor):
 
     def get_output_kwargs(self):
         kwargs = super().get_output_kwargs()
-        child_field = self.get_child_field()
         child_output_class = self.get_output_class()
 
         if child_output_class == VariableOutput or issubclass(child_output_class, VariableOutput):
             kwargs['statements'] = self.test_case.statements
 
         if child_output_class == ModelVariableOutput or issubclass(child_output_class, ModelVariableOutput):
-            kwargs['model'] = child_field.get_queryset().model
+            kwargs['model'] = self.get_child_field().get_queryset().model
 
         return kwargs
 

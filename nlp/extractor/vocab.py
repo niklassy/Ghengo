@@ -1,8 +1,3 @@
-NEGATIONS = {
-    'de': ['kein', 'nicht'],
-    'en': ['not'],
-}
-
 POSITIVE_BOOLEAN_INDICATORS_BASE = ['1', 'True', 'true']
 
 POSITIVE_BOOLEAN_INDICATORS = {
