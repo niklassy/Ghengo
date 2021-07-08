@@ -1,5 +1,6 @@
 from nlp.converter.base_converter import Converter
-from nlp.converter.converter import ModelVariableReferenceConverter, ModelFactoryConverter, RequestConverter
+from nlp.converter.converter import ModelVariableReferenceConverter, ModelFactoryConverter, RequestConverter, \
+    FileConverter
 from nlp.setup import Nlp
 
 
@@ -61,6 +62,7 @@ class Tiler(object):
 class GivenTiler(Tiler):
     converter_classes = [
         ModelVariableReferenceConverter,
+        FileConverter,
         ModelFactoryConverter,
     ]
 

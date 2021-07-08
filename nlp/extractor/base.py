@@ -1,5 +1,5 @@
 from nlp.extractor.exception import ExtractionError
-from nlp.extractor.output import ExtractorOutput, VariableOutput, NumberAsStringOutput
+from nlp.extractor.output import ExtractorOutput, VariableOutput, NumberAsStringOutput, StringOutput
 from nlp.generate.warning import GenerationWarning
 from nlp.utils import get_all_children, is_quoted, token_is_proper_noun, NoToken
 
@@ -173,6 +173,10 @@ class ManyExtractorMixin(object):
             output.append(value)
 
         return output
+
+
+class StringExtractor(Extractor):
+    output_class = StringOutput
 
 
 class ManyExtractor(ManyExtractorMixin, Extractor):

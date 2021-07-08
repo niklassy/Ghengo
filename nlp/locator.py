@@ -3,6 +3,7 @@ from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity
 from nlp.translator import CacheTranslator
 from nlp.utils import NoToken, token_is_verb, token_is_noun
+from nlp.vocab import FILE_EXTENSIONS
 
 
 class Locator(object):
@@ -34,6 +35,9 @@ class Locator(object):
     def highest_similarity(self):
         return self._highest_similarity
 
+    def _get_best_compare_value(self, value):
+        return value
+
     def locate(self):
         """Locate a token that fits the compare values best."""
         if self._fittest_token is not None:
@@ -50,7 +54,7 @@ class Locator(object):
                     if similarity > self._highest_similarity:
                         self._fittest_token = token
                         self._highest_similarity = similarity
-                        self._best_compare_value = compare_value
+                        self._best_compare_value = self._get_best_compare_value(compare_value)
 
                         if similarity >= 1:
                             break
@@ -94,6 +98,51 @@ class Locator(object):
     def get_compare_values(self):
         """Get all the values that the tokens will be compared to."""
         return []
+
+
+class FileExtensionLocator(Locator):
+    def get_similarity(self, token, compare_value):
+        """Compare value is a tuple here, so compare both values"""
+        file_extension = compare_value[0]
+        file_description = compare_value[1]
+
+        if str(file_extension).lower() in str(token).lower() or str(file_description).lower() in str(token).lower():
+            return 1
+
+        return 0
+
+    def get_compare_values(self):
+        # common file extensions
+        return [(key, value) for key, value in FILE_EXTENSIONS.items()]
+
+    def _get_best_compare_value(self, value):
+        return value[0]
+
+    def get_variations(self, token, compare_value):
+        return [(token, compare_value)]
+
+
+class FileLocator(Locator):
+    """This locator finds a token that indicates a file."""
+    @property
+    def file_extension(self):
+        locator_extension = FileExtensionLocator(self.document)
+        locator_extension.locate()
+        return locator_extension.best_compare_value
+
+    def get_compare_values(self):
+        return ['file']
+
+    def token_is_relevant(self, token):
+        return token_is_noun(token)
+
+
+class FileContentLocator(Locator):
+    def get_compare_values(self):
+        return ['content']
+
+    def token_is_relevant(self, token):
+        return token_is_noun(token)
 
 
 class RestActionLocator(Locator):

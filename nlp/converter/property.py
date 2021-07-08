@@ -5,7 +5,7 @@ from django_meta.model import ModelAdapter, AbstractModelAdapter
 from nlp.converter.base_property import ConverterProperty
 from nlp.generate.expression import ModelFactoryExpression
 from nlp.generate.variable import Variable
-from nlp.locator import RestActionLocator
+from nlp.locator import RestActionLocator, FileLocator
 from nlp.searcher import ModelSearcher, NoConversionFound
 from nlp.utils import token_to_function_name, NoToken, is_proper_noun_of, token_is_proper_noun, is_quoted
 
@@ -30,7 +30,6 @@ class NewModelProperty(ConverterProperty):
 
 
 class NewVariableProperty(ConverterProperty):
-    """This property can be used to get extract the data to create a new variable."""
     def get_chunk(self):
         if len(self.converter.get_noun_chunks()) == 0:
             return None
@@ -42,21 +41,15 @@ class NewVariableProperty(ConverterProperty):
         future_name = token_to_function_name(token)
         return self.converter.test_case.variable_defined(future_name, reference_string)
 
+    def get_related_object_property(self):
+        raise NotImplementedError()
+
     @property
     def reference_string(self):
         """Returns the reference string that is passed to the variable of this document."""
-        return self.converter.model.value.name if self.converter.model.value else ''
+        related_property = self.get_related_object_property()
 
-    def get_token_possibilities(self):
-        """Returns an Iterable of all Tokens that are possible as a value."""
-        model_token = self.converter.model.token
-        model_children = [child for child in model_token.children]
-        try:
-            # check the token afterwards too in case NLP does not recognize `1` as a child
-            after_model_token = self.document[model_token.i + 1]
-            return model_children + [after_model_token]
-        except IndexError:
-            return model_children
+        return related_property.value.name if related_property.value else ''
 
     def get_token(self):
         """
@@ -69,23 +62,49 @@ class NewVariableProperty(ConverterProperty):
             # sometimes nlp gets confused about variables and what belongs to this model factory and
             # what is a reference to an older variable - so if there is a variable with the exact same name
             # we assume that that token is not valid
-            propn_or_digit = child.is_digit or is_proper_noun_of(child, self.converter.model.token)
+            propn_or_digit = child.is_digit or is_proper_noun_of(child, self.get_related_object_property().token)
             if (propn_or_digit or is_quoted(child)) and not variable_in_tc:
                 return child
 
         return NoToken()
+
+    def get_token_possibilities(self):
+        """Returns an Iterable of all Tokens that are possible as a value."""
+        related_token = self.get_related_object_property().token
+
+        if not related_token:
+            return []
+
+        related_children = [child for child in related_token.children]
+        try:
+            # check the token afterwards too in case NLP does not recognize `1` as a child
+            after_model_token = self.document[related_token.i + 1]
+            return related_children + [after_model_token]
+        except IndexError:
+            return related_children
+
+    def get_value(self):
+        """The output will be a variable instance."""
+        return Variable(name_predetermined=self.name, reference_string=self.reference_string)
 
     @property
     def name(self):
         """The name of the variable."""
         return token_to_function_name(self.token)
 
-    def get_value(self):
-        """The output will be a variable instance."""
-        return Variable(name_predetermined=self.name, reference_string=self.reference_string)
+
+class NewModelVariableProperty(NewVariableProperty):
+    """This property can be used to get extract the data to create a new variable."""
+    def get_related_object_property(self):
+        return self.converter.model
 
 
-class ReferenceVariableProperty(NewVariableProperty):
+class NewFileVariableProperty(NewVariableProperty):
+    def get_related_object_property(self):
+        return self.converter.file
+
+
+class ReferenceModelVariableProperty(NewModelVariableProperty):
     """
     This property can be used when a variable is needed that was already created previously.
     """
@@ -99,7 +118,7 @@ class ReferenceVariableProperty(NewVariableProperty):
         is not available, use the model from the statement.
         """
         if hasattr(self.converter, 'model'):
-            model_adapter = self.converter.model.value
+            model_adapter = self.get_related_object_property().value
 
             # if the found model is abstract, use the adapter from the statement, just to be sure
             if model_adapter.__class__ == AbstractModelAdapter:
@@ -194,7 +213,7 @@ class ReferenceModelProperty(NewModelProperty):
         return None
 
 
-class UserReferenceVariableProperty(ReferenceVariableProperty):
+class UserReferenceVariableProperty(ReferenceModelVariableProperty):
     """
     This property can be used when a variable is referenced from the model User.
     """
@@ -250,3 +269,23 @@ class MethodProperty(ConverterProperty):
 
     def get_chunk(self):
         return None
+
+
+class FileProperty(ConverterProperty):
+    def __init__(self, converter):
+        super().__init__(converter)
+        self.locator = FileLocator(self.document)
+        self.locator.locate()
+
+    def get_chunk(self):
+        if len(self.converter.get_noun_chunks()) == 0:
+            return None
+
+        return self.converter.get_noun_chunks()[0]
+
+    def get_value(self):
+        """In this case the file name is returned."""
+        return None
+
+    def get_token(self):
+        return self.locator.fittest_token

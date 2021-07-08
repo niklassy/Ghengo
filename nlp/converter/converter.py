@@ -1,17 +1,19 @@
 from django_meta.api import UrlPatternAdapter
 from django_meta.model import AbstractModelAdapter, AbstractModelFieldAdapter
 from nlp.converter.base_converter import Converter
-from nlp.converter.property import NewModelProperty, NewVariableProperty, ReferenceVariableProperty, \
+from nlp.converter.property import NewModelProperty, ReferenceModelVariableProperty, \
     ReferenceModelProperty, UserReferenceVariableProperty, ModelWithUserProperty, \
-    MethodProperty
+    MethodProperty, FileProperty, NewFileVariableProperty, NewModelVariableProperty
+from nlp.extractor.base import StringExtractor
 from nlp.extractor.fields_rest_api import get_api_model_field_extractor
 from nlp.extractor.fields_model import get_model_field_extractor, ModelFieldExtractor
 from nlp.generate.argument import Kwarg, Argument
 from nlp.generate.attribute import Attribute
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression, RequestExpression, APIClientExpression, \
-    APIClientAuthenticateExpression
+    APIClientAuthenticateExpression, CreateUploadFileExpression
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement
 from nlp.generate.variable import Variable
+from nlp.locator import FileContentLocator
 from nlp.searcher import ModelFieldSearcher, NoConversionFound, UrlSearcher, SerializerFieldSearcher
 from nlp.utils import get_non_stop_tokens, get_noun_chunk_of_token, token_is_noun, get_root_of_token, \
     NoToken
@@ -25,7 +27,7 @@ class ModelConverter(Converter):
         self._extractors = None
         self._fields = None
         self.model = NewModelProperty(self)
-        self.variable = NewVariableProperty(self)
+        self.variable = NewModelVariableProperty(self)
 
     def get_searcher_kwargs(self):
         return {'model_adapter': self.model.value}
@@ -223,7 +225,7 @@ class ModelVariableReferenceConverter(ModelConverter):
     """
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
-        self.variable = ReferenceVariableProperty(self)
+        self.variable = ReferenceModelVariableProperty(self)
         self.model = ReferenceModelProperty(self)
 
         # the value of the variable is important for the model
@@ -253,6 +255,46 @@ class ModelVariableReferenceConverter(ModelConverter):
         return statements
 
 
+class FileConverter(Converter):
+    def __init__(self, document, related_object, django_project, test_case):
+        super().__init__(document, related_object, django_project, test_case)
+        self._extractors = None
+        self._fields = None
+        self.file = FileProperty(self)
+        self.file_variable = NewFileVariableProperty(self)
+
+    def get_document_compatibility(self):
+        """Only if a file token was found this converter makes sense."""
+        if self.file.token:
+            return 1
+
+        return 0
+
+    @property
+    def extractors(self):
+        """There can only be the extractor for the content of the file."""
+        locator_file_content = FileContentLocator(self.document)
+        locator_file_content.locate()
+        fittest_token = locator_file_content.fittest_token
+
+        return [StringExtractor(test_case=self.test_case, document=self.document, source=fittest_token or 'My Content')]
+
+    def prepare_statements(self, statements):
+        statements = super().prepare_statements(statements)
+        statement = AssignmentStatement(
+            variable=self.file_variable.value,
+            expression=CreateUploadFileExpression(self.file_variable.name, self.file.locator.file_extension, None)
+        )
+        statements.append(statement)
+        return statements
+
+    def handle_extractor(self, extractor, statements):
+        super().handle_extractor(extractor, statements)
+        expression = statements[0].expression
+        file_content_kwarg = expression.function_kwargs[1]
+        file_content_kwarg.value = Argument(extractor.extract_value())
+
+
 class RequestConverter(ModelConverter):
     """
     This converter is responsible to turn a document into statements that will do a request to the django REST api.
@@ -266,7 +308,7 @@ class RequestConverter(ModelConverter):
         self.user = UserReferenceVariableProperty(self)
         self.model = ModelWithUserProperty(self)
         self.method = MethodProperty(self)
-        self.model_variable = ReferenceVariableProperty(self)
+        self.model_variable = ReferenceModelVariableProperty(self)
 
     def get_searcher_kwargs(self):
         """When searching for a serializer adapter, we need to add the serializer class to the kwargs."""

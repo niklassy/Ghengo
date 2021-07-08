@@ -60,4 +60,4 @@ class Kwarg(TemplateMixin):
         self.value = Argument(value)
 
     def get_template_context(self, line_indent, indent):
-        return {'name': self.name, 'value': self.value.to_template(line_indent, indent)}
+        return {'name': self.name, 'value': self.value.to_template(line_indent, 0)}
