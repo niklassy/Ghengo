@@ -26,6 +26,13 @@ class ConverterProperty:
     def get_chunk(self):
         raise NotImplementedError()
 
+    def calculate_chunk(self):
+        """
+        This function can be used to calculate the value. It can be useful in cases where a property has to be
+        determined before another one.
+        """
+        return self.chunk
+
     @property
     def chunk(self):
         """The chunk in which the token can be found."""
@@ -37,6 +44,13 @@ class ConverterProperty:
     def get_token(self):
         raise NotImplementedError()
 
+    def calculate_token(self):
+        """
+        This function can be used to calculate the token. It can be useful in cases where a property has to be
+        determined before another one.
+        """
+        return self.token
+
     @property
     def token(self):
         """The token that represents something."""
@@ -47,6 +61,13 @@ class ConverterProperty:
 
     def get_value(self):
         raise NotImplementedError()
+
+    def calculate_value(self):
+        """
+        This function can be used to calculate the value. It can be useful in cases where a property has to be
+        determined before another one.
+        """
+        return self.value
 
     @property
     def value(self):

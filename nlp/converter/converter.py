@@ -226,7 +226,11 @@ class ModelVariableReferenceConverter(ModelConverter):
         self.variable = ReferenceVariableProperty(self)
         self.model = ReferenceModelProperty(self)
 
+        # the value of the variable is important for the model
+        self.variable.calculate_value()
+
     def get_document_compatibility(self):
+        """Only if a previous variable exists, this converter makes sense."""
         if self.variable.value:
             return 1
         return 0
@@ -265,11 +269,17 @@ class RequestConverter(ModelConverter):
         self.model_variable = ReferenceVariableProperty(self)
 
     def get_searcher_kwargs(self):
+        """When searching for a serializer adapter, we need to add the serializer class to the kwargs."""
         kwargs = super().get_searcher_kwargs()
         kwargs['serializer'] = self.url_pattern_adapter.get_serializer_class(self.method.value)()
         return kwargs
 
     def get_extractor_class(self, field):
+        """
+        Fields can be represented in two ways in the converter: as a model field (if the rest field does not exist yet)
+        or as a rest framework field. Both have different adapters that will result in different extractor
+        classes.
+        """
         # if the field is referencing the model, use the extractors normally
         if isinstance(field, AbstractModelFieldAdapter):
             return super().get_extractor_class(field)
@@ -279,28 +289,39 @@ class RequestConverter(ModelConverter):
         return get_api_model_field_extractor(field)
 
     def token_can_be_field(self, token):
+        """
+        Field cannot be the one for the method (POST, PUT etc.), the user or the variable of the model.
+        """
         if self.method.token == token or self.user.token == token or self.model_variable.token == token:
             return False
 
         return super().token_can_be_field(token)
 
     def get_document_compatibility(self):
+        """If there is no method, it is unlikely that this converter is useful."""
         if not self.method.token:
             return 0
         return 1
 
     @property
     def from_anonymous_user(self):
+        """Is the request made by an anonymous user? If true there will be no authentication."""
         return isinstance(self.user.token, NoToken)
 
     @property
     def url_pattern_adapter(self) -> UrlPatternAdapter:
+        """
+        Returns the url pattern adapter that represents a Django URL pattern that fits the method provided.
+        """
         if self._url_pattern_adapter is None:
             searcher = UrlSearcher(str(self.method.token), self.language, self.model.value, [self.method.value])
             self._url_pattern_adapter = searcher.search(self.django_project)
         return self._url_pattern_adapter
 
     def prepare_statements(self, statements):
+        """
+        When preparing the statements, there are several things that need to be done before adding the fields.
+        """
         if not self.url_pattern_adapter:
             return statements
 
@@ -340,6 +361,9 @@ class RequestConverter(ModelConverter):
         return statements
 
     def handle_extractor(self, extractor, statements):
+        """
+        Every extractor (for each field) may add values to the request expression/ the data that is sent in the request.
+        """
         super().handle_extractor(extractor, statements)
 
         extracted_value = extractor.extract_value()

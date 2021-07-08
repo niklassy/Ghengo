@@ -98,7 +98,6 @@ class ReferenceVariableProperty(NewVariableProperty):
         is not available, use the model from the statement.
         """
         if hasattr(self.converter, 'model'):
-            # TODO: check if this still works for two objects named `1`
             return self.converter.model.value or statement.expression.model_adapter
         return statement.expression.model_adapter
 
