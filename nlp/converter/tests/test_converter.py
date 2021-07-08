@@ -5,9 +5,10 @@ from django_meta.model import ModelAdapter
 from django_meta.project import DjangoProject
 from django_sample_project.apps.order.models import Order
 from gherkin.ast import Given, DataTable, TableRow, TableCell
-from nlp.converter.converter import ModelFactoryConverter, ModelVariableReferenceConverter
+from nlp.converter.converter import ModelFactoryConverter, ModelVariableReferenceConverter, RequestConverter
 from nlp.generate.argument import Kwarg
-from nlp.generate.expression import ModelSaveExpression
+from nlp.generate.expression import ModelSaveExpression, APIClientExpression, RequestExpression, \
+    APIClientAuthenticateExpression
 from nlp.generate.pytest import PyTestModelFactoryExpression
 from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement
@@ -168,13 +169,14 @@ def test_model_variable_reference_converter():
     assert isinstance(statements[1].expression, ModelSaveExpression)
 
 
-def test_model_variable_reference_converter_multiple_name():
+def test_model_variable_reference_converter_multiple_name(mocker):
     """
     Check that the ModelVariableReferenceConverter handles when two model instances are named the same but relate
     to different models.
     """
     given = Given(keyword='Und', text='Alice erhält das Passwort "Haus123"')
     suite = PyTestTestSuite('foo')
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     test_case = suite.create_and_add_test_case('bar')
     user_variable = Variable('1', 'User')
     test_case.add_statement(AssignmentStatement(
@@ -211,12 +213,12 @@ def test_model_variable_reference_converter_multiple_name():
     ]
 )
 def test_model_variable_converter_compatibility(
-        doc,
-        variable,
-        model_adapter,
-        min_compatibility,
-        max_compatibility,
-        mocker,
+    doc,
+    variable,
+    model_adapter,
+    min_compatibility,
+    max_compatibility,
+    mocker,
 ):
     """Check that the ModelVariableReferenceConverter detects the compatibility of different documents correctly."""
     suite = PyTestTestSuite('foo')
@@ -236,3 +238,109 @@ def test_model_variable_converter_compatibility(
     assert converter.get_document_compatibility() >= min_compatibility
     assert converter.get_document_compatibility() <= max_compatibility
 
+
+def test_model_request_converter(mocker):
+    """Check that the RequestConverter correctly creates statements to send requests."""
+    given = Given(keyword='Wenn', text='Alice einen Auftrag holt')
+    suite = PyTestTestSuite('foo')
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    test_case = suite.create_and_add_test_case('bar')
+    test_case.add_statement(AssignmentStatement(
+        expression=PyTestModelFactoryExpression(ModelAdapter(User, None), [Kwarg('bar', 123)]),
+        variable=Variable('Alice', 'User'),  # <-- variable defined
+    ))
+    converter = RequestConverter(nlp('Wenn Alice einen Auftrag holt'), given, django_project, test_case)
+    statements = converter.convert_to_statements()
+    assert converter.from_anonymous_user is False
+    assert len(statements) == 3     # client + authenticate + request
+
+    for s in statements:
+        test_case.add_statement(s)
+
+    converter = RequestConverter(nlp('Wenn Alice einen Auftrag holt'), given, django_project, test_case)
+    statements = converter.convert_to_statements()
+    assert len(statements) == 2     # client already exists; so authenticate + request
+
+
+def test_model_request_converter_anonymous(mocker):
+    """Check that the RequestConverter correctly creates statements to send requests from an anonymous user."""
+    given = Given(keyword='Wenn', text='Alice einen Auftrag holt')
+    suite = PyTestTestSuite('foo')
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    test_case = suite.create_and_add_test_case('bar')
+    test_case.add_statement(AssignmentStatement(
+        expression=PyTestModelFactoryExpression(ModelAdapter(User, None), [Kwarg('bar', 123)]),
+        variable=Variable('Alice', 'User'),  # <-- variable defined
+    ))
+    converter = RequestConverter(nlp('Wenn ein Auftrag erstellt wird'), given, django_project, test_case)
+    statements = converter.convert_to_statements()
+    assert len(statements) == 2     # client  + request
+    assert converter.from_anonymous_user is True
+    assert isinstance(statements[0].expression, APIClientExpression)
+    assert isinstance(statements[1].expression, RequestExpression)
+
+
+def test_model_request_converter_with_reference(mocker):
+    """Check that a converter with a reference to a model sets all properties correctly and has the correct output."""
+    given = Given(keyword='Wenn', text='Alice einen Auftrag holt')
+    suite = PyTestTestSuite('foo')
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    test_case = suite.create_and_add_test_case('bar')
+    test_case.add_statement(AssignmentStatement(
+        expression=PyTestModelFactoryExpression(ModelAdapter(User, None), []),
+        variable=Variable('Alice', 'User'),
+    ))
+    order_variable = Variable('1', 'Order')
+    test_case.add_statement(AssignmentStatement(
+        expression=PyTestModelFactoryExpression(ModelAdapter(Order, None), []),
+        variable=order_variable,
+    ))
+    doc = nlp('Wenn Alice den Auftrag 1 löscht')
+    converter = RequestConverter(doc, given, django_project, test_case)
+    statements = converter.convert_to_statements()
+
+    # check all the properties
+    assert isinstance(converter.model.value, ModelAdapter)
+    assert converter.model.value.model == Order
+    assert converter.model.token == doc[3]
+    assert converter.model_variable.value == order_variable
+    assert converter.model_variable.token == doc[4]
+    assert converter.user.token == doc[1]
+
+    assert len(statements) == 3
+    assert isinstance(statements[0].expression, APIClientExpression)
+    assert isinstance(statements[1].expression, APIClientAuthenticateExpression)
+    assert isinstance(statements[2].expression, RequestExpression)
+    # check that the reverse expression holds the data of the order variable
+    reverse_kwargs = statements[2].expression.reverse_expression.function_kwargs
+    attribute = reverse_kwargs[0].value.value
+    assert attribute.variable == order_variable
+
+
+@pytest.mark.parametrize(
+    'doc, min_compatibility, max_compatibility', [
+        (nlp('Wenn ein Auftrag erstellt wird'), 0.7, 1),
+        (nlp('Wenn ein Auftrag mit dem Namen "Test" und der Nummer 3 erstellt wird'), 0.7, 1),
+        (nlp('Wenn ein Auftrag geändert wird'), 0.7, 1),
+        (nlp('Wenn ein Auftrag aktualisiert wird'), 0.7, 1),
+        (nlp('Wenn die Liste der Aufträge geholt wird'), 0.7, 1),
+        (nlp('Wenn die ein Auftrag gelöscht wird'), 0.7, 1),
+        (nlp('Wenn Alice einen Auftrag erstellt'), 0.7, 1),
+        (nlp('Gegeben sei ein Auftrag'), 0, 0.1),
+        (nlp('Und ein Benutzer Alice'), 0, 0.1),
+        (nlp('Sie fahren mit dem Auto'), 0, 0.1),
+    ]
+)
+def test_model_request_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
+    """Check that the RequestConverter calculates the compatibility."""
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+    converter = RequestConverter(
+        doc,
+        Given(keyword='Und', text='der Auftrag 3 hat das Passwort 3.'),
+        django_project,
+        test_case,
+    )
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    assert converter.get_document_compatibility() >= min_compatibility
+    assert converter.get_document_compatibility() <= max_compatibility
