@@ -1,7 +1,10 @@
+from django_meta.setup import setup_django
 import pytest
-
-from django_meta.project import DjangoProject
 from settings import Settings
+
+
+# setup django before collecting all the tests
+setup_django('django_sample_project.apps.config.settings')
 
 
 @pytest.fixture(autouse=True)
@@ -11,8 +14,3 @@ def run_around_tests():
     Settings.generate_test_type = None
     yield
     Settings.reset()
-
-
-@pytest.fixture(scope="session", autouse=True)
-def prepare_django_project(request):
-    DjangoProject('django_sample_project.apps.config.settings')

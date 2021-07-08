@@ -5,12 +5,12 @@ from nlp.generate.pytest.suite import PyTestTestSuite
 
 def test_pytest_model_factory_expression():
     """Check that PyTestTestSuite adds decorator and parameter to the test case."""
-    class ModelInterface:
+    class ModelAdapter:
         name = 'Order'
 
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
-    expr = PyTestModelFactoryExpression(ModelInterface(), [Kwarg('bar', 123)])
+    expr = PyTestModelFactoryExpression(ModelAdapter(), [Kwarg('bar', 123)])
     assert len(test_case.parameters) == 0
     assert len(test_case.decorators) == 0
     expr.on_add_to_test_case(test_case)

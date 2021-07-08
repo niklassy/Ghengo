@@ -105,6 +105,3 @@ class PassStatement(Statement):
 class AssertStatement(Statement):
     template = 'assert {expression}{comment}'
 
-
-class RequestStatement(Statement):
-    pass

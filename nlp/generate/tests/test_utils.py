@@ -15,11 +15,11 @@ def test_to_function_name():
     assert to_function_name('123asd') == 'asd'
     assert to_function_name('MyFunction123') == 'my_function123'
     assert to_function_name('MyFunction123%§$%') == 'my_function123'
-    assert to_function_name('____foo') == '____foo'
-    assert to_function_name('____12_foo') == '____12_foo'
-    assert to_function_name('____12_fooBar') == '____12_foo_bar'
-    assert to_function_name('____12_fooBär') == '____12_foo_bar'
-    assert to_function_name('12____12_fooBär') == '____12_foo_bar'
+    assert to_function_name('____foo') == '_foo'
+    assert to_function_name('____12_foo') == '_12_foo'
+    assert to_function_name('____12_fooBar') == '_12_foo_bar'
+    assert to_function_name('____12_fooBär') == '_12_foo_bar'
+    assert to_function_name('12____12_fooBär') == '_12_foo_bar'
 
 
 def test_remove_non_alnum():

@@ -1,6 +1,7 @@
 from django_meta.project import DjangoProject
 from nlp.generate.pytest.decorator import PyTestMarkDecorator, PyTestParametrizeDecorator
 from nlp.generate.pytest.suite import PyTestTestSuite
+from nlp.translator import CacheTranslator
 from settings import GenerationType
 from nlp.generate.utils import to_function_name
 from gherkin.compiler_base.compiler import Lexer, Compiler, Parser, CodeGenerator
@@ -14,7 +15,7 @@ from gherkin.token import FeatureToken, RuleToken, DescriptionToken, EOFToken, B
     CommentToken, GivenToken, ThenToken, WhenToken, EmptyToken, AndToken, ButToken, TagsToken, LanguageToken, \
     EndOfLineToken, ScenarioOutlineToken, DocStringToken, DataTableToken, ExamplesToken
 from settings import Settings
-from nlp.tiler import GivenTiler
+from nlp.tiler import GivenTiler, WhenTiler
 
 
 class GherkinLexer(Lexer):
@@ -105,7 +106,9 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
     file_extension = 'py'
 
     def scenario_to_test_case(self, scenario, suite, project):
-        test_case = suite.create_and_add_test_case(scenario.name)
+        test_case = suite.create_and_add_test_case(
+            CacheTranslator(src_language=Settings.language, target_language='en').translate(scenario.name.lstrip())
+        )
 
         for tag in scenario.tags:
             try:
@@ -127,9 +130,17 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
 
         # first phase: GIVEN clauses
         in_given_steps = True
+        in_when_steps = False
+        in_then_steps = False
+
         for step in scenario.steps:
             if isinstance(step, (When, Then)) and in_given_steps:
                 in_given_steps = False
+                in_when_steps = True
+
+            if isinstance(step, Then) and in_when_steps:
+                in_when_steps = False
+                in_then_steps = True
 
             if in_given_steps:
                 tiler = GivenTiler(
@@ -139,6 +150,17 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
                     test_case=test_case,
                 )
                 tiler.add_statements_to_test_case()
+                continue
+
+            if in_when_steps:
+                tiler = WhenTiler(
+                    ast_object=step,
+                    django_project=project,
+                    language=Settings.language,
+                    test_case=test_case
+                )
+                tiler.add_statements_to_test_case()
+                continue
 
         return test_case
 

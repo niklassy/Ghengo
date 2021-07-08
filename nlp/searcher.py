@@ -1,4 +1,7 @@
-from django_meta.project import AbstractModelInterface, AbstractModelField
+from django.contrib.auth.models import Permission
+
+from django_meta.api import UrlPatternAdapter, Methods, AbstractApiFieldAdapter, ApiFieldAdapter
+from django_meta.model import AbstractModelFieldAdapter, AbstractModelAdapter
 from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity, ContainsSimilarity, LevenshteinSimilarity
 from nlp.translator import CacheTranslator
@@ -147,33 +150,42 @@ class Searcher(object):
 
 class ModelFieldSearcher(Searcher):
     def get_convert_fallback(self):
-        return AbstractModelField(name=self.translator_to_en.translate(self.text))
+        return AbstractModelFieldAdapter(name=self.translator_to_en.translate(self.text))
 
     def get_keywords(self, field):
         return [field.name, getattr(field, 'verbose_name', None)]
 
-    def get_possible_results(self, model_interface):
-        return model_interface.fields
+    def get_possible_results(self, model_adapter, **kwargs):
+        return model_adapter.fields
+
+
+class SerializerFieldSearcher(Searcher):
+    def get_convert_fallback(self):
+        return AbstractApiFieldAdapter(name=self.translator_to_en.translate(self.text))
+
+    def get_keywords(self, field):
+        return [field.source]
+
+    def get_possible_results(self, serializer, **kwargs):
+        if not serializer:
+            return []
+
+        return list(serializer.fields.fields.values())
 
 
 class ModelSearcher(Searcher):
     def get_convert_fallback(self):
-        return AbstractModelInterface(name=self.translator_to_en.translate(self.text))
+        return AbstractModelAdapter(name=self.translator_to_en.translate(self.text))
 
     def get_keywords(self, model):
         return [model.name, model.verbose_name]
 
-    def get_possible_results(self, project_interface):
-        return project_interface.get_models(as_interface=True, include_django=True)
+    def get_possible_results(self, project_adapter, **kwargs):
+        return project_adapter.get_models(as_adapter=True, include_django=True)
 
 
 class PermissionSearcher(Searcher):
     """Can search for specific permissions in Django."""
-
-    def __init__(self, permission_text, language):
-        from django.contrib.auth.models import Permission
-        self.permission_model_cls = Permission
-        super().__init__(permission_text, language)
 
     def get_convert_fallback(self):
         return None
@@ -182,4 +194,57 @@ class PermissionSearcher(Searcher):
         return [permission.codename, permission.name]
 
     def get_possible_results(self, *args, **kwargs):
-        return self.permission_model_cls.objects.all()
+        return Permission.objects.all()
+
+
+class UrlSearcher(Searcher):
+    def __init__(self, text, language, model_adapter, valid_methods):
+        super().__init__(text, language)
+        self.model_adapter = model_adapter
+
+        if Methods.PUT in valid_methods:
+            valid_methods = valid_methods.copy()
+            valid_methods.append(Methods.PATCH)
+
+        self.valid_methods = valid_methods
+
+    def get_convert_fallback(self):
+        # TODO: maybe create a fallback??
+        return None
+
+    def get_keywords(self, url_pattern):
+        keywords = [url_pattern.url_name, url_pattern.reverse_name]
+
+        if Methods.GET in url_pattern.methods:
+            keywords += ['get', 'list', '{} list'.format(self.model_adapter.name)]
+
+        if Methods.POST in url_pattern.methods:
+            keywords.append('create')
+
+        if Methods.POST in url_pattern.methods or Methods.PATCH in url_pattern.methods:
+            keywords.append('update')
+
+        if Methods.DELETE in url_pattern.methods:
+            keywords.append('delete')
+
+        return keywords
+
+    def get_possible_results(self, django_project, *args, **kwargs):
+        url_patterns = django_project.list_urls(as_pattern=True)
+        results = []
+
+        for pattern in url_patterns:
+            adapter = UrlPatternAdapter(pattern)
+
+            if adapter.view_set is not None:
+                # if the url does not have a valid method, skip it
+                if not any([m in self.valid_methods for m in adapter.methods]):
+                    continue
+
+                # if the model is not the same, skip it
+                if adapter.model_adapter.model != self.model_adapter.model:
+                    continue
+
+                results.append(adapter)
+
+        return results

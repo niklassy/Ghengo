@@ -1,4 +1,5 @@
-from nlp.converter import ModelFactoryConverter, Converter, ModelVariableReferenceConverter
+from nlp.converter.base_converter import Converter
+from nlp.converter.converter import ModelVariableReferenceConverter, ModelFactoryConverter, RequestConverter
 from nlp.setup import Nlp
 
 
@@ -51,6 +52,9 @@ class Tiler(object):
             self.test_case.add_statement(statement)
 
     def get_statements(self):
+        if not self.best_converter:
+            return []
+
         return self.best_converter.convert_to_statements()
 
 
@@ -59,3 +63,7 @@ class GivenTiler(Tiler):
         ModelVariableReferenceConverter,
         ModelFactoryConverter,
     ]
+
+
+class WhenTiler(Tiler):
+    converter_classes = [RequestConverter]

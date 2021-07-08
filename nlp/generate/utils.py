@@ -25,6 +25,10 @@ def to_function_name(string):
         replace_character=' ',
         allowed_characters=['_'],
     )
+
+    while '__' in no_special:
+        no_special = no_special.replace('__', '_')
+
     non_ascii = remove_non_ascii(no_special)
 
     if not non_ascii:

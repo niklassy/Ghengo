@@ -1,3 +1,4 @@
+from nlp.generate.argument import Argument
 from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
 from nlp.generate.replaceable import Replaceable
 from settings import INDENT_SPACES
@@ -54,13 +55,13 @@ class ModelSaveExpression(FunctionCallExpression):
 
 
 class ModelQuerysetBaseExpression(FunctionCallExpression):
-    def __init__(self, model_interface, function_name, function_kwargs):
-        self.model_interface = model_interface
-        super().__init__('{}.objects.{}'.format(model_interface.name, function_name), function_kwargs)
+    def __init__(self, model_adapter, function_name, function_kwargs):
+        self.model_adapter = model_adapter
+        super().__init__('{}.objects.{}'.format(model_adapter.name, function_name), function_kwargs)
 
     def get_template_context(self, line_indent, indent):
         context = super().get_template_context(line_indent, indent)
-        context['model'] = self.model_interface.name
+        context['model'] = self.model_adapter.name
         return context
 
     def on_add_to_test_case(self, test_case):
@@ -68,18 +69,74 @@ class ModelQuerysetBaseExpression(FunctionCallExpression):
 
 
 class ModelQuerysetFilterExpression(ModelQuerysetBaseExpression):
-    def __init__(self, model_interface, function_kwargs):
-        super().__init__(model_interface, 'filter', function_kwargs)
+    def __init__(self, model_adapter, function_kwargs):
+        super().__init__(model_adapter, 'filter', function_kwargs)
+
+
+class APIClientExpression(FunctionCallExpression):
+    def __init__(self):
+        super().__init__('APIClient', [])
+
+    def on_add_to_test_case(self, test_case):
+        test_case.test_suite.add_import(Import('rest_framework.test', 'APIClient'))
+
+
+class APIClientAuthenticateExpression(FunctionCallExpression):
+    def __init__(self, client_variable, user_variable):
+        super().__init__('{}.force_authenticate'.format(client_variable), [Argument(user_variable)])
+
+
+class ReverseCallExpression(FunctionCallExpression):
+    template = '{fn_name}({reverse_name}{kwargs})'
+
+    def __init__(self, reverse_name, reverse_kwargs):
+        super().__init__('reverse', reverse_kwargs)
+        self.reverse_name = Argument(reverse_name)
+
+    def get_template_context(self, line_indent, indent):
+        context = super().get_template_context(line_indent, indent)
+        context['reverse_name'] = self.reverse_name.to_template(line_indent, 0)
+
+        if len(self.function_kwargs) > 0:
+            dict_content_str = ', '.join(['\'{}\': {}'.format(k.name, k.value) for k in self.function_kwargs])
+            context['kwargs'] = ', {' + dict_content_str + '}'
+        else:
+            context['kwargs'] = ''
+
+        return context
+
+
+class RequestExpression(FunctionCallExpression):
+    template = '{client_variable}.{fn_name}({long_content_start}{reverse}{kwargs}{long_content_end})'
+
+    def __init__(self, function_name, function_kwargs, reverse_name, client_variable, reverse_kwargs):
+        super().__init__(function_name, function_kwargs)
+        self.client_variable = client_variable
+        self.reverse_expression = ReverseCallExpression(reverse_name, reverse_kwargs)
+
+    def get_template_context(self, line_indent, indent):
+        context = super().get_template_context(line_indent, indent)
+
+        context['reverse'] = self.reverse_expression.to_template(line_indent, 0)
+        dict_content_str = ', '.join(['\'{}\': {}'.format(k.name, k.value.to_template(line_indent)) for k in self.function_kwargs])
+
+        # add `,` because it is an argument as well
+        context['kwargs'] = ', {' + dict_content_str + '}' if dict_content_str else ''
+        context['client_variable'] = self.client_variable
+        return context
+
+    def on_add_to_test_case(self, test_case):
+        test_case.test_suite.add_import(Import('django.urls', 'reverse'))
 
 
 class ModelFactoryExpression(FunctionCallExpression):
-    def __init__(self, model_interface, factory_kwargs):
-        self.model_interface = model_interface
+    def __init__(self, model_adapter, factory_kwargs):
+        self.model_adapter = model_adapter
         super().__init__(self.factory_name, factory_kwargs)
 
     @property
     def factory_name(self):
-        return '{}_factory'.format(camel_to_snake_case(self.model_interface.name))
+        return '{}_factory'.format(camel_to_snake_case(self.model_adapter.name))
 
 
 class ModelM2MAddExpression(Expression):

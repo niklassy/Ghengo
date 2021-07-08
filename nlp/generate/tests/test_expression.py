@@ -19,11 +19,11 @@ def test_function_call_expression():
 
 
 def test_model_factory_expression():
-    """Check that the model factory expression handled the interface and the data correctly."""
-    class ModelInterface:
+    """Check that the model factory expression handled the adapter and the data correctly."""
+    class ModelAdapter:
         name = 'order'
 
-    exp = ModelFactoryExpression(ModelInterface(), [Kwarg('bar', 123)])
+    exp = ModelFactoryExpression(ModelAdapter(), [Kwarg('bar', 123)])
     assert exp.factory_name == 'order_factory'
     assert exp.to_template() == 'order_factory(bar=123)'
     assert exp.to_template(4, 4) == '    order_factory(bar=123)'

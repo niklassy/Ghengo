@@ -3,8 +3,16 @@ from nlp.vocab import NEGATIONS
 
 
 class NoToken:
+    children = []
+
     def __eq__(self, other):
         return False
+
+    def __bool__(self):
+        return False
+
+    def __str__(self):
+        return ''
 
 
 def get_non_stop_tokens(doc):
@@ -40,7 +48,7 @@ def get_verb_for_token(token):
         return token
 
     if token.head is None or token.head == token:
-        return None
+        return NoToken()
 
     return get_verb_for_token(token.head)
 
@@ -149,7 +157,12 @@ def token_to_function_name(token):
     """Translates a token to a function name."""
     if isinstance(token, NoToken):
         return ''
-    elif token.is_digit:
+
+    if token.is_digit:
         return str(token)
-    else:
-        return to_function_name(str(token))
+
+    token_str = str(token)
+    if is_quoted(token):
+        token_str = token_str[1:-1]
+
+    return to_function_name(token_str)
