@@ -100,7 +100,7 @@ class RestActionLocator(Locator):
     """This locator finds a token that indicates a special REST action."""
     GET_VALUES = ['list', 'get', 'detail', 'fetch']
     DELETE_VALUES = ['remove', 'delete', 'clear', 'destroy']
-    UPDATE_VALUES = ['change', 'update', 'modify']
+    UPDATE_VALUES = ['change', 'update', 'modify', 'adjust']
     CREATE_VALUES = ['create', 'generate', 'add']
 
     @property

@@ -1,13 +1,13 @@
 from django.apps import apps
 from django.conf.global_settings import AUTH_USER_MODEL
 
-from django_meta.model import ModelAdapter
+from django_meta.model import ModelAdapter, AbstractModelAdapter
 from nlp.converter.base_property import ConverterProperty
 from nlp.generate.expression import ModelFactoryExpression
 from nlp.generate.variable import Variable
 from nlp.locator import RestActionLocator
 from nlp.searcher import ModelSearcher, NoConversionFound
-from nlp.utils import token_to_function_name, NoToken, is_proper_noun_of, token_is_proper_noun
+from nlp.utils import token_to_function_name, NoToken, is_proper_noun_of, token_is_proper_noun, is_quoted
 
 
 class NewModelProperty(ConverterProperty):
@@ -69,7 +69,8 @@ class NewVariableProperty(ConverterProperty):
             # sometimes nlp gets confused about variables and what belongs to this model factory and
             # what is a reference to an older variable - so if there is a variable with the exact same name
             # we assume that that token is not valid
-            if (child.is_digit or is_proper_noun_of(child, self.converter.model.token)) and not variable_in_tc:
+            propn_or_digit = child.is_digit or is_proper_noun_of(child, self.converter.model.token)
+            if (propn_or_digit or is_quoted(child)) and not variable_in_tc:
                 return child
 
         return NoToken()
@@ -98,6 +99,12 @@ class ReferenceVariableProperty(NewVariableProperty):
         is not available, use the model from the statement.
         """
         if hasattr(self.converter, 'model'):
+            model_adapter = self.converter.model.value
+
+            # if the found model is abstract, use the adapter from the statement, just to be sure
+            if model_adapter.__class__ == AbstractModelAdapter:
+                return statement.expression.model_adapter
+
             return self.converter.model.value or statement.expression.model_adapter
         return statement.expression.model_adapter
 
@@ -116,7 +123,7 @@ class ReferenceVariableProperty(NewVariableProperty):
 
             for token in self.get_token_possibilities():
                 defined_in_tc = self.variable_defined_in_test_case(token, model_adapter.name)
-                if (token.is_digit or token_is_proper_noun(token)) and defined_in_tc:
+                if (token.is_digit or token_is_proper_noun(token) or is_quoted(token)) and defined_in_tc:
                     return token
 
         return NoToken()
