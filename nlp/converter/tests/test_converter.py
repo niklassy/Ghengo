@@ -35,6 +35,7 @@ django_project = DjangoProject('django_sample_project.apps.config.settings')
 )
 def test_model_factory_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
     """Check that the ModelFactoryConverter detects the compatibility of different documents correctly."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
     converter = ModelFactoryConverter(
@@ -43,7 +44,6 @@ def test_model_factory_converter_compatibility(doc, min_compatibility, max_compa
         django_project,
         test_case,
     )
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     assert converter.get_document_compatibility() >= min_compatibility
     assert converter.get_document_compatibility() <= max_compatibility
 
@@ -67,6 +67,7 @@ def test_model_factory_converter_compatibility(doc, min_compatibility, max_compa
 )
 def test_model_factory_converter_extractors(doc, expected_field_names, mocker):
     """Check that the correct amount of extractors for the correct fields are determined from the input."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
     converter = ModelFactoryConverter(
@@ -75,7 +76,6 @@ def test_model_factory_converter_extractors(doc, expected_field_names, mocker):
         django_project,
         test_case,
     )
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     assert len(converter.extractors) == len(expected_field_names), '{} != {}'.format(
         [e.field_name for e in converter.extractors], expected_field_names)
     for index, extractor in enumerate(converter.extractors):
@@ -94,6 +94,7 @@ def test_model_factory_converter_extractors(doc, expected_field_names, mocker):
 )
 def test_model_factory_converter_model_token(doc, expected_model_token_text, mocker):
     """Check if the model is correctly extracted."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
     converter = ModelFactoryConverter(
@@ -102,7 +103,6 @@ def test_model_factory_converter_model_token(doc, expected_model_token_text, moc
         django_project,
         test_case,
     )
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     assert str(converter.model.token) == expected_model_token_text
 
 
@@ -119,6 +119,7 @@ def test_model_factory_converter_model_token(doc, expected_model_token_text, moc
 )
 def test_model_factory_converter_variable_name(doc, expected_variable_name, mocker):
     """Check that the correct variable name is extracted."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
     converter = ModelFactoryConverter(
@@ -127,12 +128,12 @@ def test_model_factory_converter_variable_name(doc, expected_variable_name, mock
         django_project,
         test_case,
     )
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     assert str(converter.variable.name) == expected_variable_name
 
 
 def test_model_factory_converter_datatable(mocker):
     """Check that statements are correctly generated in the case GIVEN has a datatable."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     header = TableRow([TableCell('number'), TableCell('value'), TableCell('name')])
     row_1 = TableRow([TableCell(123), TableCell('val_1'), TableCell('name_2')])
     row_2 = TableRow([TableCell(234), TableCell('val_2'), TableCell('name_3')])
@@ -142,7 +143,6 @@ def test_model_factory_converter_datatable(mocker):
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
     converter = ModelFactoryConverter(nlp('Gegeben sei ein Auftrag'), given, django_project, test_case)
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     statements = converter.convert_to_statements()
     assert len(statements) == 2
 
@@ -152,8 +152,9 @@ def test_model_factory_converter_datatable(mocker):
             assert kwarg.value.value == rows[statement_index].cells[kwarg_index].value
 
 
-def test_model_variable_reference_converter():
+def test_model_variable_reference_converter(mocker):
     """Check that the ModelVariableReferenceConverter correctly creates statements to modify an object."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     given = Given(keyword='Und', text='Alice erhält das Passwort "Haus123"')
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
@@ -174,9 +175,9 @@ def test_model_variable_reference_converter_multiple_name(mocker):
     Check that the ModelVariableReferenceConverter handles when two model instances are named the same but relate
     to different models.
     """
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     given = Given(keyword='Und', text='Alice erhält das Passwort "Haus123"')
     suite = PyTestTestSuite('foo')
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     test_case = suite.create_and_add_test_case('bar')
     user_variable = Variable('1', 'User')
     test_case.add_statement(AssignmentStatement(
@@ -221,6 +222,7 @@ def test_model_variable_converter_compatibility(
     mocker,
 ):
     """Check that the ModelVariableReferenceConverter detects the compatibility of different documents correctly."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
     if variable and model_adapter:
@@ -234,16 +236,15 @@ def test_model_variable_converter_compatibility(
         django_project,
         test_case,
     )
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     assert converter.get_document_compatibility() >= min_compatibility
     assert converter.get_document_compatibility() <= max_compatibility
 
 
 def test_model_request_converter(mocker):
     """Check that the RequestConverter correctly creates statements to send requests."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     given = Given(keyword='Wenn', text='Alice einen Auftrag holt')
     suite = PyTestTestSuite('foo')
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     test_case = suite.create_and_add_test_case('bar')
     test_case.add_statement(AssignmentStatement(
         expression=PyTestModelFactoryExpression(ModelAdapter(User, None), [Kwarg('bar', 123)]),
@@ -264,9 +265,9 @@ def test_model_request_converter(mocker):
 
 def test_model_request_converter_anonymous(mocker):
     """Check that the RequestConverter correctly creates statements to send requests from an anonymous user."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     given = Given(keyword='Wenn', text='Alice einen Auftrag holt')
     suite = PyTestTestSuite('foo')
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     test_case = suite.create_and_add_test_case('bar')
     test_case.add_statement(AssignmentStatement(
         expression=PyTestModelFactoryExpression(ModelAdapter(User, None), [Kwarg('bar', 123)]),
@@ -282,9 +283,9 @@ def test_model_request_converter_anonymous(mocker):
 
 def test_model_request_converter_with_reference(mocker):
     """Check that a converter with a reference to a model sets all properties correctly and has the correct output."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     given = Given(keyword='Wenn', text='Alice einen Auftrag holt')
     suite = PyTestTestSuite('foo')
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     test_case = suite.create_and_add_test_case('bar')
     test_case.add_statement(AssignmentStatement(
         expression=PyTestModelFactoryExpression(ModelAdapter(User, None), []),
@@ -333,6 +334,7 @@ def test_model_request_converter_with_reference(mocker):
 )
 def test_model_request_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
     """Check that the RequestConverter calculates the compatibility."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
     converter = RequestConverter(
@@ -341,6 +343,5 @@ def test_model_request_converter_compatibility(doc, min_compatibility, max_compa
         django_project,
         test_case,
     )
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     assert converter.get_document_compatibility() >= min_compatibility
     assert converter.get_document_compatibility() <= max_compatibility
