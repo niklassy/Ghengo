@@ -1,6 +1,6 @@
 from django_meta.api import UrlPatternAdapter
 from django_meta.model import AbstractModelAdapter, AbstractModelFieldAdapter
-from nlp.converter.base.converter import Converter
+from nlp.converter.base_converter import Converter
 from nlp.converter.property import NewModelProperty, NewVariableProperty, ReferenceVariableProperty, \
     ReferenceModelProperty, UserReferenceVariableProperty, ModelWithUserProperty, \
     MethodProperty
@@ -86,9 +86,6 @@ class ModelConverter(Converter):
     @property
     def fields(self):
         """Returns all the fields that the document references."""
-        if self.model.value is None:
-            return []
-
         if self._fields is None:
             fields = []
 
@@ -246,7 +243,9 @@ class ModelVariableReferenceConverter(ModelConverter):
     def get_statements_from_extractors(self, extractors):
         """At the end there has to be a `save` call."""
         statements = super().get_statements_from_extractors(extractors)
-        statements.append(ModelSaveExpression(self.variable.value).as_statement())
+        # only add a save statement if any model field was changed
+        if len(statements) > 0:
+            statements.append(ModelSaveExpression(self.variable.value).as_statement())
         return statements
 
 

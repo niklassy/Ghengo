@@ -2,7 +2,7 @@ from django.apps import apps
 from django.conf.global_settings import AUTH_USER_MODEL
 
 from django_meta.model import ModelAdapter
-from nlp.converter.base.property import ConverterProperty
+from nlp.converter.base_property import ConverterProperty
 from nlp.generate.expression import ModelFactoryExpression
 from nlp.generate.variable import Variable
 from nlp.locator import RestActionLocator
@@ -98,7 +98,8 @@ class ReferenceVariableProperty(NewVariableProperty):
         is not available, use the model from the statement.
         """
         if hasattr(self.converter, 'model'):
-            return self.converter.model.value
+            # TODO: check if this still works for two objects named `1`
+            return self.converter.model.value or statement.expression.model_adapter
         return statement.expression.model_adapter
 
     def get_token(self):
