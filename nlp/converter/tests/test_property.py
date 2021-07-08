@@ -5,8 +5,8 @@ from django_meta.api import Methods
 from django_meta.model import ModelAdapter
 from django_meta.project import DjangoProject
 from django_sample_project.apps.order.models import Order, ToDo
-from nlp.converter.property import NewModelProperty, NewVariableProperty, MethodProperty, ReferenceVariableProperty, \
-    ReferenceModelProperty, UserReferenceVariableProperty, ModelWithUserProperty
+from nlp.converter.property import NewModelProperty, NewModelVariableProperty, MethodProperty, \
+    ReferenceModelVariableProperty, ReferenceModelProperty, UserReferenceVariableProperty, ModelWithUserProperty
 from nlp.generate.pytest import PyTestModelFactoryExpression
 from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.generate.statement import AssignmentStatement
@@ -53,7 +53,7 @@ def test_new_variable_converter_property(mocker, doc, token_index):
     suite = PyTestTestSuite('foo')
     converter.test_case = suite.create_and_add_test_case('bar')
     converter.model = NewModelProperty(converter)
-    prop = NewVariableProperty(converter)
+    prop = NewModelVariableProperty(converter)
     assert isinstance(prop.value, Variable)
     assert prop.value.reference_string == converter.model.value.name
     assert prop.token == doc[token_index]
@@ -85,7 +85,7 @@ def test_reference_variable_converter_property(doc, token_index, mocker):
     ))
     converter.test_case = test_case
     converter.model = NewModelProperty(converter)
-    prop = ReferenceVariableProperty(converter)
+    prop = ReferenceModelVariableProperty(converter)
 
     if token_index is None:
         assert isinstance(prop.token, NoToken)
@@ -115,7 +115,7 @@ def test_reference_model_converter_property(doc, token_index, mocker):
     ))
     converter.test_case = test_case
     converter.model = NewModelProperty(converter)
-    converter.variable = ReferenceVariableProperty(converter)
+    converter.variable = ReferenceModelVariableProperty(converter)
     converter.variable.calculate_value()
     prop = ReferenceModelProperty(converter)
 
@@ -145,7 +145,7 @@ def test_reference_user_converter_property(doc, token_index, mocker):
     ))
     converter.test_case = test_case
     converter.model = NewModelProperty(converter)
-    converter.variable = ReferenceVariableProperty(converter)
+    converter.variable = ReferenceModelVariableProperty(converter)
     converter.variable.calculate_value()
     prop = UserReferenceVariableProperty(converter)
 
@@ -181,7 +181,7 @@ def test_reference_model_with_user_converter_property(doc, token_index, mocker, 
     ))
     converter.test_case = test_case
     converter.model = NewModelProperty(converter)
-    converter.variable = ReferenceVariableProperty(converter)
+    converter.variable = ReferenceModelVariableProperty(converter)
     converter.variable.calculate_value()
     converter.method = MethodProperty(converter)
     converter.user = UserReferenceVariableProperty(converter)
