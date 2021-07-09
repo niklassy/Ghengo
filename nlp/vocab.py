@@ -25,9 +25,9 @@ FILE_EXTENSIONS = {
     'wmv': 'Windows Video',
 
     # image
-    'svg': 'SVG',
+    'svg': 'Vector',
     'jpg': 'JPEG',
-    'png': 'PNG',
+    'png': 'Image',
     'gif': 'GIF',
     'psd': 'Photoshop',
     'ai': 'Illustrator',

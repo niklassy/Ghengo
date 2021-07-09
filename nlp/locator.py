@@ -44,6 +44,9 @@ class Locator(object):
             return
 
         for token in self.document:
+            if self._highest_similarity >= 1:
+                break
+
             if not self.token_is_relevant(token):
                 continue
 
@@ -113,19 +116,29 @@ class FileExtensionLocator(Locator):
             if file_extension == part.lower():
                 return 1
 
-            nlp = Nlp.for_language(self.doc_language)
-            return super().get_similarity(nlp(token), nlp(file_description))
+            # try to find a token where the description may fit
+            variations = super().get_variations(token, file_description)
+            similarity_fn = super().get_similarity
+
+            return max([similarity_fn(token_var, desc_var) for token_var, desc_var in variations])
 
         return 0
 
+    def token_is_relevant(self, token):
+        """Files that are named entities, proper nouns or nouns may describe the extension."""
+        return token.pos_ == 'PROPN' or any([token in ent for ent in list(token.doc.ents)]) or token.pos_ == 'NOUN'
+
     def get_compare_values(self):
+        """Get the extension and description values from the dict."""
         # common file extensions
         return [(key, value) for key, value in FILE_EXTENSIONS.items()]
 
     def _get_best_compare_value(self, value):
+        """Since we always use the tuples, get the extension from that tuple"""
         return value[0]
 
     def get_variations(self, token, compare_value):
+        """Simplify the variations because it would cause a lot of calculations."""
         return [(token, compare_value)]
 
 

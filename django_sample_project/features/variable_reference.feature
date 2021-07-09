@@ -21,7 +21,7 @@ Funktionalität: Reference
 #    Und ein ToDo mit den Aufträgen 1 und 2
 
   Szenario: file
-    Gegeben sei eine Text Datei "foo" mit dem Inhalt "Das ist mein längerer Inhalt"
+    Gegeben sei eine Photoshop Datei "foo" mit dem Inhalt "Das ist mein längerer Inhalt"
     Wenn Alice einen Auftrag mit der Datei "foo" erstellt
 
 #  Szenario: Ändern von ToDo - anderer Nutzer

@@ -283,7 +283,7 @@ class FileConverter(Converter):
         statements = super().prepare_statements(statements)
         expression = CreateUploadFileExpression(
             self.file_variable.name or 'foo',
-            self.file.locator.file_extension,
+            self.file.locator.file_extension or 'txt',
             None,
         )
         statement = AssignmentStatement(
