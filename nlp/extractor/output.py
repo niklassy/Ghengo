@@ -7,8 +7,7 @@ from nlp.extractor.exception import ExtractionError
 from nlp.extractor.vocab import POSITIVE_BOOLEAN_INDICATORS, NEGATIVE_BOOLEAN_INDICATORS
 from nlp.generate.expression import ModelFactoryExpression, CreateUploadFileExpression
 from nlp.generate.variable import Variable
-from nlp.generate.warning import NO_VALUE_FOUND_CODE, BOOLEAN_NO_SOURCE, VARIABLE_NOT_FOUND, GenerationWarning, \
-    DICT_AS_STRING, FILE_NOT_FOUND
+from nlp.generate.warning import NO_VALUE_FOUND_CODE, VARIABLE_NOT_FOUND, DICT_AS_STRING, FILE_NOT_FOUND
 from nlp.utils import is_quoted, get_all_children, get_verb_for_token, token_is_negated, get_proper_noun_from_chunk, \
     get_noun_from_chunk, token_is_proper_noun, get_noun_chunk_of_token, get_noun_chunks
 

@@ -12,6 +12,8 @@ class Converter(object):
         2) Extract the data to use that class/ element from the text
         3) Create the statements that will become templates sooner or later
     """
+    can_use_datatables = False
+
     def __init__(self, document, related_object, django_project, test_case):
         self.document = document
         self.django_project = django_project
@@ -29,7 +31,7 @@ class Converter(object):
 
     def convert_to_statements(self):
         """Converts the document into statements."""
-        if not self.related_object.has_datatable:
+        if not self.related_object.has_datatable or not self.can_use_datatables:
             return self.get_statements_from_extractors(self.extractors)
 
         return self.get_statements_from_datatable()

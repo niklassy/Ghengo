@@ -1,3 +1,5 @@
+from collections import namedtuple
+
 from django_meta.api import UrlPatternAdapter
 from django_meta.model import AbstractModelAdapter, AbstractModelFieldAdapter
 from nlp.converter.base_converter import Converter
@@ -19,7 +21,169 @@ from nlp.utils import get_non_stop_tokens, get_noun_chunk_of_token, token_is_nou
     NoToken
 
 
-class ModelConverter(Converter):
+ClassKwargName = namedtuple('ClassKwargName', ['token', 'representative'])
+
+class ClassKwargRepresentative:
+    def __init__(self, token, representative):
+        self.token = token
+        self.representative = representative
+
+
+class ClassConverter(Converter):
+    field_searcher_classes = []
+
+    def __init__(self, document, related_object, django_project, test_case):
+        super().__init__(document, related_object, django_project, test_case)
+        self._extractors = None
+        self._fields = None
+
+    def token_used_in_property(self, token):
+        return False
+
+    def token_can_be_class_kwarg(self, token):
+        # first word is always a keyword from Gherkin
+        if self.document[0] == token:
+            return False
+
+        if self.token_used_in_property(token):
+            return False
+
+        if token.pos_ != 'ADJ' and token.pos_ != 'NOUN' and token.pos_ != 'VERB' and token.pos_ != 'ADV':
+            if token.pos_ != 'PROPN':
+                return False
+
+            if self.token_can_be_class_kwarg(token.head):
+                return False
+
+        # verbs with aux are fine (is done, ist abgeschlossen)
+        if token.pos_ == 'VERB' and token.head.pos_ != 'AUX':
+            return False
+
+        return True
+
+    def get_searcher_kwargs(self):
+        return {}
+
+    def search_for_kwarg(self, span, token):
+        for index, searcher_class in enumerate(self.field_searcher_classes):
+            no_fallback = index < len(self.field_searcher_classes) - 1
+            searcher_kwargs = self.get_searcher_kwargs()
+
+            if span:
+                field_searcher_span = searcher_class(text=str(span), src_language=self.language)
+
+                try:
+                    return field_searcher_span.search(raise_exception=True, **searcher_kwargs)
+                except NoConversionFound:
+                    pass
+
+                field_searcher_root = searcher_class(text=str(span.root.lemma_), src_language=self.language)
+                try:
+                    return field_searcher_root.search(raise_exception=bool(token), **searcher_kwargs)
+                except NoConversionFound:
+                    pass
+
+            if token:
+                field_searcher_token = searcher_class(text=str(token), src_language=self.language)
+                try:
+                    return field_searcher_token.search(raise_exception=no_fallback, **searcher_kwargs)
+                except NoConversionFound:
+                    pass
+
+        return None
+
+    def get_class_kwarg_names(self) -> [ClassKwargRepresentative]:
+        if self._fields is None:
+            class_kwargs_representatives = []
+
+            for token in get_non_stop_tokens(self.document):
+                if not self.token_can_be_class_kwarg(token):
+                    continue
+
+                chunk = get_noun_chunk_of_token(token, self.document)
+                kwarg_representative = self.search_for_kwarg(chunk, token)
+
+                if kwarg_representative in [class_kw.representative for class_kw in class_kwargs_representatives]:
+                    continue
+
+                class_kwarg = ClassKwargRepresentative(representative=kwarg_representative, token=token)
+                class_kwargs_representatives.append(class_kwarg)
+            self._fields = class_kwargs_representatives
+        return self._fields
+
+    def get_class(self):
+        raise NotImplementedError()
+
+    def get_extractor_class(self, kwarg_representative):
+        raise NotImplementedError()
+
+    def get_extractor_kwargs(self, kwarg_representative, token, extractor_cls):
+        return {'test_case': self.test_case, 'source': token, 'field': kwarg_representative, 'document': self.document}
+
+    @property
+    def extractors(self):
+        class_kwarg_names = self.get_class_kwarg_names()
+
+        if len(class_kwarg_names) == 0:
+            return []
+
+        if self._extractors is None:
+            extractors = []
+
+            for kwarg in class_kwarg_names:
+                extractor_cls = self.get_extractor_class(kwarg.representative)
+                extractor_kwargs = self.get_extractor_kwargs(kwarg.representative, kwarg.token, extractor_cls)
+                extractors.append(extractor_cls(**extractor_kwargs))
+
+            self._extractors = extractors
+        return self._extractors
+
+    def get_statements_from_datatable(self):
+        statements = []
+        datatable = self.related_object.argument
+        column_names = datatable.get_column_names()
+
+        for row in datatable.rows:
+            extractors_copy = self.extractors.copy()
+
+            for index, cell in enumerate(row.cells):
+                kwarg_representative = self.search_for_kwarg(span=None, token=column_names[index])
+                extractor_class = self.get_extractor_class(kwarg_representative)
+                extractor_kwargs = self.get_extractor_kwargs(kwarg_representative, cell.value, extractor_class)
+                extractors_copy.append(extractor_class(**extractor_kwargs))
+
+            statements += self.get_statements_from_extractors(extractors_copy)
+
+        return statements
+
+
+class ModelConverter(ClassConverter):
+    field_searcher_classes = [ModelFieldSearcher]
+
+    def __init__(self, document, related_object, django_project, test_case):
+        super().__init__(document, related_object, django_project, test_case)
+        self.model = NewModelProperty(self)
+        self.variable = NewModelVariableProperty(self)
+
+    def token_used_in_property(self, token):
+        return token == self.model.token or self.variable.token == token
+
+    def get_searcher_kwargs(self):
+        return {'model_adapter': self.model.value}
+
+    def get_extractor_class(self, field):
+        return get_model_field_extractor(field)
+
+    def get_class(self):
+        return self.model.value
+
+    def get_extractor_kwargs(self, kwarg_representative, token, extractor_cls):
+        kwargs = super().get_extractor_kwargs(kwarg_representative, token, extractor_cls)
+        kwargs['model_adapter'] = self.get_class()
+        return kwargs
+
+
+class OldModelConverter(Converter):
     field_searcher_classes = [ModelFieldSearcher]
 
     def __init__(self, document, related_object, django_project, test_case):
@@ -144,6 +308,8 @@ class ModelFactoryConverter(ModelConverter):
     """
     This converter will convert a document into a model factory statement and everything that belongs to it.
     """
+    can_use_datatables = True
+
     def prepare_statements(self, statements):
         """
         Before working with the extractors, create an assignment statement with the model factory. That statement
@@ -187,35 +353,6 @@ class ModelFactoryConverter(ModelConverter):
         kwarg = Kwarg(extractor.field_name, extracted_value)
         factory_kwargs.append(kwarg)
 
-    def get_statements_from_datatable(self):
-        """
-        If a there is a data table on the step, it is assumed that it contains data to create the model entry.
-        In that case, use the extractors that already exist and append the ones that are defined in the table.
-        """
-        statements = []
-        datatable = self.related_object.argument
-        column_names = datatable.get_column_names()
-
-        for row in datatable.rows:
-            extractors_copy = self.extractors.copy()
-
-            for index, cell in enumerate(row.cells):
-                field_searcher = ModelFieldSearcher(column_names[index], src_language=self.language)
-                field = field_searcher.search(model_adapter=self.model.value)
-                extractors_copy.append(
-                    ModelFieldExtractor(
-                        test_case=self.test_case,
-                        model_adapter=self.model.value,
-                        field=field,
-                        source=cell.value,
-                        document=self.document,
-                    )
-                )
-
-            statements += self.get_statements_from_extractors(extractors_copy)
-
-        return statements
-
 
 class ModelVariableReferenceConverter(ModelConverter):
     """
@@ -255,7 +392,9 @@ class ModelVariableReferenceConverter(ModelConverter):
         return statements
 
 
-class FileConverter(Converter):
+class FileConverter(ClassConverter):
+    can_use_datatables = True
+
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
         self._extractors = None
@@ -269,6 +408,12 @@ class FileConverter(Converter):
             return 1
 
         return 0
+
+    def get_class(self):
+        pass
+
+    def get_extractor_class(self, kwarg_representative):
+        return StringExtractor
 
     @property
     def extractors(self):
