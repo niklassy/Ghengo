@@ -7,6 +7,7 @@ BOOLEAN_NO_SOURCE = '002'
 VARIABLE_NOT_FOUND = '003'
 PERMISSION_NOT_FOUND = '004'
 DICT_AS_STRING = '005'
+FILE_NOT_FOUND = '006'
 
 WARNING_MESSAGES = {
     NO_VALUE_FOUND_CODE: 'No value was found for this field. One reason might be that the field does not exist '
@@ -20,6 +21,7 @@ WARNING_MESSAGES = {
                           'is given in the format "{model}.{permission_name}" or as free text like "Can create orders"',
     DICT_AS_STRING: 'Because explaining nested structures can be hard to explained via normal language and extracted '
                     'right now you have to set the values for fields as strings. Like \'{"foo": 123}\'.',
+    FILE_NOT_FOUND: 'There was no variable found that holds a file. Please create a file before trying to access it.'
 }
 
 

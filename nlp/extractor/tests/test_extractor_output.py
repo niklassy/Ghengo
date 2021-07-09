@@ -203,7 +203,7 @@ def test_variable_extractor_output(doc, token_index, raises):
         variable=var,  # <-- variable defined
     ))
 
-    extractor_output = VariableOutput(doc[token_index], doc, test_case.statements)
+    extractor_output = VariableOutput(doc[token_index], doc, test_case)
     if not raises:
         assert isinstance(extractor_output.get_output(), Variable)
         assert extractor_output.get_output() == var
@@ -232,7 +232,7 @@ def test_model_variable_extractor_output(doc, token_index, raises, model_input):
         variable=var,  # <-- variable defined
     ))
 
-    extractor_output = ModelVariableOutput(doc[token_index], doc, test_case.statements, model_input)
+    extractor_output = ModelVariableOutput(doc[token_index], doc, test_case, model_input)
     if not raises:
         assert isinstance(extractor_output.get_output(), Variable)
         assert extractor_output.get_output() == var

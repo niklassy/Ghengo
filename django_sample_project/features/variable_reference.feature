@@ -1,7 +1,7 @@
 # language: de
 Funktionalität: Reference
-#  Grundlage:
-#   Gegeben sei ein Benutzer Alice mit dem Namen alice, der Email a@local.local
+  Grundlage:
+   Gegeben sei ein Benutzer Alice mit dem Namen alice, der Email a@local.local
 
 #  Szenario: Permission in Text
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "Auftrag hinzufügen"
@@ -21,7 +21,8 @@ Funktionalität: Reference
 #    Und ein ToDo mit den Aufträgen 1 und 2
 
   Szenario: file
-    Gegeben sei eine Text-Datei "FileName" mit dem Inhalt "Das ist mein längerer Inhalt"
+    Gegeben sei eine Text Datei "foo" mit dem Inhalt "Das ist mein längerer Inhalt"
+    Wenn Alice einen Auftrag mit der Datei "foo" erstellt
 
 #  Szenario: Ändern von ToDo - anderer Nutzer
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "order.add_order"

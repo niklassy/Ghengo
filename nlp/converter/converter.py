@@ -281,14 +281,20 @@ class FileConverter(Converter):
 
     def prepare_statements(self, statements):
         statements = super().prepare_statements(statements)
+        expression = CreateUploadFileExpression(
+            self.file_variable.name or 'foo',
+            self.file.locator.file_extension,
+            None,
+        )
         statement = AssignmentStatement(
             variable=self.file_variable.value,
-            expression=CreateUploadFileExpression(self.file_variable.name, self.file.locator.file_extension, None)
+            expression=expression,
         )
         statements.append(statement)
         return statements
 
     def handle_extractor(self, extractor, statements):
+        """The content of the file is extracted. In `prepare_statements` it was set to None. Replace it here."""
         super().handle_extractor(extractor, statements)
         expression = statements[0].expression
         file_content_kwarg = expression.function_kwargs[1]

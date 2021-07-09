@@ -106,8 +106,15 @@ class FileExtensionLocator(Locator):
         file_extension = compare_value[0]
         file_description = compare_value[1]
 
-        if str(file_extension).lower() in str(token).lower() or str(file_description).lower() in str(token).lower():
-            return 1
+        token_str = str(token)
+        token_parts = token_str.split('-')
+
+        for part in token_parts:
+            if file_extension == part.lower():
+                return 1
+
+            nlp = Nlp.for_language(self.doc_language)
+            return super().get_similarity(nlp(token), nlp(file_description))
 
         return 0
 

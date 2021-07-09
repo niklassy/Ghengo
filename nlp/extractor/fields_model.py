@@ -3,14 +3,14 @@ import re
 from django_meta.model import AbstractModelFieldAdapter, ModelAdapter
 from nlp.extractor.base import FieldExtractor, ManyExtractorMixin
 from nlp.extractor.output import IntegerOutput, FloatOutput, DecimalOutput, BooleanOutput, \
-    ModelVariableOutput, StringOutput
+    ModelVariableOutput, StringOutput, FileVariableOutput
 from nlp.generate.argument import Kwarg
 from nlp.generate.expression import ModelM2MAddExpression, ModelQuerysetFilterExpression
 from nlp.generate.warning import GenerationWarning, PERMISSION_NOT_FOUND
 from nlp.searcher import PermissionSearcher, NoConversionFound
 from nlp.utils import is_quoted
 from django.db.models import IntegerField, FloatField, BooleanField, DecimalField, ManyToManyField, ManyToManyRel, \
-    ForeignKey, ManyToOneRel, CharField, TextField
+    ForeignKey, ManyToOneRel, CharField, TextField, FileField
 
 
 class ModelFieldExtractor(FieldExtractor):
@@ -50,13 +50,23 @@ class BooleanModelFieldExtractor(ModelFieldExtractor):
     output_class = BooleanOutput
 
 
+class FileModelFieldExtractor(ModelFieldExtractor):
+    field_classes = (FileField,)
+    output_class = FileVariableOutput
+
+    def get_output_kwargs(self):
+        kwargs = super().get_output_kwargs()
+        kwargs['test_case'] = self.test_case
+        return kwargs
+
+
 class ForeignKeyModelFieldExtractor(ModelFieldExtractor):
     field_classes = (ForeignKey,)
     output_class = ModelVariableOutput
 
     def get_output_kwargs(self):
         kwargs = super().get_output_kwargs()
-        kwargs['statements'] = self.test_case.statements
+        kwargs['test_case'] = self.test_case
         kwargs['model'] = self.field.related_model
         return kwargs
 
@@ -151,6 +161,7 @@ class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):
 MODEL_FIELD_EXTRACTORS = [
     IntegerModelFieldExtractor,
     BooleanModelFieldExtractor,
+    FileModelFieldExtractor,
     ForeignKeyModelFieldExtractor,
     FloatModelFieldExtractor,
     DecimalModelFieldExtractor,
