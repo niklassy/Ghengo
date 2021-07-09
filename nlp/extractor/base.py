@@ -1,7 +1,7 @@
 from nlp.extractor.exception import ExtractionError
-from nlp.extractor.output import ExtractorOutput, VariableOutput, NumberAsStringOutput
+from nlp.extractor.output import ExtractorOutput, VariableOutput, NumberAsStringOutput, StringOutput
 from nlp.generate.warning import GenerationWarning
-from nlp.utils import get_all_children, is_quoted, token_is_proper_noun, NoToken
+from nlp.utils import get_all_children, is_quoted, token_is_proper_noun
 
 
 class Extractor(object):
@@ -175,6 +175,10 @@ class ManyExtractorMixin(object):
         return output
 
 
+class StringExtractor(Extractor):
+    output_class = StringOutput
+
+
 class ManyExtractor(ManyExtractorMixin, Extractor):
     """A extractor base class that can be used for lists."""
     pass
@@ -201,7 +205,7 @@ class FieldExtractor(Extractor):
         # if the field does not exist yet, see if there is any variable in the test case that matches the variable.
         # If yes, we assume that the variable is meant
         if isinstance(self.field, self.default_field_class):
-            variable_output = VariableOutput(token, self.document, self.test_case.statements)
+            variable_output = VariableOutput(token, self.document, self.test_case)
 
             try:
                 return variable_output.get_output()

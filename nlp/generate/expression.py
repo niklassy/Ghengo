@@ -1,4 +1,6 @@
-from nlp.generate.argument import Argument
+import mimetypes
+
+from nlp.generate.argument import Argument, Kwarg
 from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
 from nlp.generate.replaceable import Replaceable
 from settings import INDENT_SPACES
@@ -127,6 +129,21 @@ class RequestExpression(FunctionCallExpression):
 
     def on_add_to_test_case(self, test_case):
         test_case.test_suite.add_import(Import('django.urls', 'reverse'))
+
+
+class CreateUploadFileExpression(FunctionCallExpression):
+    def __init__(self, file_name, file_type, content):
+        full_file_name = '{}.{}'.format(file_name, file_type)
+        content_type_guesses = mimetypes.MimeTypes().guess_type(full_file_name)
+        kwargs = [Kwarg('name', full_file_name), Kwarg('content', content)]
+
+        if len(content_type_guesses) > 0 and content_type_guesses[0]:
+            kwargs.append(Kwarg('content_type', content_type_guesses[0]))
+
+        super().__init__('SimpleUploadedFile', kwargs)
+
+    def on_add_to_test_case(self, test_case):
+        test_case.test_suite.add_import(Import('django.core.files.uploadedfile', 'SimpleUploadedFile'))
 
 
 class ModelFactoryExpression(FunctionCallExpression):

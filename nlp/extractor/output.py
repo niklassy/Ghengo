@@ -5,10 +5,10 @@ from spacy.tokens.token import Token
 
 from nlp.extractor.exception import ExtractionError
 from nlp.extractor.vocab import POSITIVE_BOOLEAN_INDICATORS, NEGATIVE_BOOLEAN_INDICATORS
-from nlp.generate.expression import ModelFactoryExpression
+from nlp.generate.expression import ModelFactoryExpression, CreateUploadFileExpression
 from nlp.generate.variable import Variable
 from nlp.generate.warning import NO_VALUE_FOUND_CODE, BOOLEAN_NO_SOURCE, VARIABLE_NOT_FOUND, GenerationWarning, \
-    DICT_AS_STRING
+    DICT_AS_STRING, FILE_NOT_FOUND
 from nlp.utils import is_quoted, get_all_children, get_verb_for_token, token_is_negated, get_proper_noun_from_chunk, \
     get_noun_from_chunk, token_is_proper_noun, get_noun_chunk_of_token, get_noun_chunks
 
@@ -288,9 +288,10 @@ class VariableOutput(ExtractorOutput):
     This will always return a variable. Since variables always reference an earlier statement, this output
     needs the statements. It will search for a statement with a similar variable and returns it if possible.
     """
-    def __init__(self, source, document, statements):
+    def __init__(self, source, document, test_case):
         super().__init__(source, document)
-        self.statements = statements
+        self.test_case = test_case
+        self.statements = test_case.statements
 
     @classmethod
     def copy_from(cls, extractor_output):
@@ -324,13 +325,33 @@ class VariableOutput(ExtractorOutput):
         raise ExtractionError(VARIABLE_NOT_FOUND)
 
 
+class FileVariableOutput(VariableOutput):
+    """
+    A variable output that is related to files.
+    """
+    def token_to_string_output(self, token):
+        try:
+            return super().token_to_string_output(token)
+        except ExtractionError:
+            raise ExtractionError(FILE_NOT_FOUND)
+
+    def guess_output_type(self, input_value):
+        try:
+            return super().guess_output_type(input_value)
+        except ExtractionError:
+            raise ExtractionError(FILE_NOT_FOUND)
+
+    def skip_statement(self, statement):
+        return not isinstance(statement.expression, CreateUploadFileExpression)
+
+
 class ModelVariableOutput(VariableOutput):
     """
     This output works exactly the same as `VariableOutput`. The difference is that is only returns variables
     of a given model. That model must be given to this class on init.
     """
-    def __init__(self, source, document, statements, model):
-        super().__init__(source, document, statements)
+    def __init__(self, source, document, test_case, model):
+        super().__init__(source, document, test_case)
         self.model = model
 
     @classmethod

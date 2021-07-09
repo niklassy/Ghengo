@@ -1,5 +1,5 @@
 from rest_framework.fields import Field as RestApiField, BooleanField, IntegerField, FloatField, DecimalField, \
-    HiddenField, ModelField, ListField, CharField, DictField, JSONField
+    HiddenField, ModelField, ListField, CharField, DictField, JSONField, FileField
 from rest_framework.relations import PrimaryKeyRelatedField, ManyRelatedField
 from rest_framework.serializers import Serializer
 
@@ -8,7 +8,7 @@ from nlp.extractor.base import FieldExtractor, ManyExtractorMixin
 from nlp.extractor.exception import ExtractionError
 from nlp.extractor.fields_model import get_model_field_extractor
 from nlp.extractor.output import BooleanOutput, IntegerOutput, FloatOutput, DecimalOutput, NoneOutput, \
-    ModelVariableOutput, ExtractorOutput, VariableOutput, StringOutput, DictOutput
+    ModelVariableOutput, ExtractorOutput, VariableOutput, StringOutput, DictOutput, FileVariableOutput
 from nlp.generate.attribute import Attribute
 
 
@@ -60,6 +60,16 @@ class StringApiModelFieldExtractor(ApiModelFieldExtractor):
     output_class = StringOutput
 
 
+class FileApiModelFieldExtractor(ApiModelFieldExtractor):
+    field_classes = (FileField,)
+    output_class = FileVariableOutput
+
+    def get_output_kwargs(self):
+        kwargs = super().get_output_kwargs()
+        kwargs['test_case'] = self.test_case
+        return kwargs
+
+
 class ModelApiFieldExtractor(ApiModelFieldExtractor):
     field_classes = (ModelField,)
     output_class = None
@@ -83,7 +93,7 @@ class ForeignKeyApiFieldExtractor(ApiModelFieldExtractor):
     def get_output_kwargs(self):
         kwargs = super().get_output_kwargs()
         kwargs['model'] = self.field.get_queryset().model
-        kwargs['statements'] = self.test_case.statements
+        kwargs['test_case'] = self.test_case
         return kwargs
 
     def _get_output_value(self, output_instance, token):
@@ -122,7 +132,7 @@ class ListApiFieldExtractor(ManyExtractorMixin, ApiModelFieldExtractor):
         child_output_class = self.get_output_class()
 
         if child_output_class == VariableOutput or issubclass(child_output_class, VariableOutput):
-            kwargs['statements'] = self.test_case.statements
+            kwargs['test_case'] = self.test_case
 
         if child_output_class == ModelVariableOutput or issubclass(child_output_class, ModelVariableOutput):
             kwargs['model'] = self.get_child_field().get_queryset().model
@@ -179,6 +189,7 @@ API_FIELD_EXTRACTORS = [
     FloatApiModelFieldExtractor,
     DecimalApiModelFieldExtractor,
     ModelApiFieldExtractor,
+    FileApiModelFieldExtractor,
     ForeignKeyApiFieldExtractor,
     ListApiFieldExtractor,
     StringApiModelFieldExtractor,
