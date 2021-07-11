@@ -145,7 +145,9 @@ class CreateUploadFileExpression(FunctionCallExpression):
             self.function_kwargs.append(kwarg)
 
         if kwarg.name == 'name':
-            content_type_guesses = mimetypes.MimeTypes().guess_type(kwarg.name)
+            # value of the kwarg is always an argument
+            argument = kwarg.value
+            content_type_guesses = mimetypes.MimeTypes().guess_type(argument.value)
 
         if len(content_type_guesses) > 0 and content_type_guesses[0]:
             self.function_kwargs.append(Kwarg('content_type', content_type_guesses[0]))

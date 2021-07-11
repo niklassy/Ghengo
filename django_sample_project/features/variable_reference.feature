@@ -21,7 +21,7 @@ Funktionalität: Reference
 #    Und ein ToDo mit den Aufträgen 1 und 2
 
   Szenario: file
-    Gegeben sei eine Photoshop Datei "foo"
+    Gegeben sei eine Text Datei "foo"
       | content | name |
       | asdasd  | abc  |
       | qweqwe  | def  |

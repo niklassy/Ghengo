@@ -343,7 +343,7 @@ class FileConverter(ClassConverter):
 
         return 0
 
-    def get_extractor_class(self, kwarg_representative):
+    def get_extractor_class(self, argument_wrapper):
         """All the arguments for `SimpleUploadedFile` are strings. So always return a StringExtractor."""
         return StringExtractor
 
@@ -388,7 +388,7 @@ class FileConverter(ClassConverter):
     def handle_extractor(self, extractor, statements):
         """The content of the file is extracted. In `prepare_statements` it was set to None. Replace it here."""
         super().handle_extractor(extractor, statements)
-        file_kwargs = statements[0].expression.function_kwargs
+        expression = statements[0].expression
 
         extracted_value = extractor.extract_value()
         if extracted_value is None:
@@ -402,7 +402,7 @@ class FileConverter(ClassConverter):
             extracted_value = '{}.{}'.format(extracted_value, self.file_extension_locator.best_compare_value or 'txt')
 
         kwarg = Kwarg(representative, extracted_value)
-        file_kwargs.append(kwarg)
+        expression.add_kwarg(kwarg)
 
 
 class RequestConverter(ModelConverter):
