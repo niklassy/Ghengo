@@ -27,14 +27,14 @@ document = nlp('Sie hat 3 Äpfel.')
 )
 def test_extract_python_value(value, expected_value):
     """Check that the default extract value returns python values depending on the input."""
-    extractor = Extractor(default_test_case, value, document)
+    extractor = Extractor(default_test_case, '', value, document)
     assert extractor.extract_value() == expected_value
     assert type(extractor.extract_value()) == type(expected_value)
 
 
 def test_output_instance():
     """Check if the output instance is set correctly and the data is passed."""
-    extractor = Extractor(default_test_case, '1', document)
+    extractor = Extractor(default_test_case, '', '1', document)
     output_instance = extractor.get_output_instance()
     assert isinstance(output_instance, extractor.output_class)
     assert output_instance.document == document
@@ -50,5 +50,5 @@ def test_output_instance():
 )
 def test_many_extractor_mixin(doc, token_index, expected_output):
     """Check that many values are correctly handled."""
-    extractor = ManyExtractor(default_test_case, doc[token_index], doc)
+    extractor = ManyExtractor(default_test_case, '', doc[token_index], doc)
     assert extractor.extract_value() == expected_output

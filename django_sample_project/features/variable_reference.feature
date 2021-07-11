@@ -20,9 +20,16 @@ Funktionalität: Reference
 #    Und ein Auftrag 2
 #    Und ein ToDo mit den Aufträgen 1 und 2
 
+#  Szenario: file
+#    Gegeben sei eine Text Datei "foo"
+#      | content | name |
+#      | asdasd  | abc  |
+#      | qweqwe  | def  |
+
   Szenario: file
-    Gegeben sei eine Photoshop Datei "foo" mit dem Inhalt "Das ist mein längerer Inhalt"
-    Wenn Alice einen Auftrag mit der Datei "foo" erstellt
+    Gegeben sei eine Word Datei "asd"
+    Und ein Auftrag mit dem Namen "Hallo"
+    Wenn Alice einen Auftrag mit der Datei "asd" erstellt
 
 #  Szenario: Ändern von ToDo - anderer Nutzer
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "order.add_order"

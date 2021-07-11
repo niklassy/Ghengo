@@ -325,7 +325,7 @@ def test_model_request_converter_with_reference(mocker):
         (nlp('Wenn ein Auftrag geändert wird'), 0.7, 1),
         (nlp('Wenn ein Auftrag aktualisiert wird'), 0.7, 1),
         (nlp('Wenn die Liste der Aufträge geholt wird'), 0.7, 1),
-        (nlp('Wenn die ein Auftrag gelöscht wird'), 0.7, 1),
+        (nlp('Wenn ein Auftrag gelöscht wird'), 0.7, 1),
         (nlp('Wenn Alice einen Auftrag erstellt'), 0.7, 1),
         (nlp('Gegeben sei ein Auftrag'), 0, 0.1),
         (nlp('Und ein Benutzer Alice'), 0, 0.1),
@@ -337,6 +337,10 @@ def test_model_request_converter_compatibility(doc, min_compatibility, max_compa
     mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
+    test_case.add_statement(AssignmentStatement(
+        expression=PyTestModelFactoryExpression(ModelAdapter(User, None), []),
+        variable=Variable('Alice', 'User'),
+    ))
     converter = RequestConverter(
         doc,
         Given(keyword='Und', text='der Auftrag 3 hat das Passwort 3.'),

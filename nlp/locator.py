@@ -117,7 +117,7 @@ class FileExtensionLocator(Locator):
                 return 1
 
             # try to find a token where the description may fit
-            variations = super().get_variations(token, file_description)
+            variations = super().get_variations(part, file_description)
             similarity_fn = super().get_similarity
 
             return max([similarity_fn(token_var, desc_var) for token_var, desc_var in variations])
@@ -152,14 +152,6 @@ class FileLocator(Locator):
 
     def get_compare_values(self):
         return ['file']
-
-    def token_is_relevant(self, token):
-        return token_is_noun(token)
-
-
-class FileContentLocator(Locator):
-    def get_compare_values(self):
-        return ['content']
 
     def token_is_relevant(self, token):
         return token_is_noun(token)

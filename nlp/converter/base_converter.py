@@ -12,16 +12,24 @@ class Converter(object):
         2) Extract the data to use that class/ element from the text
         3) Create the statements that will become templates sooner or later
     """
+    can_use_datatables = False
+
     def __init__(self, document, related_object, django_project, test_case):
         self.document = document
         self.django_project = django_project
         self.related_object = related_object
         self.language = document.lang_
         self.test_case = test_case
+        self._extractors = None
 
     @property
     def extractors(self):
-        raise NotImplementedError()
+        if self._extractors is None:
+            self._extractors = self.get_extractors()
+        return self._extractors
+
+    def get_extractors(self):
+        return []
 
     def get_noun_chunks(self):
         """Returns all the noun chunks from the document."""
@@ -29,7 +37,7 @@ class Converter(object):
 
     def convert_to_statements(self):
         """Converts the document into statements."""
-        if not self.related_object.has_datatable:
+        if not self.related_object.has_datatable or not self.can_use_datatables:
             return self.get_statements_from_extractors(self.extractors)
 
         return self.get_statements_from_datatable()

@@ -79,9 +79,12 @@ class NewVariableProperty(ConverterProperty):
         try:
             # check the token afterwards too in case NLP does not recognize `1` as a child
             after_model_token = self.document[related_token.i + 1]
-            return related_children + [after_model_token]
+            possibilities = related_children + [after_model_token]
         except IndexError:
             return related_children
+
+        # filter out any values in quotes that is not coming rights after the related token
+        return [t for t in possibilities if not (is_quoted(t) and t != after_model_token)]
 
     def get_value(self):
         """The output will be a variable instance."""
@@ -102,6 +105,11 @@ class NewModelVariableProperty(NewVariableProperty):
 class NewFileVariableProperty(NewVariableProperty):
     def get_related_object_property(self):
         return self.converter.file
+
+    def get_token_possibilities(self):
+        """The variable cannot be represented by the token that represents the file extension."""
+        possibilities = super().get_token_possibilities()
+        return [token for token in possibilities if token != self.converter.file_extension_locator.fittest_token]
 
 
 class ReferenceModelVariableProperty(NewModelVariableProperty):
