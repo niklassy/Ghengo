@@ -25,6 +25,9 @@ Funktionalität: Reference
       | content | name |
       | asdasd  | abc  |
       | qweqwe  | def  |
+
+  Szenario: file
+    Gegeben sei eine Photoshop Datei "foo" mit dem Namen "Test" und dem Inhalt "Blubb" und dem Laden "test"
 #    Wenn Alice einen Auftrag mit der Datei "foo" erstellt
 
 #  Szenario: Ändern von ToDo - anderer Nutzer

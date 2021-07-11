@@ -10,10 +10,11 @@ class Extractor(object):
     """
     output_class = ExtractorOutput
 
-    def __init__(self, test_case, source, document):
+    def __init__(self, test_case, representative, source, document):
         self.test_case = test_case
         self.source = source
         self.document = document
+        self.representative = representative
 
     def __str__(self):
         return '{} | {} -> {}'.format(self.__class__.__name__, str(self.source), self._extract_value())
@@ -192,7 +193,7 @@ class FieldExtractor(Extractor):
     field_classes = ()
 
     def __init__(self, test_case, source, field, document):
-        super().__init__(test_case=test_case, source=source, document=document)
+        super().__init__(test_case=test_case, source=source, document=document, representative=field)
         self.field = field
 
     @classmethod

@@ -157,14 +157,6 @@ class FileLocator(Locator):
         return token_is_noun(token)
 
 
-class FileContentLocator(Locator):
-    def get_compare_values(self):
-        return ['content']
-
-    def token_is_relevant(self, token):
-        return token_is_noun(token)
-
-
 class RestActionLocator(Locator):
     """This locator finds a token that indicates a special REST action."""
     GET_VALUES = ['list', 'get', 'detail', 'fetch']

@@ -1,3 +1,5 @@
+import inspect
+
 from django.contrib.auth.models import Permission
 
 from django_meta.api import UrlPatternAdapter, Methods, AbstractApiFieldAdapter, ApiFieldAdapter
@@ -146,6 +148,33 @@ class Searcher(object):
             return self.get_convert_fallback()
 
         return fittest_conversion
+
+
+class ClassArgumentSearcher(Searcher):
+    """
+    This searcher searches tokens that could represent the argument/ parameter of an __init__ of a given class.
+    """
+    def get_keywords(self, parameter_name):
+        return [parameter_name]
+
+    def get_possible_results(self, cls, exclude_parameters=None, *args, **kwargs):
+        signature = inspect.signature(cls.__init__)
+        parameters = dict(signature.parameters)
+
+        # remove self as it is not passed to init from outside
+        del parameters['self']
+        if exclude_parameters is None:
+            exclude_parameters = []
+
+        # remove any parameters that are marked as excluded
+        for exclude_parameter in exclude_parameters:
+            try:
+                del parameters[exclude_parameter]
+            except KeyError:
+                pass
+
+        # only use the names for now
+        return [param.name for param in parameters.values()]
 
 
 class ModelFieldSearcher(Searcher):

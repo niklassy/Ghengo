@@ -132,15 +132,23 @@ class RequestExpression(FunctionCallExpression):
 
 
 class CreateUploadFileExpression(FunctionCallExpression):
-    def __init__(self, file_name, file_type, content):
-        full_file_name = '{}.{}'.format(file_name, file_type)
-        content_type_guesses = mimetypes.MimeTypes().guess_type(full_file_name)
-        kwargs = [Kwarg('name', full_file_name), Kwarg('content', content)]
+    def __init__(self, function_kwargs):
+        super().__init__('SimpleUploadedFile', function_kwargs)
+
+        for kwarg in self.function_kwargs:
+            self.add_kwarg(kwarg)
+
+    def add_kwarg(self, kwarg):
+        content_type_guesses = []
+
+        if kwarg not in self.function_kwargs:
+            self.function_kwargs.append(kwarg)
+
+        if kwarg.name == 'name':
+            content_type_guesses = mimetypes.MimeTypes().guess_type(kwarg.name)
 
         if len(content_type_guesses) > 0 and content_type_guesses[0]:
-            kwargs.append(Kwarg('content_type', content_type_guesses[0]))
-
-        super().__init__('SimpleUploadedFile', kwargs)
+            self.function_kwargs.append(Kwarg('content_type', content_type_guesses[0]))
 
     def on_add_to_test_case(self, test_case):
         test_case.test_suite.add_import(Import('django.core.files.uploadedfile', 'SimpleUploadedFile'))

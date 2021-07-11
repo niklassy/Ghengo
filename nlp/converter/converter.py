@@ -1,3 +1,5 @@
+from django.core.files.uploadedfile import SimpleUploadedFile
+
 from django_meta.api import UrlPatternAdapter
 from django_meta.model import AbstractModelAdapter, AbstractModelFieldAdapter
 from nlp.converter.base_converter import Converter
@@ -13,8 +15,9 @@ from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression,
     APIClientAuthenticateExpression, CreateUploadFileExpression
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement
 from nlp.generate.variable import Variable
-from nlp.locator import FileContentLocator
-from nlp.searcher import ModelFieldSearcher, NoConversionFound, UrlSearcher, SerializerFieldSearcher
+from nlp.locator import FileExtensionLocator
+from nlp.searcher import ModelFieldSearcher, NoConversionFound, UrlSearcher, SerializerFieldSearcher, \
+    ClassArgumentSearcher
 from nlp.utils import get_non_stop_tokens, get_noun_chunk_of_token, token_is_noun, get_root_of_token, \
     NoToken
 
@@ -91,6 +94,9 @@ class ClassConverter(Converter):
 
         return None
 
+    def is_valid_search_result(self, search_result):
+        return bool(search_result)
+
     def get_class_kwarg_names(self) -> [ClassKwargRepresentative]:
         if self._fields is None:
             class_kwargs_representatives = []
@@ -101,6 +107,9 @@ class ClassConverter(Converter):
 
                 chunk = get_noun_chunk_of_token(token, self.document)
                 kwarg_representative = self.search_for_kwarg(chunk, token)
+
+                if not self.is_valid_search_result(kwarg_representative):
+                    continue
 
                 if kwarg_representative in [class_kw.representative for class_kw in class_kwargs_representatives]:
                     continue
@@ -114,7 +123,12 @@ class ClassConverter(Converter):
         raise NotImplementedError()
 
     def get_extractor_kwargs(self, kwarg_representative, token, extractor_cls):
-        return {'test_case': self.test_case, 'source': token, 'document': self.document}
+        return {
+            'test_case': self.test_case,
+            'source': token,
+            'document': self.document,
+            'representative': kwarg_representative,
+        }
 
     def get_extractor_instance(self, kwarg_representative, token):
         extractor_class = self.get_extractor_class(kwarg_representative=kwarg_representative)
@@ -132,18 +146,10 @@ class ClassConverter(Converter):
         if len(class_kwarg_names) == 0:
             return []
 
-        if self._extractors is None:
-            extractors = []
-
-            for kwarg in class_kwarg_names:
-                extractor_instance = self.get_extractor_instance(
-                    kwarg_representative=kwarg.representative,
-                    token=kwarg.token,
-                )
-                extractors.append(extractor_instance)
-
-            self._extractors = extractors
-        return self._extractors
+        return [
+            self.get_extractor_instance(kwarg_representative=kwarg.representative, token=kwarg.token)
+            for kwarg in class_kwarg_names
+        ]
 
     def get_statements_from_datatable(self):
         statements = []
@@ -159,7 +165,17 @@ class ClassConverter(Converter):
                     kwarg_representative=kwarg_representative,
                     token=cell.value,
                 )
-                extractors_copy.append(extractor_instance)
+
+                existing_extract_index = -1
+                for extractor_index, extractor in enumerate(extractors_copy):
+                    if extractor.representative == kwarg_representative:
+                        existing_extract_index = extractor_index
+                        break
+
+                if existing_extract_index >= 0:
+                    extractors_copy[existing_extract_index] = extractor_instance
+                else:
+                    extractors_copy.append(extractor_instance)
 
             statements += self.get_statements_from_extractors(extractors_copy)
 
@@ -290,11 +306,24 @@ class FileConverter(ClassConverter):
     This converter can create statements that are used to create files.
     """
     can_use_datatables = True
+    field_searcher_classes = [ClassArgumentSearcher]
 
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
         self.file = FileProperty(self)
         self.file_variable = NewFileVariableProperty(self)
+
+        # get the extension of the file
+        self.file_extension_locator = FileExtensionLocator(self.document)
+        self.file_extension_locator.locate()
+
+    def token_used_in_property(self, token):
+        """Reject tokens that represent the file, the variable or the extension."""
+        return any([
+            token == self.file.token,
+            token == self.file_variable.token,
+            token == self.file_extension_locator.fittest_token,
+        ])
 
     def get_document_compatibility(self):
         """Only if a file token was found this converter makes sense."""
@@ -307,35 +336,62 @@ class FileConverter(ClassConverter):
         """All the arguments for `SimpleUploadedFile` are strings. So always return a StringExtractor."""
         return StringExtractor
 
-    def get_extractors(self):
-        """There can only be the extractor for the content of the file."""
-        locator_file_content = FileContentLocator(self.document)
-        locator_file_content.locate()
-        fittest_token = locator_file_content.fittest_token
+    def get_searcher_kwargs(self):
+        """We are searching for the parameters of the init from SimpleUploadFile but want to exclude content_type."""
+        return {'cls': SimpleUploadedFile, 'exclude_parameters': ['content_type']}
 
-        extractor_instance = self.get_extractor_instance(
-            kwarg_representative='content',
-            token=fittest_token or 'My content',
-        )
+    def is_valid_search_result(self, search_result):
+        """Only allow name and content."""
+        if not super().is_valid_search_result(search_result):
+            return False
 
-        return [extractor_instance]
+        return search_result in ['name', 'content']
+
+    def get_class_kwarg_names(self) -> [ClassKwargRepresentative]:
+        """
+        There are two kwargs that can be passed here: content and name. For the name we should use the
+        variable as a fallback.
+        """
+        kwarg_names = super().get_class_kwarg_names()
+        kwarg_representatives = [kwarg.representative for kwarg in kwarg_names]
+
+        # in case not content was given, add one as a fallback
+        if 'content' not in kwarg_representatives:
+            kwarg_names.append(ClassKwargRepresentative(token='My content', representative='content'))
+
+        # in case no name was given, use the value from the variable instead
+        if 'name' not in kwarg_representatives:
+            kwarg_names.append(
+                ClassKwargRepresentative(token=self.file_variable.token or 'foo', representative='name')
+            )
+
+        return kwarg_names
 
     def prepare_statements(self, statements):
+        """Create the statement for the file."""
         statements = super().prepare_statements(statements)
-        expression = CreateUploadFileExpression(
-            self.file_variable.name or 'foo',
-            self.file.locator.file_extension or 'txt',
-            None,
-        )
+        expression = CreateUploadFileExpression([])
         statements.append(AssignmentStatement(variable=self.file_variable.value, expression=expression))
         return statements
 
     def handle_extractor(self, extractor, statements):
         """The content of the file is extracted. In `prepare_statements` it was set to None. Replace it here."""
         super().handle_extractor(extractor, statements)
-        expression = statements[0].expression
-        file_content_kwarg = expression.function_kwargs[1]
-        file_content_kwarg.value = Argument(extractor.extract_value())
+        file_kwargs = statements[0].expression.function_kwargs
+
+        extracted_value = extractor.extract_value()
+        if extracted_value is None:
+            return
+
+        # get the representative which should be name or content
+        representative = extractor.representative
+        # ignore GenerationWarnings
+        if representative == 'name' and isinstance(extracted_value, str):
+            # add the file extension to the extracted value
+            extracted_value = '{}.{}'.format(extracted_value, self.file_extension_locator.best_compare_value or 'txt')
+
+        kwarg = Kwarg(representative, extracted_value)
+        file_kwargs.append(kwarg)
 
 
 class RequestConverter(ModelConverter):
