@@ -4,6 +4,7 @@ from django.contrib.auth.models import Permission
 
 from django_meta.api import UrlPatternAdapter, Methods, AbstractApiFieldAdapter, ApiFieldAdapter
 from django_meta.model import AbstractModelFieldAdapter, AbstractModelAdapter
+from nlp.locator import RestActionLocator
 from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity, ContainsSimilarity, LevenshteinSimilarity
 from nlp.translator import CacheTranslator
@@ -80,13 +81,18 @@ class Searcher(object):
 
             translated_keyword = self.translator_to_src.translate(keyword)
 
+            # use the basic version if only one word is passed
+            doc_input = self.doc_src_language
+            if len(self.doc_src_language) == 1:
+                doc_input = Nlp.for_language(self.src_language)(self.doc_src_language[0].lemma_)
+
             # create documents for english and source language to get the similarity
             # en - keyword
             comparisons.append((self.doc_en, self.nlp_en(keyword)))
             # src - keyword
-            comparisons.append((self.doc_src_language, self.nlp_src_language(keyword)))
+            comparisons.append((doc_input, self.nlp_src_language(keyword)))
             # src - keyword translated to src
-            comparisons.append((self.doc_src_language, self.nlp_src_language(translated_keyword)))
+            comparisons.append((doc_input, self.nlp_src_language(translated_keyword)))
 
         return comparisons
 
@@ -238,23 +244,22 @@ class UrlSearcher(Searcher):
         self.valid_methods = valid_methods
 
     def get_convert_fallback(self):
-        # TODO: maybe create a fallback??
         return None
 
     def get_keywords(self, url_pattern):
         keywords = [url_pattern.url_name, url_pattern.reverse_name]
 
         if Methods.GET in url_pattern.methods:
-            keywords += ['get', 'list', '{} list'.format(self.model_adapter.name)]
+            keywords += RestActionLocator.GET_VALUES
 
         if Methods.POST in url_pattern.methods:
-            keywords.append('create')
+            keywords += RestActionLocator.CREATE_VALUES
 
         if Methods.POST in url_pattern.methods or Methods.PATCH in url_pattern.methods:
-            keywords.append('update')
+            keywords += RestActionLocator.UPDATE_VALUES
 
         if Methods.DELETE in url_pattern.methods:
-            keywords.append('delete')
+            keywords += RestActionLocator.DELETE_VALUES
 
         return keywords
 
