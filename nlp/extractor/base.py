@@ -104,7 +104,12 @@ class ManyExtractorMixin(object):
 
     def get_child_extractor_kwargs(self):
         """Returns the kwargs that are passed to the child extractor __init__"""
-        return {'document': self.document, 'source': self.source, 'test_case': self.test_case}
+        return {
+            'document': self.document,
+            'source': self.source,
+            'test_case': self.test_case,
+            'representative': self.representative,
+        }
 
     def get_child_extractor_class(self):
         """Returns the child extractor class."""
@@ -192,7 +197,8 @@ class FieldExtractor(Extractor):
     default_field_class = None
     field_classes = ()
 
-    def __init__(self, test_case, source, field, document):
+    def __init__(self, test_case, source, field, document, representative=None):
+        # representative in kwargs to have the same signature as the init from the parent
         super().__init__(test_case=test_case, source=source, document=document, representative=field)
         self.field = field
 

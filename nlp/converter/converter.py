@@ -33,6 +33,9 @@ class ClassKwargRepresentative:
 
 
 class ClassConverter(Converter):
+    """
+    This is a base class for any converter that wants to create a class instance.
+    """
     field_searcher_classes = []
 
     def __init__(self, document, related_object, django_project, test_case):
@@ -40,9 +43,11 @@ class ClassConverter(Converter):
         self._fields = None
 
     def token_used_in_property(self, token):
+        """Is this token used in a ConverterProperty?"""
         return False
 
     def token_can_be_class_kwarg(self, token):
+        """Checks if a given token can represent an argument of the __init__ from the class"""
         # first word is always a keyword from Gherkin
         if self.document[0] == token:
             return False
@@ -64,9 +69,14 @@ class ClassConverter(Converter):
         return True
 
     def get_searcher_kwargs(self):
+        """Returns the kwargs that are passed to the `search` method from a searcher."""
         return {}
 
     def search_for_kwarg(self, span, token):
+        """
+        This method will use searcher to search for an argument of the class. It will observe the span and
+        the token and will return whatever the searcher returns.
+        """
         for index, searcher_class in enumerate(self.field_searcher_classes):
             no_fallback = index < len(self.field_searcher_classes) - 1
             searcher_kwargs = self.get_searcher_kwargs()
