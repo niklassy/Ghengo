@@ -1,7 +1,7 @@
 # language: de
 Funktionalität: Reference
-  Grundlage:
-   Gegeben sei ein Benutzer Alice mit dem Namen alice, der Email a@local.local
+#  Grundlage:
+#   Gegeben sei ein Benutzer Alice mit dem Namen alice, der Email a@local.local
 
 #  Szenario: Permission in Text
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "Auftrag hinzufügen"
@@ -21,8 +21,11 @@ Funktionalität: Reference
 #    Und ein ToDo mit den Aufträgen 1 und 2
 
   Szenario: file
-    Gegeben sei eine Photoshop Datei "foo" mit "Das ist mein längerer Inhalt" als Inhalt
-    Wenn Alice einen Auftrag mit der Datei "foo" erstellt
+    Gegeben sei eine Photoshop Datei "foo"
+      | content | name |
+      | asdasd  | abc  |
+      | qweqwe  | def  |
+#    Wenn Alice einen Auftrag mit der Datei "foo" erstellt
 
 #  Szenario: Ändern von ToDo - anderer Nutzer
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "order.add_order"

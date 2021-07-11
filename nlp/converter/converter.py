@@ -1,5 +1,3 @@
-from collections import namedtuple
-
 from django_meta.api import UrlPatternAdapter
 from django_meta.model import AbstractModelAdapter, AbstractModelFieldAdapter
 from nlp.converter.base_converter import Converter
@@ -8,7 +6,7 @@ from nlp.converter.property import NewModelProperty, ReferenceModelVariablePrope
     MethodProperty, FileProperty, NewFileVariableProperty, NewModelVariableProperty
 from nlp.extractor.base import StringExtractor
 from nlp.extractor.fields_rest_api import get_api_model_field_extractor
-from nlp.extractor.fields_model import get_model_field_extractor, ModelFieldExtractor
+from nlp.extractor.fields_model import get_model_field_extractor
 from nlp.generate.argument import Kwarg, Argument
 from nlp.generate.attribute import Attribute
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression, RequestExpression, APIClientExpression, \
@@ -21,9 +19,11 @@ from nlp.utils import get_non_stop_tokens, get_noun_chunk_of_token, token_is_nou
     NoToken
 
 
-ClassKwargName = namedtuple('ClassKwargName', ['token', 'representative'])
-
 class ClassKwargRepresentative:
+    """
+    This class is used in converters to have an instance that holds a representative for a __init__ argument
+    (e.g. a field from a model) and a token. The token was used to find the representative.
+    """
     def __init__(self, token, representative):
         self.token = token
         self.representative = representative
@@ -34,7 +34,6 @@ class ClassConverter(Converter):
 
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
-        self._extractors = None
         self._fields = None
 
     def token_used_in_property(self, token):
@@ -70,23 +69,23 @@ class ClassConverter(Converter):
             searcher_kwargs = self.get_searcher_kwargs()
 
             if span:
-                field_searcher_span = searcher_class(text=str(span), src_language=self.language)
+                span_searcher = searcher_class(text=str(span), src_language=self.language)
 
                 try:
-                    return field_searcher_span.search(raise_exception=True, **searcher_kwargs)
+                    return span_searcher.search(raise_exception=True, **searcher_kwargs)
                 except NoConversionFound:
                     pass
 
-                field_searcher_root = searcher_class(text=str(span.root.lemma_), src_language=self.language)
+                root_searcher = searcher_class(text=str(span.root.lemma_), src_language=self.language)
                 try:
-                    return field_searcher_root.search(raise_exception=bool(token), **searcher_kwargs)
+                    return root_searcher.search(raise_exception=bool(token), **searcher_kwargs)
                 except NoConversionFound:
                     pass
 
             if token:
-                field_searcher_token = searcher_class(text=str(token), src_language=self.language)
+                token_searcher = searcher_class(text=str(token), src_language=self.language)
                 try:
-                    return field_searcher_token.search(raise_exception=no_fallback, **searcher_kwargs)
+                    return token_searcher.search(raise_exception=no_fallback, **searcher_kwargs)
                 except NoConversionFound:
                     pass
 
@@ -111,17 +110,23 @@ class ClassConverter(Converter):
             self._fields = class_kwargs_representatives
         return self._fields
 
-    def get_class(self):
-        raise NotImplementedError()
-
     def get_extractor_class(self, kwarg_representative):
         raise NotImplementedError()
 
     def get_extractor_kwargs(self, kwarg_representative, token, extractor_cls):
-        return {'test_case': self.test_case, 'source': token, 'field': kwarg_representative, 'document': self.document}
+        return {'test_case': self.test_case, 'source': token, 'document': self.document}
 
-    @property
-    def extractors(self):
+    def get_extractor_instance(self, kwarg_representative, token):
+        extractor_class = self.get_extractor_class(kwarg_representative=kwarg_representative)
+        kwargs = self.get_extractor_kwargs(
+            kwarg_representative=kwarg_representative,
+            extractor_cls=extractor_class,
+            token=token,
+        )
+
+        return extractor_class(**kwargs)
+
+    def get_extractors(self):
         class_kwarg_names = self.get_class_kwarg_names()
 
         if len(class_kwarg_names) == 0:
@@ -131,9 +136,11 @@ class ClassConverter(Converter):
             extractors = []
 
             for kwarg in class_kwarg_names:
-                extractor_cls = self.get_extractor_class(kwarg.representative)
-                extractor_kwargs = self.get_extractor_kwargs(kwarg.representative, kwarg.token, extractor_cls)
-                extractors.append(extractor_cls(**extractor_kwargs))
+                extractor_instance = self.get_extractor_instance(
+                    kwarg_representative=kwarg.representative,
+                    token=kwarg.token,
+                )
+                extractors.append(extractor_instance)
 
             self._extractors = extractors
         return self._extractors
@@ -148,9 +155,11 @@ class ClassConverter(Converter):
 
             for index, cell in enumerate(row.cells):
                 kwarg_representative = self.search_for_kwarg(span=None, token=column_names[index])
-                extractor_class = self.get_extractor_class(kwarg_representative)
-                extractor_kwargs = self.get_extractor_kwargs(kwarg_representative, cell.value, extractor_class)
-                extractors_copy.append(extractor_class(**extractor_kwargs))
+                extractor_instance = self.get_extractor_instance(
+                    kwarg_representative=kwarg_representative,
+                    token=cell.value,
+                )
+                extractors_copy.append(extractor_instance)
 
             statements += self.get_statements_from_extractors(extractors_copy)
 
@@ -158,6 +167,9 @@ class ClassConverter(Converter):
 
 
 class ModelConverter(ClassConverter):
+    """
+    This is the base converter for model related stuff.
+    """
     field_searcher_classes = [ModelFieldSearcher]
 
     def __init__(self, document, related_object, django_project, test_case):
@@ -166,142 +178,23 @@ class ModelConverter(ClassConverter):
         self.variable = NewModelVariableProperty(self)
 
     def token_used_in_property(self, token):
+        """The token may be a model or represent the variable."""
         return token == self.model.token or self.variable.token == token
 
     def get_searcher_kwargs(self):
+        """Add the model to the searcher."""
         return {'model_adapter': self.model.value}
 
-    def get_extractor_class(self, field):
-        return get_model_field_extractor(field)
-
-    def get_class(self):
-        return self.model.value
+    def get_extractor_class(self, kwarg_representative):
+        """The extractor class needs to be determined based on the kwarg_representative which is a model field."""
+        return get_model_field_extractor(kwarg_representative)
 
     def get_extractor_kwargs(self, kwarg_representative, token, extractor_cls):
+        """Add the model and the field to the kwargs."""
         kwargs = super().get_extractor_kwargs(kwarg_representative, token, extractor_cls)
-        kwargs['model_adapter'] = self.get_class()
+        kwargs['model_adapter'] = self.model.value
+        kwargs['field'] = kwarg_representative
         return kwargs
-
-
-class OldModelConverter(Converter):
-    field_searcher_classes = [ModelFieldSearcher]
-
-    def __init__(self, document, related_object, django_project, test_case):
-        super().__init__(document, related_object, django_project, test_case)
-        self._extractors = None
-        self._fields = None
-        self.model = NewModelProperty(self)
-        self.variable = NewModelVariableProperty(self)
-
-    def get_searcher_kwargs(self):
-        return {'model_adapter': self.model.value}
-
-    def _search_for_field(self, span, token):
-        """
-        Searches for a field with a given span and token inside the self.model_adapter
-        """
-        for index, searcher_class in enumerate(self.field_searcher_classes):
-            no_fallback = index < len(self.field_searcher_classes) - 1
-            searcher_kwargs = self.get_searcher_kwargs()
-
-            # all the following nouns will reference fields of that model, so find a field
-            if span:
-                field_searcher_span = searcher_class(text=str(span), src_language=self.language)
-
-                try:
-                    return field_searcher_span.search(raise_exception=True, **searcher_kwargs)
-                except NoConversionFound:
-                    pass
-
-                field_searcher_root = searcher_class(text=str(span.root.lemma_), src_language=self.language)
-                try:
-                    return field_searcher_root.search(raise_exception=bool(token), **searcher_kwargs)
-                except NoConversionFound:
-                    pass
-
-            if token:
-                field_searcher_token = searcher_class(text=str(token), src_language=self.language)
-                try:
-                    return field_searcher_token.search(raise_exception=no_fallback, **searcher_kwargs)
-                except NoConversionFound:
-                    pass
-
-        return None
-
-    def token_can_be_field(self, token):
-        # first word is always a keyword from Gherkin
-        if self.document[0] == token:
-            return False
-
-        if token == self.model.token or self.variable.token == token:
-            return False
-
-        if token.pos_ != 'ADJ' and token.pos_ != 'NOUN' and token.pos_ != 'VERB' and token.pos_ != 'ADV':
-            if token.pos_ != 'PROPN':
-                return False
-
-            if self.token_can_be_field(token.head):
-                return False
-
-        # verbs with aux are fine (is done, ist abgeschlossen)
-        if token.pos_ == 'VERB' and token.head.pos_ != 'AUX':
-            return False
-
-        return True
-
-    @property
-    def fields(self):
-        """Returns all the fields that the document references."""
-        if self._fields is None:
-            fields = []
-
-            for token in get_non_stop_tokens(self.document):
-                if not self.token_can_be_field(token):
-                    continue
-
-                chunk = get_noun_chunk_of_token(token, self.document)
-                field = self._search_for_field(chunk, token)
-
-                if field in [f for f, _ in fields]:
-                    continue
-
-                fields.append((field, token))
-            self._fields = fields
-        return self._fields
-
-    def get_extractor_class(self, field):
-        return get_model_field_extractor(field)
-
-    def get_extractor_kwargs(self, field, field_token, extractor_cls):
-        kwargs = {
-            'test_case': self.test_case,
-            'source': field_token,
-            'field': field,
-            'document': self.document,
-        }
-
-        if issubclass(extractor_cls, ModelFieldExtractor) or extractor_cls == ModelFieldExtractor:
-            kwargs['model_adapter'] = self.model.value
-
-        return kwargs
-
-    @property
-    def extractors(self):
-        """
-        Returns all the extractors of this converter. The extractors are responsible to get the values for the fields.
-        """
-        if len(self.fields) == 0:
-            return []
-
-        if self._extractors is None:
-            extractors = []
-
-            for field, field_token in self.fields:
-                extractor_cls = self.get_extractor_class(field)
-                extractors.append(extractor_cls(**self.get_extractor_kwargs(field, field_token, extractor_cls)))
-
-            self._extractors = extractors
-        return self._extractors
 
 
 class ModelFactoryConverter(ModelConverter):
@@ -393,12 +286,13 @@ class ModelVariableReferenceConverter(ModelConverter):
 
 
 class FileConverter(ClassConverter):
+    """
+    This converter can create statements that are used to create files.
+    """
     can_use_datatables = True
 
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
-        self._extractors = None
-        self._fields = None
         self.file = FileProperty(self)
         self.file_variable = NewFileVariableProperty(self)
 
@@ -409,20 +303,22 @@ class FileConverter(ClassConverter):
 
         return 0
 
-    def get_class(self):
-        pass
-
     def get_extractor_class(self, kwarg_representative):
+        """All the arguments for `SimpleUploadedFile` are strings. So always return a StringExtractor."""
         return StringExtractor
 
-    @property
-    def extractors(self):
+    def get_extractors(self):
         """There can only be the extractor for the content of the file."""
         locator_file_content = FileContentLocator(self.document)
         locator_file_content.locate()
         fittest_token = locator_file_content.fittest_token
 
-        return [StringExtractor(test_case=self.test_case, document=self.document, source=fittest_token or 'My Content')]
+        extractor_instance = self.get_extractor_instance(
+            kwarg_representative='content',
+            token=fittest_token or 'My content',
+        )
+
+        return [extractor_instance]
 
     def prepare_statements(self, statements):
         statements = super().prepare_statements(statements)
@@ -431,11 +327,7 @@ class FileConverter(ClassConverter):
             self.file.locator.file_extension or 'txt',
             None,
         )
-        statement = AssignmentStatement(
-            variable=self.file_variable.value,
-            expression=expression,
-        )
-        statements.append(statement)
+        statements.append(AssignmentStatement(variable=self.file_variable.value, expression=expression))
         return statements
 
     def handle_extractor(self, extractor, statements):
@@ -467,28 +359,25 @@ class RequestConverter(ModelConverter):
         kwargs['serializer'] = self.url_pattern_adapter.get_serializer_class(self.method.value)()
         return kwargs
 
-    def get_extractor_class(self, field):
+    def get_extractor_class(self, kwarg_representative):
         """
         Fields can be represented in two ways in the converter: as a model field (if the rest field does not exist yet)
         or as a rest framework field. Both have different adapters that will result in different extractor
         classes.
         """
         # if the field is referencing the model, use the extractors normally
-        if isinstance(field, AbstractModelFieldAdapter):
-            return super().get_extractor_class(field)
+        if isinstance(kwarg_representative, AbstractModelFieldAdapter):
+            return super().get_extractor_class(kwarg_representative)
 
         # if the field is referencing fields that exist on the serializer, use the extractors that are defined for
         # serializers
-        return get_api_model_field_extractor(field)
+        return get_api_model_field_extractor(kwarg_representative)
 
-    def token_can_be_field(self, token):
-        """
-        Field cannot be the one for the method (POST, PUT etc.), the user or the variable of the model.
-        """
+    def token_used_in_property(self, token):
         if self.method.token == token or self.user.token == token or self.model_variable.token == token:
-            return False
+            return True
 
-        return super().token_can_be_field(token)
+        return super().token_used_in_property(token)
 
     def get_document_compatibility(self):
         """If there is no method, it is unlikely that this converter is useful."""

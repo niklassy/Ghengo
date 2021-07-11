@@ -20,10 +20,16 @@ class Converter(object):
         self.related_object = related_object
         self.language = document.lang_
         self.test_case = test_case
+        self._extractors = None
 
     @property
     def extractors(self):
-        raise NotImplementedError()
+        if self._extractors is None:
+            self._extractors = self.get_extractors()
+        return self._extractors
+
+    def get_extractors(self):
+        return []
 
     def get_noun_chunks(self):
         """Returns all the noun chunks from the document."""
