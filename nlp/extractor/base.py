@@ -10,11 +10,12 @@ class Extractor(object):
     """
     output_class = ExtractorOutput
 
-    def __init__(self, test_case, representative, source, document):
+    def __init__(self, test_case, representative, source, document, source_represents_output=False):
         self.test_case = test_case
         self.source = source
         self.document = document
         self.representative = representative
+        self.source_represents_output = source_represents_output
 
     def __str__(self):
         return '{} | {} -> {}'.format(self.__class__.__name__, str(self.source), self._extract_value())
@@ -34,7 +35,10 @@ class Extractor(object):
         Returns an instance of ExtractorOutput.
         """
         output_class = self.get_output_class()
-        return output_class(**self.get_output_kwargs())
+        instance = output_class(**self.get_output_kwargs())
+        if self.source_represents_output:
+            instance.source_represents_output = True
+        return instance
 
     @classmethod
     def fits_input(cls, *args, **kwargs):

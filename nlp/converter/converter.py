@@ -9,7 +9,7 @@ from nlp.converter.property import NewModelProperty, ReferenceModelVariablePrope
 from nlp.converter.wrapper import ConverterInitArgumentWrapper
 from nlp.extractor.base import StringExtractor
 from nlp.extractor.fields_rest_api import get_api_model_field_extractor
-from nlp.extractor.fields_model import get_model_field_extractor
+from nlp.extractor.fields_model import get_model_field_extractor, ModelFieldExtractor
 from nlp.generate.argument import Kwarg, Argument
 from nlp.generate.attribute import Attribute
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression, RequestExpression, APIClientExpression, \
@@ -99,11 +99,16 @@ class ClassConverter(Converter):
         """This method can be used to filter out specific search results before they are turned into extractors."""
         return bool(search_result)
 
+    def get_default_argument_wrappers(self) -> [ConverterInitArgumentWrapper]:
+        """Returns a list of default arguments wrappers. For each the selected value will be forced."""
+        return []
+
     def get_argument_wrappers(self) -> [ConverterInitArgumentWrapper]:
         """
         Returns a list of objects that hold a token and the representative for an argument of the __init__ for the
         class. These objects are used to create extractors.
         """
+        default_argument_wrappers = self.get_default_argument_wrappers()
         argument_wrappers = []
 
         for token in get_non_stop_tokens(self.document):
@@ -121,8 +126,17 @@ class ClassConverter(Converter):
             if representative in [wrapper.representative for wrapper in argument_wrappers]:
                 continue
 
-            class_kwarg = ConverterInitArgumentWrapper(representative=representative, token=token)
-            argument_wrappers.append(class_kwarg)
+            wrapper = ConverterInitArgumentWrapper(representative=representative, token=token)
+            argument_wrappers.append(wrapper)
+
+        # add default values if needed
+        wrapper_identifiers = [wrapper.identifier for wrapper in argument_wrappers]
+        for default_wrapper in default_argument_wrappers:
+            if default_wrapper.identifier not in wrapper_identifiers:
+                # force the result of the defaults
+                default_wrapper.source_represents_output = True
+                argument_wrappers.append(default_wrapper)
+
         return argument_wrappers
 
     def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
@@ -146,7 +160,10 @@ class ClassConverter(Converter):
             extractor_cls=extractor_class,
         )
 
-        return extractor_class(**kwargs)
+        instance = extractor_class(**kwargs)
+        if argument_wrapper.source_represents_output:
+            instance.source_represents_output = True
+        return instance
 
     def get_extractors(self):
         """Returns the extractors for this converter."""
@@ -321,19 +338,19 @@ class FileConverter(ClassConverter):
 
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
-        self.file = FileProperty(self)
-        self.file_variable = NewFileVariableProperty(self)
-
         # get the extension of the file
         self.file_extension_locator = FileExtensionLocator(self.document)
         self.file_extension_locator.locate()
 
+        self.file = FileProperty(self)
+        self.file_variable = NewFileVariableProperty(self)
+
     def token_used_in_property(self, token):
         """Reject tokens that represent the file, the variable or the extension."""
         return any([
-            token == self.file.token,
-            token == self.file_variable.token,
-            token == self.file_extension_locator.fittest_token,
+            self.file.token == token,
+            self.file_variable.token == token,
+            self.file_extension_locator.fittest_token == token,
         ])
 
     def get_document_compatibility(self):
@@ -358,25 +375,15 @@ class FileConverter(ClassConverter):
 
         return search_result in ['name', 'content']
 
-    def get_argument_wrappers(self):
+    def get_default_argument_wrappers(self) -> [ConverterInitArgumentWrapper]:
         """
-        There are two kwargs that can be passed here: content and name. For the name we should use the
-        variable as a fallback.
+        Add some defaults values since content and name are required to create a file. `source_represents_output` is
+        set by the parent.
         """
-        kwarg_names = super().get_argument_wrappers()
-        kwarg_representatives = [kwarg.representative for kwarg in kwarg_names]
-
-        # in case not content was given, add one as a fallback
-        if 'content' not in kwarg_representatives:
-            kwarg_names.append(ConverterInitArgumentWrapper(token='My content', representative='content'))
-
-        # in case no name was given, use the value from the variable instead
-        if 'name' not in kwarg_representatives:
-            kwarg_names.append(
-                ConverterInitArgumentWrapper(token=self.file_variable.token or 'foo', representative='name')
-            )
-
-        return kwarg_names
+        return [
+            ConverterInitArgumentWrapper(token='My content', representative='content'),
+            ConverterInitArgumentWrapper(token=self.file_variable.token or 'foo', representative='name')
+        ]
 
     def prepare_statements(self, statements):
         """Create the statement for the file."""
@@ -426,6 +433,14 @@ class RequestConverter(ModelConverter):
         kwargs['serializer'] = self.url_pattern_adapter.get_serializer_class(self.method.value)()
         return kwargs
 
+    def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
+        kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
+
+        if not issubclass(extractor_cls, ModelFieldExtractor) or extractor_cls == ModelFieldExtractor:
+            del kwargs['model_adapter']
+
+        return kwargs
+
     def get_extractor_class(self, argument_wrapper):
         """
         Fields can be represented in two ways in the converter: as a model field (if the rest field does not exist yet)
@@ -449,7 +464,7 @@ class RequestConverter(ModelConverter):
 
     def get_document_compatibility(self):
         """If there is no method, it is unlikely that this converter is useful."""
-        if not self.method.token:
+        if not self.method.token or not self.url_pattern_adapter:
             return 0
         return 1
 

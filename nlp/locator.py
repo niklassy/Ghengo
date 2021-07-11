@@ -117,7 +117,7 @@ class FileExtensionLocator(Locator):
                 return 1
 
             # try to find a token where the description may fit
-            variations = super().get_variations(token, file_description)
+            variations = super().get_variations(part, file_description)
             similarity_fn = super().get_similarity
 
             return max([similarity_fn(token_var, desc_var) for token_var, desc_var in variations])
