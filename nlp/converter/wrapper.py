@@ -21,3 +21,6 @@ class ConverterInitArgumentWrapper:
             return self.representative.source
 
         return self.representative
+
+    def __str__(self):
+        return '[Representative: {}] <--> [Token: {}]'.format(self.representative, self.token)

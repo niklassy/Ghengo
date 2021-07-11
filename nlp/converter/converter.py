@@ -68,28 +68,27 @@ class ClassConverter(Converter):
         This method will use searcher to search for an argument of the class. It will observe the span and
         the token and will return whatever the searcher returns.
         """
+        searcher_kwargs = self.get_searcher_kwargs()
+
+        search_texts = []
+        if span:
+            search_texts += [str(span), str(span.root.lemma_)]
+
+        if token:
+            search_texts.append(str(token))
+
         for index, searcher_class in enumerate(self.field_searcher_classes):
-            no_fallback = index < len(self.field_searcher_classes) - 1
-            searcher_kwargs = self.get_searcher_kwargs()
+            last_searcher_class = index == len(self.field_searcher_classes) - 1
 
-            if span:
-                span_searcher = searcher_class(text=str(span), src_language=self.language)
+            for search_text_index, search_text in enumerate(search_texts):
+                searcher = searcher_class(search_text, src_language=self.language)
+
+                # only raise no exception if it is the last searcher class and the last text to have a fallback
+                last_search_text = search_text_index == len(search_texts) - 1
+                raise_exception = not last_search_text or not last_searcher_class
 
                 try:
-                    return span_searcher.search(raise_exception=True, **searcher_kwargs)
-                except NoConversionFound:
-                    pass
-
-                root_searcher = searcher_class(text=str(span.root.lemma_), src_language=self.language)
-                try:
-                    return root_searcher.search(raise_exception=bool(token), **searcher_kwargs)
-                except NoConversionFound:
-                    pass
-
-            if token:
-                token_searcher = searcher_class(text=str(token), src_language=self.language)
-                try:
-                    return token_searcher.search(raise_exception=no_fallback, **searcher_kwargs)
+                    return searcher.search(**searcher_kwargs, raise_exception=raise_exception)
                 except NoConversionFound:
                     pass
 
@@ -412,7 +411,7 @@ class FileConverter(ClassConverter):
         expression.add_kwarg(kwarg)
 
 
-class RequestConverter(ModelConverter):
+class RequestConverter(ClassConverter):
     """
     This converter is responsible to turn a document into statements that will do a request to the django REST api.
     """
@@ -427,17 +426,33 @@ class RequestConverter(ModelConverter):
         self.method = MethodProperty(self)
         self.model_variable = ReferenceModelVariableProperty(self)
 
+    def token_used_in_property(self, token):
+        return any([
+            self.method.token == token,
+            self.user.token == token,
+            self.model_variable.token == token,
+            self.model.token == token,
+        ])
+
     def get_searcher_kwargs(self):
         """When searching for a serializer adapter, we need to add the serializer class to the kwargs."""
-        kwargs = super().get_searcher_kwargs()
-        kwargs['serializer'] = self.url_pattern_adapter.get_serializer_class(self.method.value)()
-        return kwargs
+        serializer = None
+
+        if self.url_pattern_adapter:
+            serializer = self.url_pattern_adapter.get_serializer_class(self.method.value)()
+
+        return {
+            'serializer': serializer,
+            'model_adapter': self.model.value,
+        }
 
     def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
         kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
+        kwargs['field'] = argument_wrapper.representative
 
-        if not issubclass(extractor_cls, ModelFieldExtractor) or extractor_cls == ModelFieldExtractor:
-            del kwargs['model_adapter']
+        # since the class may be for model fields or REST fields, add the model_adapter if needed
+        if issubclass(extractor_cls, ModelFieldExtractor) or extractor_cls == ModelFieldExtractor:
+            kwargs['model_adapter'] = self.model.value
 
         return kwargs
 
@@ -455,12 +470,6 @@ class RequestConverter(ModelConverter):
         # if the field is referencing fields that exist on the serializer, use the extractors that are defined for
         # serializers
         return get_api_model_field_extractor(field)
-
-    def token_used_in_property(self, token):
-        if self.method.token == token or self.user.token == token or self.model_variable.token == token:
-            return True
-
-        return super().token_used_in_property(token)
 
     def get_document_compatibility(self):
         """If there is no method, it is unlikely that this converter is useful."""

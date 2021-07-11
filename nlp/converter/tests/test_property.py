@@ -44,6 +44,7 @@ def test_new_model_converter_property(mocker):
         (nlp('Gegeben sei ein Auftrag 1 mit dem Namen "Mein Auftrag".'), 4),
         (nlp('Gegeben sei ein Auftrag Order1 mit dem Namen "Mein Auftrag".'), 4),
         (nlp('Gegeben sei ein Auftrag "Mein Auftrag" mit dem Namen "Mein Auftrag".'), 4),
+        (nlp('Gegeben sei ein Auftrag mit dem Namen "Mein Auftrag".'), None),
     ]
 )
 def test_new_variable_converter_property(mocker, doc, token_index):
@@ -54,9 +55,12 @@ def test_new_variable_converter_property(mocker, doc, token_index):
     converter.test_case = suite.create_and_add_test_case('bar')
     converter.model = NewModelProperty(converter)
     prop = NewModelVariableProperty(converter)
-    assert isinstance(prop.value, Variable)
-    assert prop.value.reference_string == converter.model.value.name
-    assert prop.token == doc[token_index]
+    if token_index is not None:
+        assert isinstance(prop.value, Variable)
+        assert prop.value.reference_string == converter.model.value.name
+        assert prop.token == doc[token_index]
+    else:
+        assert isinstance(prop.token, NoToken)
 
 
 @pytest.mark.parametrize(
