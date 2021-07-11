@@ -6,6 +6,7 @@ from nlp.converter.base_converter import Converter
 from nlp.converter.property import NewModelProperty, ReferenceModelVariableProperty, \
     ReferenceModelProperty, UserReferenceVariableProperty, ModelWithUserProperty, \
     MethodProperty, FileProperty, NewFileVariableProperty, NewModelVariableProperty
+from nlp.converter.wrapper import ConverterInitArgumentWrapper
 from nlp.extractor.base import StringExtractor
 from nlp.extractor.fields_rest_api import get_api_model_field_extractor
 from nlp.extractor.fields_model import get_model_field_extractor
@@ -22,16 +23,6 @@ from nlp.utils import get_non_stop_tokens, get_noun_chunk_of_token, token_is_nou
     NoToken
 
 
-class ClassKwargRepresentative:
-    """
-    This class is used in converters to have an instance that holds a representative for a __init__ argument
-    (e.g. a field from a model) and a token. The token was used to find the representative.
-    """
-    def __init__(self, token, representative):
-        self.token = token
-        self.representative = representative
-
-
 class ClassConverter(Converter):
     """
     This is a base class for any converter that wants to create a class instance.
@@ -46,7 +37,7 @@ class ClassConverter(Converter):
         """Is this token used in a ConverterProperty?"""
         return False
 
-    def token_can_be_class_kwarg(self, token):
+    def token_can_be_argument(self, token):
         """Checks if a given token can represent an argument of the __init__ from the class"""
         # first word is always a keyword from Gherkin
         if self.document[0] == token:
@@ -59,7 +50,7 @@ class ClassConverter(Converter):
             if token.pos_ != 'PROPN':
                 return False
 
-            if self.token_can_be_class_kwarg(token.head):
+            if self.token_can_be_argument(token.head):
                 return False
 
         # verbs with aux are fine (is done, ist abgeschlossen)
@@ -72,7 +63,7 @@ class ClassConverter(Converter):
         """Returns the kwargs that are passed to the `search` method from a searcher."""
         return {}
 
-    def search_for_kwarg(self, span, token):
+    def search_for_init_argument(self, span, token):
         """
         This method will use searcher to search for an argument of the class. It will observe the span and
         the token and will return whatever the searcher returns.
@@ -105,63 +96,70 @@ class ClassConverter(Converter):
         return None
 
     def is_valid_search_result(self, search_result):
+        """This method can be used to filter out specific search results before they are turned into extractors."""
         return bool(search_result)
 
-    def get_class_kwarg_names(self) -> [ClassKwargRepresentative]:
-        if self._fields is None:
-            class_kwargs_representatives = []
+    def get_argument_wrappers(self) -> [ConverterInitArgumentWrapper]:
+        """
+        Returns a list of objects that hold a token and the representative for an argument of the __init__ for the
+        class. These objects are used to create extractors.
+        """
+        argument_wrappers = []
 
-            for token in get_non_stop_tokens(self.document):
-                if not self.token_can_be_class_kwarg(token):
-                    continue
+        for token in get_non_stop_tokens(self.document):
+            if not self.token_can_be_argument(token):
+                continue
 
-                chunk = get_noun_chunk_of_token(token, self.document)
-                kwarg_representative = self.search_for_kwarg(chunk, token)
+            chunk = get_noun_chunk_of_token(token, self.document)
+            representative = self.search_for_init_argument(chunk, token)
 
-                if not self.is_valid_search_result(kwarg_representative):
-                    continue
+            # if the result is not valid, skip it
+            if not self.is_valid_search_result(representative):
+                continue
 
-                if kwarg_representative in [class_kw.representative for class_kw in class_kwargs_representatives]:
-                    continue
+            # if the representative is already present, skip it
+            if representative in [wrapper.representative for wrapper in argument_wrappers]:
+                continue
 
-                class_kwarg = ClassKwargRepresentative(representative=kwarg_representative, token=token)
-                class_kwargs_representatives.append(class_kwarg)
-            self._fields = class_kwargs_representatives
-        return self._fields
+            class_kwarg = ConverterInitArgumentWrapper(representative=representative, token=token)
+            argument_wrappers.append(class_kwarg)
+        return argument_wrappers
 
-    def get_extractor_class(self, kwarg_representative):
+    def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
+        """This returns the extractor class based on the ConverterInitArgumentWrapper."""
         raise NotImplementedError()
 
-    def get_extractor_kwargs(self, kwarg_representative, token, extractor_cls):
+    def get_extractor_kwargs(self, argument_wrapper: ConverterInitArgumentWrapper, extractor_cls):
+        """Returns the kwargs that are passed to the extractor to instanciate it."""
         return {
             'test_case': self.test_case,
-            'source': token,
+            'source': argument_wrapper.token,
             'document': self.document,
-            'representative': kwarg_representative,
+            'representative': argument_wrapper.representative,
         }
 
-    def get_extractor_instance(self, kwarg_representative, token):
-        extractor_class = self.get_extractor_class(kwarg_representative=kwarg_representative)
+    def get_extractor_instance(self, argument_wrapper: ConverterInitArgumentWrapper):
+        """Returns an instance of an extractor for a given argument wrapper."""
+        extractor_class = self.get_extractor_class(argument_wrapper=argument_wrapper)
         kwargs = self.get_extractor_kwargs(
-            kwarg_representative=kwarg_representative,
+            argument_wrapper=argument_wrapper,
             extractor_cls=extractor_class,
-            token=token,
         )
 
         return extractor_class(**kwargs)
 
     def get_extractors(self):
-        class_kwarg_names = self.get_class_kwarg_names()
+        """Returns the extractors for this converter."""
+        wrappers = self.get_argument_wrappers()
 
-        if len(class_kwarg_names) == 0:
-            return []
-
-        return [
-            self.get_extractor_instance(kwarg_representative=kwarg.representative, token=kwarg.token)
-            for kwarg in class_kwarg_names
-        ]
+        return [self.get_extractor_instance(argument_wrapper=wrapper) for wrapper in wrappers]
 
     def get_statements_from_datatable(self):
+        """
+        Handles if the passed Step has a data table. It will get the normal extractors and append any values that
+        are passed by the data table. The extractors are added to the existing list. For each row of the
+        data table the statements are created again.
+        """
         statements = []
         datatable = self.related_object.argument
         column_names = datatable.get_column_names()
@@ -170,15 +168,18 @@ class ClassConverter(Converter):
             extractors_copy = self.extractors.copy()
 
             for index, cell in enumerate(row.cells):
-                kwarg_representative = self.search_for_kwarg(span=None, token=column_names[index])
-                extractor_instance = self.get_extractor_instance(
-                    kwarg_representative=kwarg_representative,
-                    token=cell.value,
-                )
+                representative = self.search_for_init_argument(span=None, token=column_names[index])
+
+                # filter any invalid search results
+                if not self.is_valid_search_result(representative):
+                    continue
+
+                wrapper = ConverterInitArgumentWrapper(token=cell.value, representative=representative)
+                extractor_instance = self.get_extractor_instance(argument_wrapper=wrapper)
 
                 existing_extract_index = -1
                 for extractor_index, extractor in enumerate(extractors_copy):
-                    if extractor.representative == kwarg_representative:
+                    if extractor.representative == representative:
                         existing_extract_index = extractor_index
                         break
 
@@ -211,15 +212,15 @@ class ModelConverter(ClassConverter):
         """Add the model to the searcher."""
         return {'model_adapter': self.model.value}
 
-    def get_extractor_class(self, kwarg_representative):
+    def get_extractor_class(self, argument_wrapper):
         """The extractor class needs to be determined based on the kwarg_representative which is a model field."""
-        return get_model_field_extractor(kwarg_representative)
+        return get_model_field_extractor(argument_wrapper.representative)
 
-    def get_extractor_kwargs(self, kwarg_representative, token, extractor_cls):
+    def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
         """Add the model and the field to the kwargs."""
-        kwargs = super().get_extractor_kwargs(kwarg_representative, token, extractor_cls)
+        kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
         kwargs['model_adapter'] = self.model.value
-        kwargs['field'] = kwarg_representative
+        kwargs['field'] = argument_wrapper.representative
         return kwargs
 
 
@@ -357,22 +358,22 @@ class FileConverter(ClassConverter):
 
         return search_result in ['name', 'content']
 
-    def get_class_kwarg_names(self) -> [ClassKwargRepresentative]:
+    def get_argument_wrappers(self):
         """
         There are two kwargs that can be passed here: content and name. For the name we should use the
         variable as a fallback.
         """
-        kwarg_names = super().get_class_kwarg_names()
+        kwarg_names = super().get_argument_wrappers()
         kwarg_representatives = [kwarg.representative for kwarg in kwarg_names]
 
         # in case not content was given, add one as a fallback
         if 'content' not in kwarg_representatives:
-            kwarg_names.append(ClassKwargRepresentative(token='My content', representative='content'))
+            kwarg_names.append(ConverterInitArgumentWrapper(token='My content', representative='content'))
 
         # in case no name was given, use the value from the variable instead
         if 'name' not in kwarg_representatives:
             kwarg_names.append(
-                ClassKwargRepresentative(token=self.file_variable.token or 'foo', representative='name')
+                ConverterInitArgumentWrapper(token=self.file_variable.token or 'foo', representative='name')
             )
 
         return kwarg_names
@@ -425,19 +426,20 @@ class RequestConverter(ModelConverter):
         kwargs['serializer'] = self.url_pattern_adapter.get_serializer_class(self.method.value)()
         return kwargs
 
-    def get_extractor_class(self, kwarg_representative):
+    def get_extractor_class(self, argument_wrapper):
         """
         Fields can be represented in two ways in the converter: as a model field (if the rest field does not exist yet)
         or as a rest framework field. Both have different adapters that will result in different extractor
         classes.
         """
         # if the field is referencing the model, use the extractors normally
-        if isinstance(kwarg_representative, AbstractModelFieldAdapter):
-            return super().get_extractor_class(kwarg_representative)
+        field = argument_wrapper.representative
+        if isinstance(field, AbstractModelFieldAdapter):
+            return super().get_extractor_class(argument_wrapper)
 
         # if the field is referencing fields that exist on the serializer, use the extractors that are defined for
         # serializers
-        return get_api_model_field_extractor(kwarg_representative)
+        return get_api_model_field_extractor(field)
 
     def token_used_in_property(self, token):
         if self.method.token == token or self.user.token == token or self.model_variable.token == token:
