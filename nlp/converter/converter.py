@@ -335,6 +335,15 @@ class FileConverter(ClassConverter):
     can_use_datatables = True
     field_searcher_classes = [ClassArgumentSearcher]
 
+    class ArgumentRepresentatives:
+        """The names for the arguments from SimpleUploadedFile"""
+        CONTENT = 'content'
+        NAME = 'name'
+
+        @classmethod
+        def get_all(cls):
+            return [cls.CONTENT, cls.NAME]
+
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
         # get the extension of the file
@@ -372,7 +381,7 @@ class FileConverter(ClassConverter):
         if not super().is_valid_search_result(search_result):
             return False
 
-        return search_result in ['name', 'content']
+        return search_result in self.ArgumentRepresentatives.get_all()
 
     def get_default_argument_wrappers(self) -> [ConverterInitArgumentWrapper]:
         """
@@ -380,8 +389,10 @@ class FileConverter(ClassConverter):
         set by the parent.
         """
         return [
-            ConverterInitArgumentWrapper(token='My content', representative='content'),
-            ConverterInitArgumentWrapper(token=self.file_variable.token or 'foo', representative='name')
+            ConverterInitArgumentWrapper(
+                token='My content', representative=self.ArgumentRepresentatives.CONTENT),
+            ConverterInitArgumentWrapper(
+                token=self.file_variable.token or 'foo', representative=self.ArgumentRepresentatives.NAME)
         ]
 
     def prepare_statements(self, statements):
@@ -403,7 +414,7 @@ class FileConverter(ClassConverter):
         # get the representative which should be name or content
         representative = extractor.representative
         # ignore GenerationWarnings
-        if representative == 'name' and isinstance(extracted_value, str):
+        if representative == self.ArgumentRepresentatives.NAME and isinstance(extracted_value, str):
             # add the file extension to the extracted value
             extracted_value = '{}.{}'.format(extracted_value, self.file_extension_locator.best_compare_value or 'txt')
 
