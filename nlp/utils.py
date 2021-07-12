@@ -4,6 +4,7 @@ from nlp.vocab import NEGATIONS
 
 class NoToken:
     children = []
+    is_digit = False
 
     def __eq__(self, other):
         return False
@@ -155,13 +156,10 @@ def get_root_of_token(token):
 
 def token_to_function_name(token):
     """Translates a token to a function name."""
-    if isinstance(token, NoToken):
-        return ''
-
-    if token.is_digit:
-        return str(token)
-
     token_str = str(token)
+    if token.is_digit:
+        return token_str
+
     if is_quoted(token):
         token_str = token_str[1:-1]
 

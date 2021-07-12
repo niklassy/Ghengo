@@ -1,10 +1,20 @@
-class RuleAlias(object):
+from gherkin.compiler_base.mixin import SequenceToObjectMixin
+
+
+class RuleAlias(SequenceToObjectMixin):
     """
     This is a wrapper for defining rules. It is a wrapper around any custom class that is used while defining
     rules. For this project, the class could be removed, but it is a nice wrapper for future usage.
     """
     def __init__(self, token_cls):
         self.token_cls = token_cls
+
+    def sequence_to_object(self, sequence, index=0):
+        """This alias represents a simple token - so just return at the index that we are at."""
+        # everything is validated before this is called, so this should always be the same!
+        assert sequence[index].token.__class__ == self.token_cls
+
+        return sequence[index]
 
     def token_wrapper_is_valid(self, token_wrapper: 'TokenWrapper') -> bool:
         """

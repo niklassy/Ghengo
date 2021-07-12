@@ -1,9 +1,12 @@
 from django.apps import apps
 
+from django_meta.base import ExistsInCode
 from nlp.generate.utils import to_function_name
 
 
-class AbstractModelAdapter(object):
+class AbstractModelAdapter(ExistsInCode):
+    exists_in_code = False
+
     def __init__(self, name):
         class_name = ''.join(x for x in name.title() if not x.isspace())
         self.model = type(class_name, (), {})
@@ -25,6 +28,8 @@ class ModelAdapter(AbstractModelAdapter):
     This class is a wrapper around a Django model with several functions and properties that are useful for the
     application.
     """
+    exists_in_code = True
+
     def __init__(self, model, app):
         super().__init__(model.__name__)
         self.model = model
@@ -49,10 +54,10 @@ class ModelAdapter(AbstractModelAdapter):
 
     @property
     def fields(self):
-        return list(self.model._meta.get_fields())
+        return [ModelFieldAdapter(field) for field in self.model._meta.get_fields()]
 
     def get_field(self, name):
-        return self.model._meta.get_field(name)
+        return ModelFieldAdapter(self.model._meta.get_field(name))
 
     @property
     def field_names(self):
@@ -62,15 +67,27 @@ class ModelAdapter(AbstractModelAdapter):
         return 'ModelAdapter - {}'.format(self.name)
 
 
-class AbstractModelFieldAdapter(object):
+class AbstractModelFieldAdapter(ExistsInCode):
     """
     This field can be used for a field in a model that does not exist yet.
     """
+    exists_in_code = False
+
     def __init__(self, name):
         self.name = to_function_name(name)
         self.verbose_name = self.name
+        self.field = self
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
         return self.name == other.name
+
+
+class ModelFieldAdapter(AbstractModelFieldAdapter):
+    exists_in_code = True
+
+    def __init__(self, field):
+        super().__init__(field.name)
+        self.name = field.name
+        self.field = field

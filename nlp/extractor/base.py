@@ -17,8 +17,16 @@ class Extractor(object):
         self.representative = representative
         self.source_represents_output = source_represents_output
 
+        self._generates_warning = None
+
     def __str__(self):
         return '{} | {} -> {}'.format(self.__class__.__name__, str(self.source), self._extract_value())
+
+    @property
+    def generates_warning(self):
+        if self._generates_warning is None:
+            self._generates_warning = isinstance(self.extract_value(), GenerationWarning)
+        return self._generates_warning
 
     def get_output_kwargs(self):
         """
@@ -201,10 +209,11 @@ class FieldExtractor(Extractor):
     default_field_class = None
     field_classes = ()
 
-    def __init__(self, test_case, source, field, document, representative=None):
+    def __init__(self, test_case, source, field_adapter, document, representative=None):
         # representative in kwargs to have the same signature as the init from the parent
-        super().__init__(test_case=test_case, source=source, document=document, representative=field)
-        self.field = field
+        super().__init__(test_case=test_case, source=source, document=document, representative=field_adapter)
+        self.field_adapter = field_adapter
+        self.field = field_adapter.field
 
     @classmethod
     def fits_input(cls, field, *args, **kwargs):

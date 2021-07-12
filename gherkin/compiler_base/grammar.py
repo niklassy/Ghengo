@@ -1,9 +1,10 @@
 from gherkin.compiler_base.exception import RuleNotFulfilled, SequenceEnded, GrammarNotUsed, GrammarInvalid, \
     SequenceNotFinished
+from gherkin.compiler_base.mixin import SequenceToObjectMixin
 from gherkin.compiler_base.wrapper import RuleAlias, TokenWrapper
 
 
-class Grammar(object):
+class Grammar(SequenceToObjectMixin):
     """
     A grammar represents a combination of rules that has a special criterion to recognize it with.
     This criterion is a RuleAlias. If there is an error while validating a grammar object,

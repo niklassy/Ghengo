@@ -2,7 +2,7 @@ import pytest
 from django.db.models import CharField
 from rest_framework import serializers
 
-from django_meta.api import AbstractApiFieldAdapter
+from django_meta.api import AbstractApiFieldAdapter, ApiFieldAdapter
 from django_meta.model import ModelAdapter
 from django_sample_project.apps.order.models import ToDo
 from nlp.extractor.exception import ExtractionError
@@ -175,7 +175,7 @@ def test_fk_rest_extractor(doc, token_index, expected_value):
         variable=var,  # <-- variable defined
     ))
 
-    fk_field = serializers.PrimaryKeyRelatedField(queryset=ToDo.objects.all())
+    fk_field = ApiFieldAdapter(serializers.PrimaryKeyRelatedField(queryset=ToDo.objects.all()))
     extractor = ForeignKeyApiFieldExtractor(test_case, doc[token_index], fk_field, doc)
     extracted_value = extractor.extract_value()
 

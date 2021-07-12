@@ -19,8 +19,8 @@ class ModelFieldExtractor(FieldExtractor):
     """
     default_field_class = AbstractModelFieldAdapter
 
-    def __init__(self, test_case, source, model_adapter, field, document, representative=None):
-        super().__init__(test_case=test_case, source=source, document=document, field=field)
+    def __init__(self, test_case, source, model_adapter, field_adapter, document, representative=None):
+        super().__init__(test_case=test_case, source=source, document=document, field_adapter=field_adapter)
         self.model_adapter = model_adapter
         self.field_name = self.field.name
 
@@ -77,7 +77,7 @@ class M2MModelFieldExtractor(ManyExtractorMixin, ForeignKeyModelFieldExtractor):
 
     def get_child_extractor_kwargs(self):
         kwargs = super().get_child_extractor_kwargs()
-        kwargs['field'] = self.field
+        kwargs['field_adapter'] = self.field_adapter
         kwargs['model_adapter'] = self.model_adapter
         return kwargs
 

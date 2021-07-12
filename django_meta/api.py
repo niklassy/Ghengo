@@ -7,6 +7,7 @@ from rest_framework.serializers import ModelSerializer
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 
+from django_meta.base import ExistsInCode
 from django_meta.model import ModelAdapter
 from nlp.generate.utils import to_function_name
 
@@ -199,13 +200,16 @@ class ViewSetAdapter(object):
         return actions
 
 
-class AbstractApiFieldAdapter(object):
+class AbstractApiFieldAdapter(ExistsInCode):
+    exists_in_code = False
+
     def __init__(self, name):
         self.name = to_function_name(name)
         self.source = self.name
         self.verbose_name = self.name
         self.read_only = False
         self.model_field = None
+        self.field = self
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -214,7 +218,15 @@ class AbstractApiFieldAdapter(object):
 
 
 class ApiFieldAdapter(AbstractApiFieldAdapter):
+    exists_in_code = True
+
     def __init__(self, api_field):
         super().__init__(api_field.source)
         self.field = api_field
         self.name = api_field.source
+        self.read_only = api_field.read_only
+
+        try:
+            self.model_field = api_field.model_field
+        except AttributeError:
+            pass

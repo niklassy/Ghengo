@@ -1,6 +1,6 @@
 import pytest
 
-from django_meta.model import AbstractModelFieldAdapter, ModelAdapter, AbstractModelAdapter
+from django_meta.model import AbstractModelFieldAdapter, ModelAdapter, AbstractModelAdapter, ModelFieldAdapter
 from django_meta.project import DjangoProject
 from nlp.extractor.fields_model import ModelFieldExtractor, IntegerModelFieldExtractor, FloatModelFieldExtractor, \
     BooleanModelFieldExtractor, ForeignKeyModelFieldExtractor, M2MModelFieldExtractor
@@ -94,7 +94,7 @@ def test_model_field_extractor_extract_number():
         test_case=default_test_case,
         source=doc[6],
         model_adapter=model_adapter,
-        field=ToDo._meta.get_field('system'),
+        field_adapter=ModelFieldAdapter(ToDo._meta.get_field('system')),
         document=doc
     )
     assert extractor.extract_value() == 3
@@ -102,7 +102,7 @@ def test_model_field_extractor_extract_number():
         test_case=default_test_case,
         source='3',
         model_adapter=model_adapter,
-        field=field,
+        field_adapter=ModelFieldAdapter(field),
         document=document
     )
     assert extractor_2.extract_value() == 3
@@ -111,7 +111,7 @@ def test_model_field_extractor_extract_number():
 def test_model_field_extractor_extract_float():
     """Checks if the float is correctly extracted."""
     from django_sample_project.apps.order.models import ToDo
-    float_field = ToDo._meta.get_field('part')
+    float_field = ModelFieldAdapter(ToDo._meta.get_field('part'))
 
     # check if quotation marks are handled as wanted
     doc = nlp('Gegeben sei ein Todo aus dem Teil "0.33"')
@@ -131,7 +131,7 @@ def test_model_field_extractor_extract_float():
 def test_model_field_extractor_extract_boolean():
     """Checks if the boolean is correctly extracted."""
     from django_sample_project.apps.order.models import ToDo
-    bool_field = ToDo._meta.get_field('from_other_system')
+    bool_field = ModelFieldAdapter(ToDo._meta.get_field('from_other_system'))
 
     doc = nlp('Gegeben sei ein Todo, das aus dem anderen System kommt')
     extractor = BooleanModelFieldExtractor(default_test_case, doc[9], model_adapter, bool_field, doc)
@@ -158,7 +158,7 @@ def test_model_field_extractor_extract_fk():
     DjangoProject('django_sample_project.apps.config.settings')
     from django_sample_project.apps.order.models import Order
     from django.contrib.auth.models import User
-    fk_field = Order._meta.get_field('owner')
+    fk_field = ModelFieldAdapter(Order._meta.get_field('owner'))
     doc = nlp('Gegeben sei ein Auftrag mit Alice als Besitzerin')
     statement = AssignmentStatement(
         expression=PyTestModelFactoryExpression(ModelAdapter(User, None), [Kwarg('bar', 123)]),
@@ -210,7 +210,7 @@ def test_model_field_extractor_on_handled():
         variable=Variable('order', 'Order'),
     )
     extractor = M2MModelFieldExtractor(
-        m2m_test_case, m2m_source[1], model_adapter, Order._meta.get_field('to_dos'), m2m_source)
+        m2m_test_case, m2m_source[1], model_adapter, ModelFieldAdapter(Order._meta.get_field('to_dos')), m2m_source)
     statements = [statement]
     assert len(statements) == 1
 

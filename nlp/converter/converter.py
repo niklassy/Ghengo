@@ -236,7 +236,7 @@ class ModelConverter(ClassConverter):
         """Add the model and the field to the kwargs."""
         kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
         kwargs['model_adapter'] = self.model.value
-        kwargs['field'] = argument_wrapper.representative
+        kwargs['field_adapter'] = argument_wrapper.representative
         return kwargs
 
 
@@ -259,7 +259,7 @@ class ModelFactoryConverter(ModelConverter):
     def get_document_compatibility(self):
         compatibility = 1
 
-        if isinstance(self.model.value, AbstractModelAdapter):
+        if not self.model.value.exists_in_code:
             compatibility *= 0.8
 
         # models are normally displayed by nouns
@@ -414,7 +414,7 @@ class FileConverter(ClassConverter):
         # get the representative which should be name or content
         representative = extractor.representative
         # ignore GenerationWarnings
-        if representative == self.ArgumentRepresentatives.NAME and isinstance(extracted_value, str):
+        if representative == self.ArgumentRepresentatives.NAME and not extractor.generates_warning:
             # add the file extension to the extracted value
             extracted_value = '{}.{}'.format(extracted_value, self.file_extension_locator.best_compare_value or 'txt')
 
@@ -459,7 +459,7 @@ class RequestConverter(ClassConverter):
 
     def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
         kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
-        kwargs['field'] = argument_wrapper.representative
+        kwargs['field_adapter'] = argument_wrapper.representative
 
         # since the class may be for model fields or REST fields, add the model_adapter if needed
         if issubclass(extractor_cls, ModelFieldExtractor) or extractor_cls == ModelFieldExtractor:
@@ -491,7 +491,7 @@ class RequestConverter(ClassConverter):
     @property
     def from_anonymous_user(self):
         """Is the request made by an anonymous user? If true there will be no authentication."""
-        return isinstance(self.user.token, NoToken)
+        return not bool(self.user.token)
 
     @property
     def url_pattern_adapter(self) -> UrlPatternAdapter:

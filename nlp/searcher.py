@@ -205,7 +205,7 @@ class SerializerFieldSearcher(Searcher):
         if not serializer:
             return []
 
-        return list(serializer.fields.fields.values())
+        return [ApiFieldAdapter(api_field=field) for field in serializer.fields.fields.values()]
 
 
 class ModelSearcher(Searcher):
