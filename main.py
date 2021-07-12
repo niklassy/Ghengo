@@ -1,7 +1,4 @@
-import time
-
 from django_meta.setup import setup_django
-from nlp.setup import Nlp
 
 feature_string = """# language: en
 
@@ -60,9 +57,4 @@ if __name__ == '__main__':
     DjangoProject('django_sample_project.apps.config.settings')
     c = GherkinToPyTestCompiler()
     file_ast = c.compile_file('django_sample_project/features/variable_reference.feature')
-    Nlp.for_language('de')
-    Nlp.for_language('en')
-
-    start = time.time()
     c.export_as_file('generated_tests/')
-    print('Done after {}'.format(time.time() - start))

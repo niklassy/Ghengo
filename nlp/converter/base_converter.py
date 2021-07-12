@@ -52,8 +52,8 @@ class Converter(object):
         return self.get_statements_from_extractors(self.extractors)
 
     def prepare_converter(self):
-        """Is called before actual statements are returned."""
-        self._prepared = True
+        """Is called before getting the statements from the extractors."""
+        pass
 
     def get_document_compatibility(self):
         """
