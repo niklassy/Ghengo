@@ -1,11 +1,13 @@
+from abc import ABC
 from typing import Union
 
 from gherkin.compiler_base.exception import SequenceEnded, RuleNotFulfilled, SequenceNotFinished, GrammarNotUsed
 from gherkin.compiler_base.grammar import Grammar
+from gherkin.compiler_base.mixin import SequenceToObjectMixin
 from gherkin.compiler_base.wrapper import RuleAlias, TokenWrapper
 
 
-class Rule(object):
+class Rule(SequenceToObjectMixin, ABC):
     supports_list_as_children = False
 
     def __init__(self, child_rule):
@@ -101,14 +103,6 @@ class Rule(object):
 
         raise ValueError('This should not happen.')
 
-    def sequence_to_object(self, sequence, index=0):
-        """
-        Defines how a sequence at a given index is transformed into an object.
-
-        This function may return a RuleToken, None, [RuleToken] or a custom object.
-        """
-        raise NotImplementedError()
-
     def convert(self, sequence):
         """
         Can be called to convert a given sequence to an object. The returned object depends on the Rule.
@@ -170,16 +164,7 @@ class Optional(Rule):
         except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded):
             return None
 
-        # if the child is a grammar, let it resolve
-        if isinstance(self.child_rule, Grammar):
-            return self.child_rule.sequence_to_object(sequence, index)
-
-        # if the child is a Rule, let it resolve
-        if isinstance(self.child_rule, Rule):
-            return self.child_rule.sequence_to_object(sequence, index)
-
-        # else it returns the RuleToken that was found
-        return sequence[index]
+        return self.child_rule.sequence_to_object(sequence, index)
 
 
 class OneOf(Rule):
@@ -209,13 +194,7 @@ class OneOf(Rule):
             except (RuleNotFulfilled, SequenceEnded, GrammarNotUsed):
                 continue
 
-            if isinstance(child, Rule):
-                return child.sequence_to_object(sequence, index)
-
-            if isinstance(child, Grammar):
-                return child.sequence_to_object(sequence, index)
-
-            return sequence[index]
+            return child.sequence_to_object(sequence, index)
 
         assert False, 'This should not happen because it was validated beforehand - there should be one valid entry.'
 
@@ -288,19 +267,7 @@ class Repeatable(Rule):
         while True:
             try:
                 next_round_index = self._get_valid_index_for_child(self.child_rule, sequence, index)
-
-                if isinstance(self.child_rule, Grammar):
-                    # noinspection PyProtectedMember
-                    output.append(self.child_rule.sequence_to_object(sequence, index))
-                    index = next_round_index
-                    continue
-
-                if isinstance(self.child_rule, Rule):
-                    output.append(self.child_rule.sequence_to_object(sequence, index))
-                    index = next_round_index
-                    continue
-
-                output += sequence[index:next_round_index]
+                output.append(self.child_rule.sequence_to_object(sequence, index))
                 index = next_round_index
             except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded):
                 break
@@ -337,18 +304,7 @@ class Chain(Rule):
             except (GrammarNotUsed, RuleNotFulfilled):
                 continue
 
-            if isinstance(child, Grammar):
-                output.append(child.sequence_to_object(sequence, index))
-                index = next_round_index
-                continue
-
-            if isinstance(child, Rule):
-                to_add = child.sequence_to_object(sequence, index)
-                index = next_round_index
-                output.append(to_add)
-                continue
-
-            output.append(sequence[index])
+            output.append(child.sequence_to_object(sequence, index))
             index = next_round_index
 
         return output

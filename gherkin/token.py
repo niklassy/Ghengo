@@ -143,6 +143,10 @@ class LanguageToken(TokenContainsWholeLineMixin, GherkinToken):
         super().__init__(line=line, text=text)
         self.locale = self.get_locale_from_line(line.trimmed_text)
 
+    @property
+    def at_valid_position(self):
+        return self.line.line_index == 0
+
     @classmethod
     def get_keywords(cls):
         return ['#']

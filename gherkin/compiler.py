@@ -49,7 +49,7 @@ class GherkinLexer(Lexer):
     def on_token_added(self, token):
         # the first line may contain the language, so if it is found, set it
         if isinstance(token, LanguageToken):
-            if token.line.line_index > 0:
+            if not token.at_valid_position:
                 raise GherkinInvalid('You may only set the language in the first line of the document')
 
             Settings.language = token.locale
@@ -177,14 +177,9 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         project = DjangoProject('django_sample_project.apps.config.settings')
 
         suite = PyTestTestSuite(ast.feature.name if ast.feature else '')
-        for child in ast.feature.children:
-            if isinstance(child, (Scenario, ScenarioOutline)):
-                self.scenario_to_test_case(child, suite, project)
-                continue
 
-            if isinstance(child, Rule):
-                for rule_child in child.scenario_definitions:
-                    self.scenario_to_test_case(rule_child, suite, project)
+        for child in ast.feature.get_scenario_children():
+            self.scenario_to_test_case(child, suite, project)
 
         Settings.generate_test_type = Settings.Defaults.GENERATE_TEST_TYPE
 

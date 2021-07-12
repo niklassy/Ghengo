@@ -200,6 +200,8 @@ class ViewSetAdapter(object):
 
 
 class AbstractApiFieldAdapter(object):
+    exists_in_code = False
+
     def __init__(self, name):
         self.name = to_function_name(name)
         self.source = self.name
@@ -214,7 +216,15 @@ class AbstractApiFieldAdapter(object):
 
 
 class ApiFieldAdapter(AbstractApiFieldAdapter):
+    exists_in_code = True
+
     def __init__(self, api_field):
         super().__init__(api_field.source)
         self.field = api_field
         self.name = api_field.source
+        self.read_only = api_field.read_only
+
+        try:
+            self.model_field = api_field.model_field
+        except AttributeError:
+            pass

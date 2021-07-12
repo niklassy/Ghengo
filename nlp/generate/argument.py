@@ -19,36 +19,69 @@ class Argument(Replaceable, TemplateMixin):
     def __bool__(self):
         return bool(self.value)
 
+    def __new__(cls, value, *args, **kwargs):
+        if isinstance(value, list):
+            return super().__new__(ListArgument, value, *args, **kwargs)
+
+        if isinstance(value, set):
+            return super().__new__(SetArgument, value, *args, **kwargs)
+
+        if isinstance(value, tuple):
+            return super().__new__(TupleArgument, value, *args, **kwargs)
+
+        if isinstance(value, str):
+            return super().__new__(StringArgument, value, *args, **kwargs)
+
+        return super().__new__(cls, value, *args, **kwargs)
+
     @classmethod
     def get_string_for_template(cls, string):
         return '\'{}\''.format(string) if isinstance(string, str) else str(string)
 
     def get_template_context(self, line_indent, indent):
-        if isinstance(self.value, (list, tuple, set)) and len(str(self.value)) > 100:
-            if isinstance(self.value, list):
-                start_symbol = '['
-                end_symbol = ']'
-            elif isinstance(self.value, tuple):
-                start_symbol = '('
-                end_symbol = ')'
-            else:
-                start_symbol = '{'
-                end_symbol = '}'
+        return {'value': self.value}
 
+
+class _NestedArgument(Argument):
+    start_symbol = ''
+    end_symbol = ''
+
+    def get_template_context(self, line_indent, indent):
+        if len(str(self.value)) <= 100:
+            value = self.value
+        else:
             children = [Argument(value) for value in self.value]
             child_template = ',\n'.join(argument.to_template(
                 line_indent + INDENT_SPACES, line_indent + INDENT_SPACES) for argument in children)
 
             value = '{start_symbol}\n{child}\n{base_indent}{end_symbol}'.format(
-                start_symbol=start_symbol,
-                end_symbol=end_symbol,
+                start_symbol=self.start_symbol,
+                end_symbol=self.end_symbol,
                 base_indent=self.get_indent_string(line_indent),
                 child=child_template,
             )
-        else:
-            value = self.get_string_for_template(self.value)
 
         return {'value': value}
+
+
+class ListArgument(_NestedArgument):
+    start_symbol = '['
+    end_symbol = ']'
+
+
+class TupleArgument(_NestedArgument):
+    start_symbol = '('
+    end_symbol = ')'
+
+
+class SetArgument(_NestedArgument):
+    start_symbol = '{'
+    end_symbol = '}'
+
+
+class StringArgument(Argument):
+    def get_template_context(self, line_indent, indent):
+        return {'value': '\'{}\''.format(self.value)}
 
 
 class Kwarg(TemplateMixin):

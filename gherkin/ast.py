@@ -90,6 +90,7 @@ class Feature(HasBackgroundMixin, HasTagsMixin):
         self.name = name
         self.description = description
         self._children = []
+        self._rules_as_children = False
 
     def __repr__(self):
         return 'Feature - {} {}'.format(self.keyword, self.name)
@@ -99,7 +100,28 @@ class Feature(HasBackgroundMixin, HasTagsMixin):
         """Represents all the children (can either bei Rule or ScenarioDefinition)"""
         return self._children
 
+    def get_scenario_children(self):
+        """
+        Returns all scenario definitions. Since there might be Rules as direct children, extract the children from
+        there as a nested loop.
+        """
+        if self._rules_as_children is False:
+            return self.children
+
+        children = []
+        for rule in self.children:
+            for sc_def in rule.scenario_definitions:
+                children.append(sc_def)
+        return children
+
     def add_child(self, child):
+        if isinstance(child, Rule):
+            assert not any([isinstance(c, (Scenario, ScenarioOutline)) for c in self.children])
+            self._rules_as_children = True
+        elif isinstance(child, (Scenario, ScenarioOutline)):
+            assert not any([isinstance(c, Rule) for c in self.children])
+            self._rules_as_children = False
+
         self._children.append(child)
 
 
