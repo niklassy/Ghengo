@@ -3,6 +3,25 @@ from spacy import Language
 from spacy.matcher import Matcher
 
 
+class CacheNlp:
+    """
+    Over the course of the lifetime of the application nlp is called very often. Especially with the same text
+    again and again in order to find special tokens and so on. In order to reduce the calls to the NLP, we cache
+    the return values for each text and use that in future calls.
+    """
+    def __init__(self, name):
+        self.nlp = spacy.load(name)
+        self.cache = {}
+
+    def __call__(self, text):
+        if text not in self.cache:
+            document = self.nlp(text)
+            self.cache[text] = document
+            return document.copy()
+
+        return self.cache[text].copy()
+
+
 class _Nlp(object):
     def __init__(self):
         self._de_nlp = None
@@ -69,8 +88,8 @@ class _Nlp(object):
     def de_nlp(self):
         if self._de_nlp is None:
             print('Setting up german nlp...')
-            self._de_nlp = spacy.load('de_core_news_lg')
-            self.add_quotation_matcher(self._de_nlp)
+            self._de_nlp = CacheNlp('de_core_news_lg')
+            self.add_quotation_matcher(self._de_nlp.nlp)
             print('German nlp done!')
         return self._de_nlp
 
@@ -78,8 +97,8 @@ class _Nlp(object):
     def en_nlp(self):
         if self._en_nlp is None:
             print('Setting up english nlp...')
-            self._en_nlp = spacy.load('en_core_web_lg')
-            self.add_quotation_matcher(self._en_nlp)
+            self._en_nlp = CacheNlp('en_core_web_lg')
+            self.add_quotation_matcher(self._en_nlp.nlp)
             print('English nlp done!')
         return self._en_nlp
 

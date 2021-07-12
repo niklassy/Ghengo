@@ -348,7 +348,6 @@ class FileConverter(ClassConverter):
         super().__init__(document, related_object, django_project, test_case)
         # get the extension of the file
         self.file_extension_locator = FileExtensionLocator(self.document)
-        self.file_extension_locator.locate()
 
         self.file = FileProperty(self)
         self.file_variable = NewFileVariableProperty(self)
@@ -360,6 +359,9 @@ class FileConverter(ClassConverter):
             self.file_variable.token == token,
             self.file_extension_locator.fittest_token == token,
         ])
+
+    def prepare_converter(self):
+        self.file_extension_locator.locate()
 
     def get_document_compatibility(self):
         """Only if a file token was found this converter makes sense."""

@@ -15,6 +15,7 @@ class CallCounter:
 
 def test_translator_get_cache():
     translator = CacheTranslator('xh', 'en')
+    translator.delete_cache()
     assert translator.get_cache() == {}
 
 

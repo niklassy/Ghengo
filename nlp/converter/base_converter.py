@@ -21,6 +21,7 @@ class Converter(object):
         self.language = document.lang_
         self.test_case = test_case
         self._extractors = None
+        self._prepared = False
 
     @property
     def extractors(self):
@@ -37,6 +38,10 @@ class Converter(object):
 
     def convert_to_statements(self):
         """Converts the document into statements."""
+        if self._prepared is False:
+            self.prepare_converter()
+            self._prepared = True
+
         if not self.related_object.has_datatable or not self.can_use_datatables:
             return self.get_statements_from_extractors(self.extractors)
 
@@ -45,6 +50,10 @@ class Converter(object):
     def get_statements_from_datatable(self):
         """If the converter supports special handling for datatables of a Step, overwrite this method."""
         return self.get_statements_from_extractors(self.extractors)
+
+    def prepare_converter(self):
+        """Is called before actual statements are returned."""
+        self._prepared = True
 
     def get_document_compatibility(self):
         """
