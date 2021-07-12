@@ -1,5 +1,3 @@
-import time
-
 from django_meta.api import Methods
 from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity

@@ -13,13 +13,19 @@ class CacheNlp:
         self.nlp = spacy.load(name)
         self.cache = {}
 
+    def get_document(self, text):
+        """Get the document from the cache."""
+        return self.cache[text].copy()
+
+    def cache_document(self, text):
+        """Cache the document for a given text."""
+        self.cache[text] = self.nlp(text)
+
     def __call__(self, text):
         if text not in self.cache:
-            document = self.nlp(text)
-            self.cache[text] = document
-            return document.copy()
+            self.cache_document(text)
 
-        return self.cache[text].copy()
+        return self.get_document(text)
 
 
 class _Nlp(object):
