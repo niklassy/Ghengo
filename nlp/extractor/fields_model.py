@@ -77,7 +77,7 @@ class M2MModelFieldExtractor(ManyExtractorMixin, ForeignKeyModelFieldExtractor):
 
     def get_child_extractor_kwargs(self):
         kwargs = super().get_child_extractor_kwargs()
-        kwargs['field'] = self.field
+        kwargs['field_adapter'] = self.field_adapter
         kwargs['model_adapter'] = self.model_adapter
         return kwargs
 

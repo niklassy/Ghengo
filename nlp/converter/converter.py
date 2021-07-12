@@ -259,7 +259,7 @@ class ModelFactoryConverter(ModelConverter):
     def get_document_compatibility(self):
         compatibility = 1
 
-        if not self.model.value.model_exists_in_code:
+        if not self.model.value.exists_in_code:
             compatibility *= 0.8
 
         # models are normally displayed by nouns
