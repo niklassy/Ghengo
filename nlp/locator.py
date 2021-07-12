@@ -144,12 +144,6 @@ class FileExtensionLocator(Locator):
 
 class FileLocator(Locator):
     """This locator finds a token that indicates a file."""
-    @property
-    def file_extension(self):
-        locator_extension = FileExtensionLocator(self.document)
-        locator_extension.locate()
-        return locator_extension.best_compare_value
-
     def get_compare_values(self):
         return ['file']
 

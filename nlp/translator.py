@@ -5,7 +5,6 @@ from pathlib import Path
 from deep_translator import GoogleTranslator
 
 
-# TODO: check if using the file so often slows everything down!!
 class CacheTranslator(object):
     """
     This translator uses the GoogleTranslator but saves the results in a file. If the same
