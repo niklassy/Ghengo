@@ -7,16 +7,18 @@ from nlp.generate.expression import ModelFactoryExpression
 from nlp.generate.variable import Variable
 from nlp.locator import RestActionLocator, FileLocator
 from nlp.searcher import ModelSearcher, NoConversionFound
-from nlp.utils import token_to_function_name, NoToken, is_proper_noun_of, token_is_proper_noun, is_quoted
+from nlp.utils import token_to_function_name, NoToken, is_proper_noun_of, token_is_proper_noun, is_quoted, \
+    token_is_noun, token_is_like_num
 
 
 class NewModelProperty(ConverterProperty):
     """This property can be used to get the chunk, token and value to create a new model instance."""
     def get_chunk(self):
-        if len(self.converter.get_noun_chunks()) == 0:
-            return None
+        for chunk in self.converter.get_noun_chunks():
+            if any([token_is_noun(t) for t in chunk]):
+                return chunk
 
-        return self.converter.get_noun_chunks()[0]
+        return None
 
     def get_token(self):
         return self.chunk.root if self.chunk else NoToken()
@@ -27,6 +29,26 @@ class NewModelProperty(ConverterProperty):
 
         searcher = ModelSearcher(text=str(self.token.lemma_), src_language=self.converter.language)
         return searcher.search(project_adapter=self.converter.django_project)
+
+
+class ModelCountProperty(NewModelProperty):
+    def get_token(self):
+        model_token = self.converter.model.token
+
+        if not model_token:
+            return NoToken()
+
+        try:
+            previous_token = self.document[model_token.i - 1]
+            if previous_token.is_digit or token_is_like_num(previous_token):
+                return previous_token
+        except IndexError:
+            pass
+
+        return NoToken()
+
+    def get_value(self):
+        return str(self.token)
 
 
 class NewVariableProperty(ConverterProperty):
@@ -75,7 +97,10 @@ class NewVariableProperty(ConverterProperty):
         if not related_token:
             return []
 
-        related_children = [child for child in related_token.children]
+        # get all related children but skip those that come before the actual token, the variables are usually
+        # defined AFTER the related token `given a user Alice`, `Given an order 1`
+        related_children = [child for child in related_token.children if child.i > related_token.i]
+
         try:
             # check the token afterwards too in case NLP does not recognize `1` as a child
             after_model_token = self.document[related_token.i + 1]
@@ -186,6 +211,12 @@ class ReferenceModelProperty(NewModelProperty):
     This property can be used for cases where the model can be defined indirectly by referencing a variable that
     was created earlier in the test case.
     """
+    def get_chunk(self):
+        if len(self.converter.get_noun_chunks()) == 0:
+            return None
+
+        return self.converter.get_noun_chunks()[0]
+
     @property
     def value(self):
         """

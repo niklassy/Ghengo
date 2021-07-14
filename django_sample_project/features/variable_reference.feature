@@ -26,10 +26,13 @@ Funktionalität: Reference
 #      | asdasd  | abc  |
 #      | qweqwe  | def  |
 
+#  Szenario: file
+#    Gegeben sei eine Word Datei "asd"
+#    Und ein Auftrag mit dem Namen "Hallo"
+#    Wenn Alice einen Auftrag mit der Datei "asd" erstellt
+
   Szenario: file
-    Gegeben sei eine Word Datei "asd"
-    Und ein Auftrag mit dem Namen "Hallo"
-    Wenn Alice einen Auftrag mit der Datei "asd" erstellt
+    Dann sollte es 2 Aufträge mit dem Namen Alice geben
 
 #  Szenario: Ändern von ToDo - anderer Nutzer
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "order.add_order"

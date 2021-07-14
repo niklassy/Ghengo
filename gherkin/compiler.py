@@ -15,7 +15,7 @@ from gherkin.token import FeatureToken, RuleToken, DescriptionToken, EOFToken, B
     CommentToken, GivenToken, ThenToken, WhenToken, EmptyToken, AndToken, ButToken, TagsToken, LanguageToken, \
     EndOfLineToken, ScenarioOutlineToken, DocStringToken, DataTableToken, ExamplesToken
 from settings import Settings
-from nlp.tiler import GivenTiler, WhenTiler
+from nlp.tiler import GivenTiler, WhenTiler, ThenTiler
 
 
 class GherkinLexer(Lexer):
@@ -134,11 +134,14 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         in_then_steps = False
 
         for step in scenario.steps:
+            tiler = None
+
             if isinstance(step, (When, Then)) and in_given_steps:
                 in_given_steps = False
                 in_when_steps = True
 
-            if isinstance(step, Then) and in_when_steps:
+            if isinstance(step, Then) and (in_when_steps or in_given_steps):
+                in_given_steps = False
                 in_when_steps = False
                 in_then_steps = True
 
@@ -149,8 +152,6 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
                     language=Settings.language,
                     test_case=test_case,
                 )
-                tiler.add_statements_to_test_case()
-                continue
 
             if in_when_steps:
                 tiler = WhenTiler(
@@ -159,8 +160,17 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
                     language=Settings.language,
                     test_case=test_case
                 )
+
+            if in_then_steps:
+                tiler = ThenTiler(
+                    ast_object=step,
+                    django_project=project,
+                    language=Settings.language,
+                    test_case=test_case
+                )
+
+            if tiler is not None:
                 tiler.add_statements_to_test_case()
-                continue
 
         return test_case
 

@@ -3,6 +3,28 @@ NEGATIONS = {
     'en': ['not', 'no'],
 }
 
+NUM_END_VARIATIONS = {
+    'de': ['ßig', 'zig']
+}
+
+LIKE_NUM_WORDS = {
+    'de': {
+        'eins': 1,
+        'zwei': 2,
+        'drei': 3,
+        'vier': 4,
+        'fünf': 5,
+        'sechs': 6,
+        'sieben': 7,
+        'acht': 8,
+        'neun': 9,
+        'zehn': 10,
+        'elf': 11,
+        'zwölf': 12,
+        'dreizehn': 13,
+    }
+}
+
 FILE_EXTENSIONS = {
     # text
     'docx': 'Word',

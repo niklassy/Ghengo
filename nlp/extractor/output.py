@@ -205,6 +205,7 @@ class NumberAsStringOutput(ExtractorOutput):
             return str(self.source)
 
         for child in get_all_children(token):
+            # TODO: be more advanced: zwei => 2 and so on
             if child.is_digit:
                 return str(child)
 

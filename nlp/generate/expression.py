@@ -1,3 +1,4 @@
+import inspect
 import mimetypes
 
 from nlp.generate.argument import Argument, Kwarg
@@ -67,12 +68,43 @@ class ModelQuerysetBaseExpression(FunctionCallExpression):
         return context
 
     def on_add_to_test_case(self, test_case):
-        test_case.test_suite.add_import(Import('django.contrib.auth.models', 'Permission'))
+        # We can only add the import if the model already exists in the code
+        if self.model_adapter.exists_in_code:
+            test_case.test_suite.add_import(
+                Import(
+                    self.model_adapter.model.__module__,
+                    self.model_adapter.model.__name__
+                )
+            )
 
 
 class ModelQuerysetFilterExpression(ModelQuerysetBaseExpression):
     def __init__(self, model_adapter, function_kwargs):
         super().__init__(model_adapter, 'filter', function_kwargs)
+
+
+class ModelQuerysetAllExpression(ModelQuerysetBaseExpression):
+    def __init__(self, model_adapter):
+        super().__init__(model_adapter, 'all', [])
+
+
+class CompareExpression(Expression):
+    template = '{value_1} {compare_char} {value_2}'
+
+    class CompareChar:
+        EQUAL = '=='
+        SMALLER = '<'
+        SMALLER_EQUAL = '<='
+        GREATER = '>'
+        GREATER_EQUAL = '>='
+
+    def __init__(self, value_1, compare_char, value_2):
+        self.value_1 = value_1
+        self.value_2 = value_2
+        self.compare_char = compare_char
+
+    def get_template_context(self, line_indent, indent):
+        return {'compare_char': self.compare_char, 'value_1': self.value_1, 'value_2': self.value_2}
 
 
 class APIClientExpression(FunctionCallExpression):

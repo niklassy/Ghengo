@@ -1,10 +1,11 @@
 from nlp.generate.utils import to_function_name
-from nlp.vocab import NEGATIONS
+from nlp.vocab import NEGATIONS, LIKE_NUM_WORDS, NUM_END_VARIATIONS
 
 
 class NoToken:
     children = []
     is_digit = False
+    lang_ = None
 
     def __eq__(self, other):
         return False
@@ -164,3 +165,32 @@ def token_to_function_name(token):
         token_str = token_str[1:-1]
 
     return to_function_name(token_str)
+
+
+def token_is_like_num(token):
+    text = str(token)
+
+    if token.like_num:
+        return True
+
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    text_lower = text.lower()
+    try:
+        if text_lower in LIKE_NUM_WORDS[token.lang_].keys():
+            return True
+
+        for end_variation in NUM_END_VARIATIONS[token.lang]:
+            if text_lower[:-len(end_variation)].isdigit():
+                return True
+
+    except KeyError:
+        pass
+    return False
