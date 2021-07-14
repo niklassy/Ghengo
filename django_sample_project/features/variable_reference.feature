@@ -32,7 +32,7 @@ Funktionalität: Reference
 #    Wenn Alice einen Auftrag mit der Datei "asd" erstellt
 
   Szenario: file
-    Dann sollte es 2 Aufträge mit dem Namen Alice geben
+    Dann sollte es zwanzig Aufträge mit dem Namen Alice geben
 
 #  Szenario: Ändern von ToDo - anderer Nutzer
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "order.add_order"

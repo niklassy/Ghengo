@@ -2,6 +2,9 @@ import spacy
 from spacy import Language
 from spacy.matcher import Matcher
 
+from core.constants import Languages
+from core.exception import LanguageNotSupported
+
 
 class CacheNlp:
     """
@@ -109,13 +112,13 @@ class _Nlp(object):
         return self._en_nlp
 
     def for_language(self, language):
-        if language == 'de':
+        if language == Languages.DE:
             return self.de_nlp
 
-        if language == 'en':
+        if language == Languages.EN:
             return self.en_nlp
 
-        raise ValueError('Language is not supported yet.')
+        raise LanguageNotSupported()
 
 
 Nlp = _Nlp()

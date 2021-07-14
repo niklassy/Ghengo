@@ -1,6 +1,7 @@
 import pytest
 from django.contrib.auth.models import User
 
+from core.constants import Languages
 from django_meta.model import ModelAdapter
 from django_sample_project.apps.order.models import Order
 from nlp.extractor.exception import ExtractionError
@@ -15,7 +16,7 @@ from nlp.generate.variable import Variable
 from nlp.setup import Nlp
 from test_utils import assert_callable_raises
 
-nlp = Nlp.for_language('de')
+nlp = Nlp.for_language(Languages.DE)
 document = nlp('Sie hat 3 Äpfel.')
 
 
@@ -175,6 +176,7 @@ def test_float_extractor_output(doc, token_index, expected_output, raises):
         (nlp('Gegeben sei ein Benutzer der kein Admin ist'), 6, False),
         (nlp('Gegeben sei ein Benutzer der Fußball spielt'), 5, True),
         (nlp('Gegeben sei ein Benutzer der kein Fußball spielt'), 6, False),
+        (nlp('Gegeben sei ein Benutzer der nicht Fußball spielt.'), 6, False),
         (nlp('Gegeben sei ein Benutzer der nicht Fußball spielt'), 6, False),
     ]
 )

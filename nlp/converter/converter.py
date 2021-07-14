@@ -14,7 +14,7 @@ from nlp.generate.argument import Kwarg, Argument
 from nlp.generate.attribute import Attribute
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression, RequestExpression, APIClientExpression, \
     APIClientAuthenticateExpression, CreateUploadFileExpression, ModelQuerysetAllExpression, \
-    ModelQuerysetFilterExpression, CompareExpression
+    ModelQuerysetFilterExpression, CompareExpression, Expression
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement, AssertStatement
 from nlp.generate.variable import Variable
 from nlp.locator import FileExtensionLocator
@@ -669,6 +669,7 @@ class CountQuerysetConverter(QuerysetConverter):
 
         expression = CompareExpression(
             Attribute(qs_statement.variable, 'count()'),
+            # TODO: extract correct compare value!
             CompareExpression.CompareChar.EQUAL,
             count_value,
         )
@@ -680,4 +681,14 @@ class CountQuerysetConverter(QuerysetConverter):
 
 
 class ExistsQuerysetConverter(QuerysetConverter):
-    pass
+    """
+    This converter creates a queryset and an assert statement to check if that queryset exists.
+    """
+    def prepare_statements(self, statements):
+        statements = super().prepare_statements(statements)
+        qs_statement = statements[0]
+
+        statement = AssertStatement(Expression(Attribute(qs_statement.variable, 'exists()')))
+        statements.append(statement)
+
+        return statements

@@ -11,6 +11,14 @@ from nlp.generate.utils import camel_to_snake_case
 
 
 class Expression(Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
+    template = '{child}'
+
+    def __init__(self, child=None):
+        self.child = child
+
+    def get_template_context(self, line_indent, indent):
+        return {'child': self.child if self.child else ''}
+
     def as_statement(self):
         """Expressions can be statements. This can be used to translate an expression into a Statement."""
         return Statement(self)
@@ -99,6 +107,7 @@ class CompareExpression(Expression):
         GREATER_EQUAL = '>='
 
     def __init__(self, value_1, compare_char, value_2):
+        super().__init__()
         self.value_1 = value_1
         self.value_2 = value_2
         self.compare_char = compare_char

@@ -1,3 +1,4 @@
+from core.constants import Languages
 from django_meta.project import DjangoProject
 from nlp.generate.pytest.decorator import PyTestMarkDecorator, PyTestParametrizeDecorator
 from nlp.generate.pytest.suite import PyTestTestSuite
@@ -107,7 +108,7 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
 
     def scenario_to_test_case(self, scenario, suite, project):
         test_case = suite.create_and_add_test_case(
-            CacheTranslator(src_language=Settings.language, target_language='en').translate(scenario.name.lstrip())
+            CacheTranslator(src_language=Settings.language, target_language=Languages.EN).translate(scenario.name.lstrip())
         )
 
         for tag in scenario.tags:

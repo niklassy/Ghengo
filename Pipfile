@@ -7,7 +7,6 @@ name = "pypi"
 pytest = "*"
 django = "*"
 djangorestframework = "*"
-nltk = "*"
 setuptools = "*"
 wheel = "*"
 spacy = "*"
@@ -16,6 +15,8 @@ unidecode = "*"
 pytest-mock = "*"
 python-levenshtein = "*"
 uritemplate = "*"
+word2number = "*"
+zahlwort2num = "*"
 
 [dev-packages]
 

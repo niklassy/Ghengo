@@ -1,6 +1,7 @@
 import pytest
 from django.contrib.auth.models import User
 
+from core.constants import Languages
 from django_meta.api import Methods
 from django_meta.model import ModelAdapter
 from django_meta.project import DjangoProject
@@ -15,7 +16,7 @@ from nlp.setup import Nlp
 from nlp.tests.utils import MockTranslator
 from nlp.utils import get_noun_chunks, NoToken
 
-nlp = Nlp.for_language('de')
+nlp = Nlp.for_language(Languages.DE)
 
 
 class ConverterMock:

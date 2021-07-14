@@ -1,3 +1,4 @@
+from core.constants import Languages
 from django_meta.api import Methods
 from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity
@@ -74,12 +75,12 @@ class Locator(object):
         variations = []
 
         # get the nlp
-        nlp_en = Nlp.for_language('en')
+        nlp_en = Nlp.for_language(Languages.EN)
         nlp_doc = Nlp.for_language(self.doc_language)
 
         # and the translations for both languages
-        translator_to_en = CacheTranslator(src_language=self.doc_language, target_language='en')
-        translator_to_doc = CacheTranslator(src_language='en', target_language=self.doc_language)
+        translator_to_en = CacheTranslator(src_language=self.doc_language, target_language=Languages.EN)
+        translator_to_doc = CacheTranslator(src_language=Languages.EN, target_language=self.doc_language)
 
         # get for both languages for both inputs the nlp doc
         token = nlp_doc(token)

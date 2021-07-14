@@ -1,14 +1,16 @@
+from core.constants import Languages
+
 NEGATIONS = {
-    'de': ['kein', 'nicht'],
-    'en': ['not', 'no'],
+    Languages.DE: ['kein', 'nicht'],
+    Languages.EN: ['not', 'no'],
 }
 
 NUM_END_VARIATIONS = {
-    'de': ['ßig', 'zig']
+    Languages.DE: ['ßig', 'zig']
 }
 
 LIKE_NUM_WORDS = {
-    'de': {
+    Languages.DE: {
         'eins': 1,
         'zwei': 2,
         'drei': 3,
@@ -22,6 +24,8 @@ LIKE_NUM_WORDS = {
         'elf': 11,
         'zwölf': 12,
         'dreizehn': 13,
+        'zwanzig': 13,
+        'hundert': 100,
     }
 }
 

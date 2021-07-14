@@ -8,7 +8,7 @@ from nlp.generate.variable import Variable
 from nlp.locator import RestActionLocator, FileLocator
 from nlp.searcher import ModelSearcher, NoConversionFound
 from nlp.utils import token_to_function_name, NoToken, is_proper_noun_of, token_is_proper_noun, is_quoted, \
-    token_is_noun, token_is_like_num
+    token_is_noun, token_is_like_num, get_previous_token, get_next_token
 
 
 class NewModelProperty(ConverterProperty):
@@ -32,18 +32,18 @@ class NewModelProperty(ConverterProperty):
 
 
 class ModelCountProperty(NewModelProperty):
+    """
+    This property refers to a number of models. So `2 orders` or `seven users`.
+    """
     def get_token(self):
         model_token = self.converter.model.token
 
         if not model_token:
             return NoToken()
 
-        try:
-            previous_token = self.document[model_token.i - 1]
-            if previous_token.is_digit or token_is_like_num(previous_token):
-                return previous_token
-        except IndexError:
-            pass
+        previous_token = get_previous_token(model_token)
+        if previous_token.is_digit or token_is_like_num(previous_token):
+            return previous_token
 
         return NoToken()
 
@@ -101,12 +101,12 @@ class NewVariableProperty(ConverterProperty):
         # defined AFTER the related token `given a user Alice`, `Given an order 1`
         related_children = [child for child in related_token.children if child.i > related_token.i]
 
-        try:
-            # check the token afterwards too in case NLP does not recognize `1` as a child
-            after_model_token = self.document[related_token.i + 1]
-            possibilities = related_children + [after_model_token]
-        except IndexError:
+        # check the token afterwards too in case NLP does not recognize `1` as a child
+        after_model_token = get_next_token(related_token)
+        if not after_model_token:
             return related_children
+
+        possibilities = related_children + [after_model_token]
 
         # filter out any values in quotes that is not coming rights after the related token
         return [t for t in possibilities if not (is_quoted(t) and t != after_model_token)]

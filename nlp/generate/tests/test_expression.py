@@ -5,7 +5,7 @@ from nlp.generate.statement import Statement
 
 def test_expression_as_statement():
     """Check that expressions can be converted to a simple statement."""
-    exp = Expression()
+    exp = Expression('')
     statement = exp.as_statement()
     assert statement.__class__ == Statement
     assert statement.expression == exp

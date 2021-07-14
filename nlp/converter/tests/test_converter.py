@@ -1,6 +1,7 @@
 import pytest
 from django.contrib.auth.models import User
 
+from core.constants import Languages
 from django_meta.model import ModelAdapter
 from django_meta.project import DjangoProject
 from django_sample_project.apps.order.models import Order
@@ -16,7 +17,7 @@ from nlp.generate.variable import Variable
 from nlp.setup import Nlp
 from nlp.tests.utils import MockTranslator
 
-nlp = Nlp.for_language('de')
+nlp = Nlp.for_language(Languages.DE)
 default_doc = nlp('Wenn Alice eine Anfrage macht')
 django_project = DjangoProject('django_sample_project.apps.config.settings')
 
@@ -114,7 +115,7 @@ def test_model_factory_converter_model_token(doc, expected_model_token_text, moc
         (nlp('Gegeben sei ein Benutzer Bob'), 'bob'),
         (nlp('Und eine Inventur von 2004'), ''),
         (nlp('Und ein Dach mit einer Länge von 3'), ''),
-        (nlp('Und ein Dach MeinDach1 mit einer Länge von 3'), 'mein_dach1'),
+        (nlp('Und ein Dach "MeinDach1" mit einer Länge von 3'), 'mein_dach1'),
     ]
 )
 def test_model_factory_converter_variable_name(doc, expected_variable_name, mocker):
