@@ -8,7 +8,7 @@ from nlp.generate.variable import Variable
 from nlp.locator import RestActionLocator, FileLocator
 from nlp.searcher import ModelSearcher, NoConversionFound
 from nlp.utils import token_to_function_name, NoToken, is_proper_noun_of, token_is_proper_noun, is_quoted, \
-    token_is_noun, token_is_like_num, get_previous_token, get_next_token
+    token_is_noun, token_is_like_num, get_next_token, get_all_children
 
 
 class NewModelProperty(ConverterProperty):
@@ -41,9 +41,12 @@ class ModelCountProperty(NewModelProperty):
         if not model_token:
             return NoToken()
 
-        previous_token = get_previous_token(model_token)
-        if previous_token.is_digit or token_is_like_num(previous_token):
-            return previous_token
+        for child in get_all_children(model_token):
+            if child.i >= model_token.i:
+                continue
+
+            if child.is_digit or token_is_like_num(child):
+                return child
 
         return NoToken()
 

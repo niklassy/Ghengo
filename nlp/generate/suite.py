@@ -38,6 +38,24 @@ class Import(Replaceable, TemplateMixin):
         }
 
 
+class ImportPlaceholder(Import):
+    todo_message = '# TODO: the import for the following values either was not found or does not exist. If the ' \
+                   'import does\n exist in your code, you have to set the value manually. If it does exist, try ' \
+                   'creating the\n import in your code first.'
+
+    def __init__(self, variables):
+        super().__init__('', variables)
+
+    def get_template(self):
+        return '{todo_message}\n{variables}'
+
+    def get_template_context(self, line_indent, indent):
+        todo_message = '\n#    '.join(self.todo_message.split('\n'))
+        variables = '\n'.join('{} = None   # <- fix'.format(v) for v in self.variables)
+
+        return {'variables': variables, 'todo_message': todo_message}
+
+
 class TestCaseBase(Replaceable, TemplateMixin):
     class ParameterAlreadyPresent(Exception):
         pass

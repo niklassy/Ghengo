@@ -1,5 +1,9 @@
+from spacy.tokens import Span
+
 from core.constants import Languages
 from django_meta.api import Methods
+from nlp.generate.constants import CompareChar
+from nlp.generate.expression import CompareExpression
 from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity
 from nlp.translator import CacheTranslator
@@ -12,10 +16,15 @@ class Locator(object):
     Is responsible for locate tokens in a document given criteria.
     """
     SIMILARITY_BENCHMARK = 0.8
+    use_lemma_for_variation = True
 
     def __init__(self, document):
         self.document = document
-        self.doc_language = self.document.lang_
+        try:
+            self.doc_language = self.document.lang_
+        except AttributeError:
+            self.doc_language = document[0].lang_
+
         self._fittest_token = None
         self._best_compare_value = None
         self._highest_similarity = 0
@@ -52,7 +61,7 @@ class Locator(object):
                 continue
 
             for compare_value in self.get_compare_values():
-                for token_variety, compare_value_variety in self.get_variations(token.lemma_, compare_value):
+                for token_variety, compare_value_variety in self.get_variations(token, compare_value):
                     similarity = self.get_similarity(token_variety, compare_value_variety)
 
                     if similarity > self._highest_similarity:
@@ -73,6 +82,11 @@ class Locator(object):
     def get_variations(self, token, compare_value):
         """Get some variations of the token and the compare value to make it easier to locate the tokens."""
         variations = []
+
+        if self.use_lemma_for_variation:
+            token = token.lemma_
+        else:
+            token = str(token)
 
         # get the nlp
         nlp_en = Nlp.for_language(Languages.EN)
@@ -143,6 +157,18 @@ class FileExtensionLocator(Locator):
         return [(token, compare_value)]
 
 
+class WordLocator(Locator):
+    """
+    This is a locator to search for a given word.
+    """
+    def __init__(self, document, word):
+        super().__init__(document)
+        self.word = word
+
+    def get_compare_values(self):
+        return [self.word]
+
+
 class FileLocator(Locator):
     """This locator finds a token that indicates a file."""
     def get_compare_values(self):
@@ -150,6 +176,75 @@ class FileLocator(Locator):
 
     def token_is_relevant(self, token):
         return token_is_noun(token)
+
+
+class ComparisonLocator(Locator):
+    """
+    This locator can be used to search for comparisons (similar to ==, <= etc.).
+    """
+    use_lemma_for_variation = False
+
+    GREATER_VALUES = ['more', 'greater']
+    SMALLER_VALUES = ['less', 'fewer', 'smaller']
+
+    REVERSE_CHARS = {
+        CompareChar.EQUAL: CompareChar.EQUAL,
+        CompareChar.SMALLER: CompareChar.GREATER,
+        CompareChar.SMALLER_EQUAL: CompareChar.GREATER_EQUAL,
+        CompareChar.GREATER: CompareChar.SMALLER,
+        CompareChar.GREATER_EQUAL: CompareChar.SMALLER_EQUAL,
+    }
+
+    def __init__(self, document, reverse=False):
+        """
+        You can pass reverse to reverse the comparison value. This can be useful in cases where the code output
+        is not in the order of the text.
+        """
+        super().__init__(document)
+        self.reverse = reverse
+
+        self.or_locator = WordLocator(self.document, 'or')
+        self.or_locator.locate()
+
+    def _get_comparison(self):
+        """
+        Returns the comparison char for the given document.
+        """
+        # if there is an or, it is expected to be fine to be equal too
+        has_or = bool(self.or_locator.fittest_token)
+
+        if self._best_compare_value in self.GREATER_VALUES:
+            if has_or:
+                return CompareChar.GREATER_EQUAL
+
+            return CompareChar.GREATER
+
+        if self._best_compare_value in self.SMALLER_VALUES:
+            if has_or:
+                return CompareChar.SMALLER_EQUAL
+
+            return CompareChar.SMALLER
+
+        return CompareChar.EQUAL
+
+    @property
+    def comparison(self):
+        """
+        Returns the compare char.
+        """
+        compare_value = self._get_comparison()
+        if self.reverse:
+            return self.REVERSE_CHARS[compare_value]
+
+        return compare_value
+
+    def get_compare_values(self):
+        """Return values that indicate greater or smaller."""
+        return self.GREATER_VALUES + self.SMALLER_VALUES
+
+    def token_is_relevant(self, token):
+        """More, less etc. determiners. So skip everything else."""
+        return token.pos_ == 'DET'
 
 
 class RestActionLocator(Locator):

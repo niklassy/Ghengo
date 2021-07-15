@@ -17,7 +17,7 @@ from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression,
     ModelQuerysetFilterExpression, CompareExpression, Expression
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement, AssertStatement
 from nlp.generate.variable import Variable
-from nlp.locator import FileExtensionLocator
+from nlp.locator import FileExtensionLocator, ComparisonLocator
 from nlp.searcher import ModelFieldSearcher, NoConversionFound, UrlSearcher, SerializerFieldSearcher, \
     ClassArgumentSearcher
 from nlp.utils import get_non_stop_tokens, get_noun_chunk_of_token, token_is_noun, get_root_of_token, NoToken, \
@@ -579,7 +579,6 @@ class QuerysetConverter(ModelConverter):
     """
     This converter can be used to translate text into a queryset statement.
     """
-
     def token_can_be_argument(self, token):
         # if there is a verb where the parent is a finites Modalverb (e.g. sollte), it should be an argument
         if token == self.document[-1] and token_is_verb(token) and token.head.tag_ == 'VMFIN':
@@ -588,6 +587,9 @@ class QuerysetConverter(ModelConverter):
         return super().token_can_be_argument(token)
 
     def get_document_compatibility(self):
+        """
+        If the model token is not a noun, it is unlikely that this converter matches.
+        """
         compatibility = 1
 
         if not token_is_noun(self.model.token):
@@ -596,6 +598,9 @@ class QuerysetConverter(ModelConverter):
         return compatibility
 
     def prepare_statements(self, statements):
+        """
+        Create a queryset statement. If there any extractor, filter for it. If there are none, simply get all.
+        """
         if len(self.extractors) == 0:
             expression = ModelQuerysetAllExpression(self.model.value)
         else:
@@ -604,7 +609,6 @@ class QuerysetConverter(ModelConverter):
         statement = AssignmentStatement(
             variable=Variable('qs', self.model.value.name),
             expression=expression,
-
         )
         statements.append(statement)
 
@@ -627,11 +631,15 @@ class QuerysetConverter(ModelConverter):
 
 
 class CountQuerysetConverter(QuerysetConverter):
+    """
+    This converter can be used to create an assert statement for the count of a queryset.
+    """
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
         self.count = ModelCountProperty(self)
 
     def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
+        """Since the count token is extracted by a IntegerExtractor, remove kwargs that it does not need."""
         kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
         if argument_wrapper.token == self.count.token:
             del kwargs['model_adapter']
@@ -639,15 +647,21 @@ class CountQuerysetConverter(QuerysetConverter):
         return kwargs
 
     def token_used_in_property(self, token):
+        """We have the count token in addition to other tokens."""
         used = super().token_used_in_property(token)
         return used or token == self.count.token
 
     def get_extractor_class(self, argument_wrapper):
+        """
+        For everything related to the filter use the normal extractor classes. For the count token use an
+        IntegerExtractor instead.
+        """
         if argument_wrapper.token == self.count.token:
             return IntegerExtractor
         return super().get_extractor_class(argument_wrapper)
 
     def get_document_compatibility(self):
+        """If there is not count token, is is unlikely that this converter is compatible."""
         compatibility = super().get_document_compatibility()
 
         if not self.count.token:
@@ -656,9 +670,14 @@ class CountQuerysetConverter(QuerysetConverter):
         return compatibility
 
     def prepare_statements(self, statements):
+        """
+        In addition to the Queryset (created by the parent), create an assert statement to check the count
+        of that queryset.
+        """
         statements = super().prepare_statements(statements)
         qs_statement = statements[0]
 
+        # extract the value of the count
         count_wrapper = ConverterInitArgumentWrapper(
             representative=self.count.value,
             token=self.count.token,
@@ -667,13 +686,16 @@ class CountQuerysetConverter(QuerysetConverter):
         count_extractor = self.get_extractor_instance(count_wrapper)
         count_value = count_extractor.extract_value()
 
+        # get the comparison value (==, <= etc.)
+        compare_locator = ComparisonLocator(self.count.chunk, reverse=False)
+        compare_locator.locate()
+
+        # create expression and statement
         expression = CompareExpression(
             Attribute(qs_statement.variable, 'count()'),
-            # TODO: extract correct compare value!
-            CompareExpression.CompareChar.EQUAL,
+            compare_locator.comparison,
             count_value,
         )
-
         statement = AssertStatement(expression)
         statements.append(statement)
 

@@ -129,13 +129,10 @@ class ExtractorOutput(object):
             if child.is_digit or token_is_proper_noun(child):
                 return str(child)
 
-        try:
-            # as an alternative, if the next token is in quotes it should be the value
-            next_token = get_next_token(token)
-            if is_quoted(next_token):
-                return str(next_token)
-        except IndexError:
-            pass
+        # as an alternative, if the next token is in quotes it should be the value
+        next_token = get_next_token(token)
+        if is_quoted(next_token):
+            return str(next_token)
 
         # if still nothing is found, the value might be in a previous noun chunk
         try:

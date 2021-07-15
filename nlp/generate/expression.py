@@ -2,11 +2,12 @@ import inspect
 import mimetypes
 
 from nlp.generate.argument import Argument, Kwarg
+from nlp.generate.constants import CompareChar
 from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
 from nlp.generate.replaceable import Replaceable
 from settings import INDENT_SPACES
 from nlp.generate.statement import Statement
-from nlp.generate.suite import Import
+from nlp.generate.suite import Import, ImportPlaceholder
 from nlp.generate.utils import camel_to_snake_case
 
 
@@ -84,6 +85,8 @@ class ModelQuerysetBaseExpression(FunctionCallExpression):
                     self.model_adapter.model.__name__
                 )
             )
+        else:
+            test_case.test_suite.add_import(ImportPlaceholder(self.model_adapter.name))
 
 
 class ModelQuerysetFilterExpression(ModelQuerysetBaseExpression):
@@ -99,17 +102,11 @@ class ModelQuerysetAllExpression(ModelQuerysetBaseExpression):
 class CompareExpression(Expression):
     template = '{value_1} {compare_char} {value_2}'
 
-    class CompareChar:
-        EQUAL = '=='
-        SMALLER = '<'
-        SMALLER_EQUAL = '<='
-        GREATER = '>'
-        GREATER_EQUAL = '>='
-
     def __init__(self, value_1, compare_char, value_2):
         super().__init__()
         self.value_1 = value_1
         self.value_2 = value_2
+        assert compare_char in CompareChar.get_all()
         self.compare_char = compare_char
 
     def get_template_context(self, line_indent, indent):
