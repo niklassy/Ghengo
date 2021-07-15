@@ -1,7 +1,7 @@
 # language: de
 Funktionalität: Reference
   Grundlage:
-   Gegeben sei ein Benutzer Alice mit dem Namen alice, der Email a@local.local
+   Gegeben sei ein Benutzer Alice mit dem Namen alice, der Email "a@local.local"
 
 #  Szenario: Permission in Text
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "Auftrag hinzufügen"
@@ -32,7 +32,8 @@ Funktionalität: Reference
 #    Wenn Alice einen Auftrag mit der Datei "asd" erstellt
 
   Szenario: file
-    Dann sollte es drei oder mehr Dächer mit dem Namen Alice geben
+    Wenn Alice die Liste der Aufträge holt
+    Dann sollte die Antwort eine Länge von 2 haben
 
 #  Szenario: Ändern von ToDo - anderer Nutzer
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "order.add_order"

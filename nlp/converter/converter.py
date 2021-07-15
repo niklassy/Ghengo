@@ -12,12 +12,13 @@ from nlp.extractor.fields_rest_api import get_api_model_field_extractor
 from nlp.extractor.fields_model import get_model_field_extractor, ModelFieldExtractor
 from nlp.generate.argument import Kwarg, Argument
 from nlp.generate.attribute import Attribute
+from nlp.generate.constants import CompareChar
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression, RequestExpression, APIClientExpression, \
     APIClientAuthenticateExpression, CreateUploadFileExpression, ModelQuerysetAllExpression, \
     ModelQuerysetFilterExpression, CompareExpression, Expression
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement, AssertStatement
 from nlp.generate.variable import Variable
-from nlp.locator import FileExtensionLocator, ComparisonLocator
+from nlp.locator import FileExtensionLocator, ComparisonLocator, NounLocator
 from nlp.searcher import ModelFieldSearcher, NoConversionFound, UrlSearcher, SerializerFieldSearcher, \
     ClassArgumentSearcher
 from nlp.utils import get_non_stop_tokens, get_noun_chunk_of_token, token_is_noun, get_root_of_token, NoToken, \
@@ -544,8 +545,9 @@ class RequestConverter(ClassConverter):
             reverse_name=self.url_pattern_adapter.reverse_name,
             client_variable=variable_client,
             reverse_kwargs=reverse_kwargs,
+            url_adapter=self.url_pattern_adapter,
         )
-        response_variable = Variable('response', '')
+        response_variable = Variable('response', self.url_pattern_adapter.reverse_name)
         statement_request = AssignmentStatement(expression_request, response_variable)
         statements.append(statement_request)
 
@@ -657,7 +659,7 @@ class CountQuerysetConverter(QuerysetConverter):
     def token_used_in_property(self, token):
         """We have the count token in addition to other tokens."""
         used = super().token_used_in_property(token)
-        return used or token == self.count.token
+        return used or self.count.token == token
 
     def get_extractor_class(self, argument_wrapper):
         """
@@ -722,3 +724,94 @@ class ExistsQuerysetConverter(QuerysetConverter):
         statements.append(statement)
 
         return statements
+
+
+class ResponseConverter(ClassConverter):
+    def __init__(self, document, related_object, django_project, test_case):
+        super().__init__(document, related_object, django_project, test_case)
+        self.method = MethodProperty(self)
+        self.status_locator = NounLocator(self.document, 'status')
+
+        self.response_list_locator = NounLocator(self.document, 'list')
+        self.response_list_locator.locate()
+
+        self.response_locator = NounLocator(self.document, 'response')
+        self.response_locator.locate()
+
+    def token_used_in_property(self, token):
+        used = super().token_used_in_property(token)
+
+        used_by_locators = any([
+            self.response_locator.fittest_token == token,
+            self.status_locator.fittest_token == token,
+        ])
+
+        return used or self.method.token == token or used_by_locators
+
+    def prepare_converter(self):
+        self.status_locator.locate()
+
+    def get_document_compatibility(self):
+        compatibility = 1
+
+        # if there is word for response, this converter should be perfect
+        if bool(self.response_locator.fittest_token):
+            return compatibility
+
+        # the word list might be an indicator for the response - a list of objects
+        if not self.response_list_locator.fittest_token:
+            compatibility *= 0.5
+
+        # if there was no request previously, it is unlikely that this converter is compatible
+        if not any([isinstance(s.expression, RequestExpression) for s in self.test_case.statements]):
+            compatibility *= 0.1
+
+        return compatibility
+
+    def get_referenced_response_variable(self):
+        valid_variables = []
+
+        for statement in self.test_case.statements:
+            if statement.variable and isinstance(statement.expression, RequestExpression):
+                valid_variables.append(statement.variable)
+
+        if len(valid_variables) == 0:
+            return None
+
+        # TODO: handle multiple request expressions!
+        return valid_variables[0]
+
+    def prepare_statements(self, statements):
+        if self.status_locator.fittest_token:
+            wrapper = ConverterInitArgumentWrapper(
+                token=self.status_locator.fittest_token,
+                representative=self.status_locator.best_compare_value
+            )
+            extractor = self.get_extractor_instance(wrapper)
+            response_var = self.get_referenced_response_variable()
+            exp = CompareExpression(
+                Attribute(response_var, 'status_code'),
+                CompareChar.EQUAL,
+                extractor.extract_value(),
+            )
+            statements.append(AssertStatement(exp))
+
+        return statements
+
+    def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
+        if argument_wrapper.token == self.status_locator.fittest_token:
+            return IntegerExtractor
+
+        if isinstance(argument_wrapper.representative, AbstractModelFieldAdapter):
+            return get_model_field_extractor(argument_wrapper.representative)
+
+        # TODO: use the serializer fields for a response!!
+        #   is this correct??
+        return get_api_model_field_extractor(argument_wrapper.representative)
+
+    def handle_extractor(self, extractor, statements):
+        # TODO: determine if the response is going to be a list or an object
+        #   maybe if list is mentioned, or list call is made
+
+        # TODO: support length of list
+        pass

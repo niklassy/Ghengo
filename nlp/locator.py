@@ -168,13 +168,15 @@ class WordLocator(Locator):
         return [self.word]
 
 
-class FileLocator(WordLocator):
+class NounLocator(WordLocator):
+    def token_is_relevant(self, token):
+        return token_is_noun(token)
+
+
+class FileLocator(NounLocator):
     """This locator finds a token that indicates a file."""
     def __init__(self, document):
         super().__init__(document, 'file')
-
-    def token_is_relevant(self, token):
-        return token_is_noun(token)
 
 
 class ComparisonLocator(Locator):
