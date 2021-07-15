@@ -580,8 +580,16 @@ class QuerysetConverter(ModelConverter):
     This converter can be used to translate text into a queryset statement.
     """
     def token_can_be_argument(self, token):
+        last_word = NoToken()
+        for i in range(len(self.document)):
+            end_token = self.document[-(i + 1)]
+
+            if not end_token.is_punct:
+                last_word = end_token
+                break
+
         # if there is a verb where the parent is a finites Modalverb (e.g. sollte), it should be an argument
-        if token == self.document[-1] and token_is_verb(token) and token.head.tag_ == 'VMFIN':
+        if token == last_word and token_is_verb(token) and token.head.tag_ == 'VMFIN':
             return False
 
         return super().token_can_be_argument(token)

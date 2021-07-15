@@ -1,3 +1,5 @@
+import os
+
 from core.constants import Languages
 from django_meta.setup import setup_django
 import pytest
@@ -8,6 +10,10 @@ from settings import Settings
 
 # setup django before collecting all the tests
 setup_django('django_sample_project.apps.config.settings')
+
+
+def pytest_generate_tests(metafunc):
+    os.environ['RUNNING_TESTS'] = 'True'
 
 
 @pytest.fixture(autouse=True)

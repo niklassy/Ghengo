@@ -39,6 +39,9 @@ def get_previous_token(token):
     returned.
     """
     try:
+        if token.i == 0:
+            return NoToken()
+
         return token.doc[token.i - 1]
     except IndexError:
         return NoToken()
