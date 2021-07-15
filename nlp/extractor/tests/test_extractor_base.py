@@ -44,8 +44,8 @@ def test_output_instance():
 
 @pytest.mark.parametrize(
     'doc, token_index, expected_output', [
-        # (nlp('Wenn sie einen Auftrag mit den Sammlungen 1, 2 und 3 erstellt'), 6, [1, 2, 3]),
-        # (nlp('Wenn sie einen Auftrag mit den Sammlungen Alice und Bob erstellt'), 6, ['Alice', 'Bob']),
+        (nlp('Wenn sie einen Auftrag mit den Sammlungen 1, 2 und 3 erstellt'), 6, [1, 2, 3]),
+        (nlp('Wenn sie einen Auftrag mit den Sammlungen Alice und Bob erstellt'), 6, ['Alice', 'Bob']),
         (nlp('Wenn sie einen Auftrag mit den Sammlungen "{\'1\': 1}" erstellt'), 6, [{'1': 1}]),
     ]
 )

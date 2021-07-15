@@ -1,6 +1,11 @@
+import pytest
+
+from core.constants import Languages
+from core.exception import LanguageNotSupported
 from nlp.utils import token_is_verb, token_is_proper_noun, token_is_noun, get_non_stop_tokens, get_noun_chunks, \
     token_references, is_proper_noun_of, get_verb_for_token, get_proper_noun_of_chunk, get_noun_chunk_of_token, \
-    get_all_children
+    get_all_children, get_next_token, NoToken, get_previous_token, num_word_to_integer, token_is_like_num
+from test_utils import assert_callable_raises
 
 
 class MockToken:
@@ -119,3 +124,74 @@ def test_get_all_children():
     t_2 = MockToken(children=[t_3])
     t_1 = MockToken(children=[t_2, MockToken(children=[])])
     assert len(get_all_children(t_1)) == 3
+
+
+@pytest.mark.parametrize(
+    'text, token_index, output_index', [
+        ('Mein kleines Dokument', 0, 1),
+        ('Mein kleines Dokument', 1, 2),
+        ('Mein kleines Dokument', 2, None),
+    ]
+)
+def test_get_next_token(nlp_de, text, token_index, output_index):
+    """Check that get_next_token returns the next token and NoToken if there is none."""
+    doc = nlp_de(text)
+    output = get_next_token(doc[token_index])
+
+    if output_index is not None:
+        assert output == doc[output_index]
+    else:
+        assert isinstance(output, NoToken)
+
+
+@pytest.mark.parametrize(
+    'text, token_index, output_index', [
+        ('Mein kleines Dokument', 0, None),
+        ('Mein kleines Dokument', 1, 0),
+        ('Mein kleines Dokument', 2, 1),
+    ]
+)
+def test_get_prev_token(nlp_de, text, token_index, output_index):
+    """Check that get_previous_token returns the next token and NoToken if there is none."""
+    doc = nlp_de(text)
+    output = get_previous_token(doc[token_index])
+
+    if output_index is not None:
+        assert output == doc[output_index]
+    else:
+        assert isinstance(output, NoToken)
+
+
+@pytest.mark.parametrize(
+    'text, language, output', [
+        ('zwei', Languages.DE, 2),
+        ('zehn', Languages.DE, 10),
+        ('twelve', Languages.EN, 12),
+        ('zwei', 'asdasdasd', LanguageNotSupported),
+        ('asdasd', Languages.DE, ValueError),
+    ]
+)
+def test_num_word_to_integer(text, language, output):
+    """Check that num_word_to_integer works as expected."""
+    if isinstance(output, int):
+        assert num_word_to_integer(text, language) == output
+    else:
+        assert_callable_raises(num_word_to_integer, output, args=[text, language])
+
+
+@pytest.mark.parametrize(
+    'word, output', [
+        ('zwei', True),
+        ('zehn', True),
+        ('siebzehn', True),
+        ('dreißig', True),
+        ('asdasd', False),
+        ('"§$"§$"', False),
+        ('Banane', False),
+        ('Haus', False),
+    ]
+)
+def test_token_is_like_num(nlp_de, word, output):
+    """Check that token_is_like_num works as expected."""
+    token = nlp_de(word)[0]
+    assert token_is_like_num(token) == output

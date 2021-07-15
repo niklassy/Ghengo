@@ -350,3 +350,6 @@ def test_model_request_converter_compatibility(doc, min_compatibility, max_compa
     )
     assert converter.get_document_compatibility() >= min_compatibility
     assert converter.get_document_compatibility() <= max_compatibility
+
+
+# TODO: test qs converter, count converter and exist converter

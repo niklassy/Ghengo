@@ -1,9 +1,6 @@
-from spacy.tokens import Span
-
 from core.constants import Languages
 from django_meta.api import Methods
 from nlp.generate.constants import CompareChar
-from nlp.generate.expression import CompareExpression
 from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity
 from nlp.translator import CacheTranslator
@@ -119,6 +116,8 @@ class Locator(object):
 
 
 class FileExtensionLocator(Locator):
+    use_lemma_for_variation = False
+
     def get_similarity(self, token, compare_value):
         """Compare value is a tuple here, so compare both values"""
         file_extension = compare_value[0]
@@ -169,10 +168,10 @@ class WordLocator(Locator):
         return [self.word]
 
 
-class FileLocator(Locator):
+class FileLocator(WordLocator):
     """This locator finds a token that indicates a file."""
-    def get_compare_values(self):
-        return ['file']
+    def __init__(self, document):
+        super().__init__(document, 'file')
 
     def token_is_relevant(self, token):
         return token_is_noun(token)

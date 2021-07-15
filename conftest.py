@@ -1,5 +1,8 @@
+from core.constants import Languages
 from django_meta.setup import setup_django
 import pytest
+
+from nlp.setup import Nlp
 from settings import Settings
 
 
@@ -14,3 +17,13 @@ def run_around_tests():
     Settings.generate_test_type = None
     yield
     Settings.reset()
+
+
+@pytest.fixture
+def nlp_de():
+    return Nlp.for_language(Languages.DE)
+
+
+@pytest.fixture
+def nlp_en():
+    return Nlp.for_language(Languages.EN)
