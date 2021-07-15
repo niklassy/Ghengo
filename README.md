@@ -16,6 +16,12 @@ pipenv install setuptools
 pip install -U pip setuptools wheel
 ```
 
+During development these versions were installed:
+``` 
+setuptools: 53.0.0
+wheel: 0.36.2
+```
+
 Install the NLP models from spacy. You can find all the names of the required packages in `nlp/setup`.
 ```bash
 pipenv run python -m spacy download en_core_web_lg
