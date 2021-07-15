@@ -4,19 +4,19 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-pytest = "*"
-django = "*"
-djangorestframework = "*"
+pytest = "==6.2.4"
+django = "==3.2.5"
+djangorestframework = "==3.12.4"
 setuptools = "*"
 wheel = "*"
-spacy = "*"
-deep-translator = "*"
-unidecode = "*"
-pytest-mock = "*"
-python-levenshtein = "*"
-uritemplate = "*"
-word2number = "*"
-zahlwort2num = "*"
+spacy = "==3.1.0"
+deep-translator = "==1.4.4"
+unidecode = "==1.2.0"
+pytest-mock = "==3.6.1"
+python-levenshtein = "==0.12.2"
+uritemplate = "==3.0.1"
+word2number = "==1.1"
+zahlwort2num = "==0.2.1"
 
 [dev-packages]
 
