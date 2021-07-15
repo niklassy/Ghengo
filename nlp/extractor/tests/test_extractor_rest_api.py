@@ -2,6 +2,7 @@ import pytest
 from django.db.models import CharField
 from rest_framework import serializers
 
+from core.constants import Languages
 from django_meta.api import AbstractApiFieldAdapter, ApiFieldAdapter
 from django_meta.model import ModelAdapter
 from django_sample_project.apps.order.models import ToDo
@@ -24,7 +25,7 @@ from test_utils import assert_callable_raises
 suite = PyTestTestSuite('bar')
 default_test_case = suite.create_and_add_test_case('foo')
 field = AbstractApiFieldAdapter('name')
-nlp = Nlp.for_language('de')
+nlp = Nlp.for_language(Languages.DE)
 document = nlp('Sie hat 3 Äpfel.')
 
 

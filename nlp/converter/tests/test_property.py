@@ -1,12 +1,14 @@
 import pytest
 from django.contrib.auth.models import User
 
+from core.constants import Languages
 from django_meta.api import Methods
 from django_meta.model import ModelAdapter
 from django_meta.project import DjangoProject
 from django_sample_project.apps.order.models import Order, ToDo
 from nlp.converter.property import NewModelProperty, NewModelVariableProperty, MethodProperty, \
-    ReferenceModelVariableProperty, ReferenceModelProperty, UserReferenceVariableProperty, ModelWithUserProperty
+    ReferenceModelVariableProperty, ReferenceModelProperty, UserReferenceVariableProperty, ModelWithUserProperty, \
+    ModelCountProperty
 from nlp.generate.pytest import PyTestModelFactoryExpression
 from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.generate.statement import AssignmentStatement
@@ -15,7 +17,7 @@ from nlp.setup import Nlp
 from nlp.tests.utils import MockTranslator
 from nlp.utils import get_noun_chunks, NoToken
 
-nlp = Nlp.for_language('de')
+nlp = Nlp.for_language(Languages.DE)
 
 
 class ConverterMock:
@@ -214,4 +216,21 @@ def test_method_converter_property(mocker, doc, token_index, expected_method):
     prop = MethodProperty(converter)
     assert prop.chunk is None
     assert prop.value == expected_method
+    assert prop.token == doc[token_index]
+
+
+@pytest.mark.parametrize(
+    'doc, token_index, expected_value', [
+        (nlp('Dann sollte es 2 Aufträge geben'), 3, '2'),
+        (nlp('Dann sollte es zwei Aufträge geben'), 3, 'zwei'),
+        (nlp('Dann gibt es sieben oder mehr Aufträge'), 3, 'sieben'),
+    ]
+)
+def test_model_count_property(mocker, doc, token_index, expected_value):
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    converter = ConverterMock(doc)
+    prop = ModelCountProperty(converter)
+    converter.model = NewModelProperty(converter)
+    assert prop.chunk == converter.model.chunk
+    assert prop.value == expected_value
     assert prop.token == doc[token_index]

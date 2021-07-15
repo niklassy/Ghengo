@@ -1,5 +1,6 @@
 import pytest
 
+from core.constants import Languages
 from django_meta.model import AbstractModelFieldAdapter, ModelAdapter, AbstractModelAdapter, ModelFieldAdapter
 from django_meta.project import DjangoProject
 from nlp.extractor.fields_model import ModelFieldExtractor, IntegerModelFieldExtractor, FloatModelFieldExtractor, \
@@ -17,7 +18,7 @@ suite = PyTestTestSuite('bar')
 default_test_case = suite.create_and_add_test_case('foo')
 model_adapter = AbstractModelAdapter('Order')
 field = AbstractModelFieldAdapter('name')
-nlp = Nlp.for_language('de')
+nlp = Nlp.for_language(Languages.DE)
 document = nlp('Sie hat 3 Äpfel.')
 
 
@@ -189,7 +190,7 @@ def test_model_field_extractor_on_handled():
     m2m_suite = PyTestTestSuite('foo')
     m2m_test_case = m2m_suite.create_and_add_test_case('bar')
     DjangoProject('django_sample_project.apps.config.settings')
-    m2m_source = Nlp.for_language('de')('Die Todos 1 und 2 zugewiesen.')
+    m2m_source = Nlp.for_language(Languages.DE)('Die Todos 1 und 2 zugewiesen.')
     from django_sample_project.apps.order.models import Order, ToDo
 
     # create statements that indicate previous objects (to-dos) and add them to the test_case

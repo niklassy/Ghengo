@@ -1,14 +1,17 @@
 import pytest
 from django.contrib.auth.models import User
 
+from core.constants import Languages
 from django_meta.model import ModelAdapter
 from django_meta.project import DjangoProject
 from django_sample_project.apps.order.models import Order
-from gherkin.ast import Given, DataTable, TableRow, TableCell
-from nlp.converter.converter import ModelFactoryConverter, ModelVariableReferenceConverter, RequestConverter
+from gherkin.ast import Given, DataTable, TableRow, TableCell, Then
+from nlp.converter.converter import ModelFactoryConverter, ModelVariableReferenceConverter, RequestConverter, \
+    QuerysetConverter, CountQuerysetConverter, ExistsQuerysetConverter
 from nlp.generate.argument import Kwarg
+from nlp.generate.constants import CompareChar
 from nlp.generate.expression import ModelSaveExpression, APIClientExpression, RequestExpression, \
-    APIClientAuthenticateExpression
+    APIClientAuthenticateExpression, ModelQuerysetFilterExpression, ModelQuerysetAllExpression, CompareExpression
 from nlp.generate.pytest import PyTestModelFactoryExpression
 from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement
@@ -16,7 +19,7 @@ from nlp.generate.variable import Variable
 from nlp.setup import Nlp
 from nlp.tests.utils import MockTranslator
 
-nlp = Nlp.for_language('de')
+nlp = Nlp.for_language(Languages.DE)
 default_doc = nlp('Wenn Alice eine Anfrage macht')
 django_project = DjangoProject('django_sample_project.apps.config.settings')
 
@@ -114,7 +117,7 @@ def test_model_factory_converter_model_token(doc, expected_model_token_text, moc
         (nlp('Gegeben sei ein Benutzer Bob'), 'bob'),
         (nlp('Und eine Inventur von 2004'), ''),
         (nlp('Und ein Dach mit einer Länge von 3'), ''),
-        (nlp('Und ein Dach MeinDach1 mit einer Länge von 3'), 'mein_dach1'),
+        (nlp('Und ein Dach "MeinDach1" mit einer Länge von 3'), 'mein_dach1'),
     ]
 )
 def test_model_factory_converter_variable_name(doc, expected_variable_name, mocker):
@@ -349,3 +352,94 @@ def test_model_request_converter_compatibility(doc, min_compatibility, max_compa
     )
     assert converter.get_document_compatibility() >= min_compatibility
     assert converter.get_document_compatibility() <= max_compatibility
+
+
+def test_qs_converter(mocker):
+    """Check that the QuerysetConverter creates the correct statements."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    # should result in a filter expression
+    converter = QuerysetConverter(
+        nlp('Dann sollte es zwei Aufträge mit dem Namen Alice geben.'),
+        Then(keyword='Dann', text='sollte es zwei Aufträge mit dem Namen Alice geben'),
+        django_project,
+        test_case,
+    )
+    statements = converter.convert_to_statements()
+    assert len(statements) == 1
+    assert isinstance(statements[0].expression, ModelQuerysetFilterExpression)
+
+    # check that a doc without arguments results in an all expression
+    converter = QuerysetConverter(
+        nlp('Dann sollte es zwei Aufträge geben.'),
+        Then(keyword='Dann', text='sollte es zwei Aufträge geben'),
+        django_project,
+        test_case,
+    )
+    statements = converter.convert_to_statements()
+    assert len(statements) == 1
+    assert isinstance(statements[0].expression, ModelQuerysetAllExpression)
+
+
+def test_qs_count_converter(mocker):
+    """Check that the CountQuerysetConverter creates the correct statements."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    # should result in a filter expression
+    converter = CountQuerysetConverter(
+        nlp('Dann sollte es zwei Aufträge mit dem Namen Alice geben.'),
+        Then(keyword='Dann', text='sollte es zwei Aufträge mit dem Namen Alice geben'),
+        django_project,
+        test_case,
+    )
+    statements = converter.convert_to_statements()
+    assert len(statements) == 2
+    assert isinstance(statements[1].expression, CompareExpression)
+    assert statements[1].expression.compare_char == CompareChar.EQUAL
+    assert statements[1].expression.value_2 == 2
+
+    # check that a doc without arguments results in an all expression
+    converter = CountQuerysetConverter(
+        nlp('Dann sollte es zwei oder mehr Aufträge geben.'),
+        Then(keyword='Dann', text='sollte es zwei oder mehr Aufträge geben'),
+        django_project,
+        test_case,
+    )
+    statements = converter.convert_to_statements()
+    assert len(statements) == 2
+    assert isinstance(statements[1].expression, CompareExpression)
+    assert statements[1].expression.compare_char == CompareChar.GREATER_EQUAL
+    assert statements[1].expression.value_2 == 2
+
+
+def test_qs_exists_converter(mocker):
+    """Check that the ExistsQuerysetConverter creates the correct statements."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    # should result in a filter expression
+    converter = ExistsQuerysetConverter(
+        nlp('Dann sollte es zwei Aufträge mit dem Namen Alice geben.'),
+        Then(keyword='Dann', text='sollte es zwei Aufträge mit dem Namen Alice geben'),
+        django_project,
+        test_case,
+    )
+    statements = converter.convert_to_statements()
+    assert len(statements) == 2
+    assert str(statements[1]) == 'assert qs.exists()'
+
+    # check that a doc without arguments results in an all expression
+    converter = ExistsQuerysetConverter(
+        nlp('Dann sollte es zwei oder mehr Aufträge geben.'),
+        Then(keyword='Dann', text='sollte es zwei oder mehr Aufträge geben'),
+        django_project,
+        test_case,
+    )
+    statements = converter.convert_to_statements()
+    assert len(statements) == 2
+    assert str(statements[1]) == 'assert qs.exists()'

@@ -1,9 +1,10 @@
+from core.constants import Languages
 from nlp.searcher import Searcher, NoConversionFound
 
 
 def test_searcher_search_no_results():
     """Try to search when there are no possible results."""
-    searcher = Searcher('Auftrag', 'de')
+    searcher = Searcher('Auftrag', Languages.DE)
     # by default the input text should be returned
     assert searcher.search() == 'Auftrag'
     try:
@@ -26,5 +27,5 @@ def test_searcher_search_with_results():
             """Simply return the input_doc, which will be an integer."""
             return input_doc
 
-    searcher = CustomSearcher('Auftrag', 'de')
+    searcher = CustomSearcher('Auftrag', Languages.DE)
     assert searcher.search() == 6

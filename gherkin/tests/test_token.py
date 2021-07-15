@@ -1,5 +1,6 @@
 import pytest
 
+from core.constants import Languages
 from gherkin.token import FeatureToken, DataTableToken, RuleToken, ScenarioToken, ScenarioOutlineToken, \
     BackgroundToken, ExamplesToken, GivenToken, WhenToken, ThenToken, AndToken, ButToken, TagsToken, TagToken, \
     CommentToken, LanguageToken, EmptyToken, DescriptionToken
@@ -30,7 +31,7 @@ def test_basic_token_classes(token_cls, valid_string_en, valid_string_de, invali
     assert token_cls.string_contains_token('{} qwe q asd xy'.format(invalid_string_en)) is False
     assert token_cls.reduce_to_belonging('{} ab q a ooq'.format(valid_string_en)) == valid_string_en
     assert token_cls.reduce_to_belonging('{} qq a xc asd qwe'.format(invalid_string_en)) == ''
-    Settings.language = 'de'
+    Settings.language = Languages.DE
     assert token_cls.string_contains_token('{} asdasd qwe asd yxc'.format(invalid_string_de)) is False
     assert token_cls.reduce_to_belonging('{} ab q a ooq'.format(invalid_string_de)) == ''
     assert token_cls.string_contains_token('{} qwe akky asde'.format(valid_string_de)) is True
@@ -60,7 +61,7 @@ def test_full_line_token_classes(token_cls, valid_string_en, valid_string_de, in
         assert token_cls.reduce_to_belonging(invalid_string_en) == ''
         assert token_cls.string_contains_token(invalid_string_en) is False
     assert token_cls.reduce_to_belonging(valid_string_en) == valid_string_en
-    Settings.language = 'de'
+    Settings.language = Languages.DE
     assert token_cls.string_contains_token(valid_string_de) is True
     if invalid_string_de is not None:
         assert token_cls.string_contains_token(invalid_string_de) is False

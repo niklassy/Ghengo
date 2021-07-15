@@ -1,26 +1,27 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from django_meta.api import UrlPatternAdapter
-from django_meta.model import AbstractModelAdapter, AbstractModelFieldAdapter
+from django_meta.model import AbstractModelFieldAdapter
 from nlp.converter.base_converter import Converter
 from nlp.converter.property import NewModelProperty, ReferenceModelVariableProperty, \
     ReferenceModelProperty, UserReferenceVariableProperty, ModelWithUserProperty, \
-    MethodProperty, FileProperty, NewFileVariableProperty, NewModelVariableProperty
+    MethodProperty, FileProperty, NewFileVariableProperty, NewModelVariableProperty, ModelCountProperty
 from nlp.converter.wrapper import ConverterInitArgumentWrapper
-from nlp.extractor.base import StringExtractor
+from nlp.extractor.base import StringExtractor, IntegerExtractor
 from nlp.extractor.fields_rest_api import get_api_model_field_extractor
 from nlp.extractor.fields_model import get_model_field_extractor, ModelFieldExtractor
 from nlp.generate.argument import Kwarg, Argument
 from nlp.generate.attribute import Attribute
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression, RequestExpression, APIClientExpression, \
-    APIClientAuthenticateExpression, CreateUploadFileExpression
-from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement
+    APIClientAuthenticateExpression, CreateUploadFileExpression, ModelQuerysetAllExpression, \
+    ModelQuerysetFilterExpression, CompareExpression, Expression
+from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement, AssertStatement
 from nlp.generate.variable import Variable
-from nlp.locator import FileExtensionLocator
+from nlp.locator import FileExtensionLocator, ComparisonLocator
 from nlp.searcher import ModelFieldSearcher, NoConversionFound, UrlSearcher, SerializerFieldSearcher, \
     ClassArgumentSearcher
-from nlp.utils import get_non_stop_tokens, get_noun_chunk_of_token, token_is_noun, get_root_of_token, \
-    NoToken
+from nlp.utils import get_non_stop_tokens, get_noun_chunk_of_token, token_is_noun, get_root_of_token, NoToken, \
+    token_is_verb
 
 
 class ClassConverter(Converter):
@@ -265,6 +266,9 @@ class ModelFactoryConverter(ModelConverter):
         # models are normally displayed by nouns
         if not token_is_noun(self.model.token):
             compatibility *= 0.01
+
+        if self.model.chunk and len(self.get_noun_chunks()) > 0 and self.model.chunk != self.get_noun_chunks()[0]:
+            compatibility *= 0.1
 
         # If the root of the document is a finites Modalverb (e.g. sollte) it is rather unlikely that the creation of
         # a model is meant
@@ -569,3 +573,152 @@ class RequestConverter(ClassConverter):
             kwarg_list = request_expression.function_kwargs
 
         kwarg_list.append(kwarg)
+
+
+class QuerysetConverter(ModelConverter):
+    """
+    This converter can be used to translate text into a queryset statement.
+    """
+    def token_can_be_argument(self, token):
+        last_word = NoToken()
+        for i in range(len(self.document)):
+            end_token = self.document[-(i + 1)]
+
+            if not end_token.is_punct:
+                last_word = end_token
+                break
+
+        # if there is a verb where the parent is a finites Modalverb (e.g. sollte), it should be an argument
+        if token == last_word and token_is_verb(token) and token.head.tag_ == 'VMFIN':
+            return False
+
+        return super().token_can_be_argument(token)
+
+    def get_document_compatibility(self):
+        """
+        If the model token is not a noun, it is unlikely that this converter matches.
+        """
+        compatibility = 1
+
+        if not token_is_noun(self.model.token):
+            compatibility *= 0.01
+
+        return compatibility
+
+    def prepare_statements(self, statements):
+        """
+        Create a queryset statement. If there any extractor, filter for it. If there are none, simply get all.
+        """
+        if len(self.extractors) == 0:
+            expression = ModelQuerysetAllExpression(self.model.value)
+        else:
+            expression = ModelQuerysetFilterExpression(self.model.value, [])
+
+        statement = AssignmentStatement(
+            variable=Variable('qs', self.model.value.name),
+            expression=expression,
+        )
+        statements.append(statement)
+
+        return statements
+
+    def handle_extractor(self, extractor, statements):
+        qs_statement = statements[0]
+
+        if isinstance(qs_statement.expression, ModelQuerysetAllExpression):
+            return
+
+        factory_kwargs = qs_statement.expression.function_kwargs
+
+        extracted_value = extractor.extract_value()
+        if extracted_value is None:
+            return
+
+        kwarg = Kwarg(extractor.field_name, extracted_value)
+        factory_kwargs.append(kwarg)
+
+
+class CountQuerysetConverter(QuerysetConverter):
+    """
+    This converter can be used to create an assert statement for the count of a queryset.
+    """
+    def __init__(self, document, related_object, django_project, test_case):
+        super().__init__(document, related_object, django_project, test_case)
+        self.count = ModelCountProperty(self)
+
+    def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
+        """Since the count token is extracted by a IntegerExtractor, remove kwargs that it does not need."""
+        kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
+        if argument_wrapper.token == self.count.token:
+            del kwargs['model_adapter']
+            del kwargs['field_adapter']
+        return kwargs
+
+    def token_used_in_property(self, token):
+        """We have the count token in addition to other tokens."""
+        used = super().token_used_in_property(token)
+        return used or token == self.count.token
+
+    def get_extractor_class(self, argument_wrapper):
+        """
+        For everything related to the filter use the normal extractor classes. For the count token use an
+        IntegerExtractor instead.
+        """
+        if argument_wrapper.token == self.count.token:
+            return IntegerExtractor
+        return super().get_extractor_class(argument_wrapper)
+
+    def get_document_compatibility(self):
+        """If there is not count token, is is unlikely that this converter is compatible."""
+        compatibility = super().get_document_compatibility()
+
+        if not self.count.token:
+            compatibility *= 0.2
+
+        return compatibility
+
+    def prepare_statements(self, statements):
+        """
+        In addition to the Queryset (created by the parent), create an assert statement to check the count
+        of that queryset.
+        """
+        statements = super().prepare_statements(statements)
+        qs_statement = statements[0]
+
+        # extract the value of the count
+        count_wrapper = ConverterInitArgumentWrapper(
+            representative=self.count.value,
+            token=self.count.token,
+            source_represents_output=True,
+        )
+        count_extractor = self.get_extractor_instance(count_wrapper)
+        count_value = count_extractor.extract_value()
+
+        # get the comparison value (==, <= etc.)
+        compare_locator = ComparisonLocator(self.count.chunk, reverse=False)
+        compare_locator.locate()
+
+        # create expression and statement
+        expression = CompareExpression(
+            Attribute(qs_statement.variable, 'count()'),
+            compare_locator.comparison,
+            count_value,
+        )
+        statement = AssertStatement(expression)
+        statements.append(statement)
+
+        return statements
+
+
+class ExistsQuerysetConverter(QuerysetConverter):
+    """
+    This converter creates a queryset and an assert statement to check if that queryset exists.
+    """
+    def prepare_statements(self, statements):
+        statements = super().prepare_statements(statements)
+        qs_statement = statements[0]
+
+        statement = AssertStatement(Expression(Attribute(qs_statement.variable, 'exists()')))
+        statements.append(statement)
+
+        return statements

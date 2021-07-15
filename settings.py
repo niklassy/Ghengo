@@ -1,4 +1,6 @@
 # number of spaces for an indent in Python
+from core.constants import Languages
+
 INDENT_SPACES = 4
 
 
@@ -11,7 +13,7 @@ class _Settings:
     Settings that can/ will be changed during runtime and generation of code.
     """
     class Defaults:
-        LANGUAGE = 'en'
+        LANGUAGE = Languages.EN
         GENERATE_TEST_TYPE = GenerationType.PY_TEST
 
     language = Defaults.LANGUAGE

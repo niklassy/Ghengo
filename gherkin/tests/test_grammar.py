@@ -1,5 +1,6 @@
 import pytest
 
+from core.constants import Languages
 from gherkin.compiler_base.exception import GrammarNotUsed, GrammarInvalid, SequenceNotFinished
 from gherkin.compiler_base.line import Line
 from gherkin.compiler_base.wrapper import TokenWrapper, RuleAlias
@@ -932,7 +933,7 @@ def test_language_grammar():
 
     # valid input
     output = grammar.convert(get_sequence([LanguageToken(None, Line('# language: en', 1)), EndOfLineToken(None, None)]))
-    assert output.language == 'en'
+    assert output.language == Languages.EN
 
     # invalid input
     assert_callable_raises(
@@ -953,7 +954,7 @@ def test_language_grammar():
     assert_callable_raises(
         grammar.convert,
         GrammarInvalid,
-        args=[get_sequence([LanguageToken(None, Line('en', 1)), DescriptionToken(None, None)])]
+        args=[get_sequence([LanguageToken(None, Line('my text', 1)), DescriptionToken(None, None)])]
     )
 
 
@@ -967,12 +968,12 @@ def test_gherkin_doc_grammar_valid():
 
     # with language
     output = grammar.convert(
-        get_sequence([LanguageToken(None, Line('de', 1)), EndOfLineToken(None, None), EOFToken(None, None)]))
+        get_sequence([LanguageToken(None, Line(Languages.DE, 1)), EndOfLineToken(None, None), EOFToken(None, None)]))
     assert output.feature is None
 
     # with feature
     output = grammar.convert(get_sequence(
-        [LanguageToken(None, Line('de', 1)), EndOfLineToken(None, None)]
+        [LanguageToken(None, Line(Languages.DE, 1)), EndOfLineToken(None, None)]
         + feature_sequence
         + [EOFToken(None, None)]
     ))

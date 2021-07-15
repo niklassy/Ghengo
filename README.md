@@ -8,6 +8,14 @@ Install all libraries:
 pipenv install
 ```
 
+You also may need to install setuptools:
+```bash
+pipenv install setuptools
+
+# Original command from pip (probably not needed since it is done by pipenv):
+pip install -U pip setuptools wheel
+```
+
 Install the NLP models from spacy. You can find all the names of the required packages in `nlp/setup`.
 ```bash
 pipenv run python -m spacy download en_core_web_lg

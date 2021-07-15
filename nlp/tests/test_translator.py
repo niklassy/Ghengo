@@ -1,5 +1,6 @@
 from pytest_mock import MockerFixture
 
+from core.constants import Languages
 from nlp.translator import CacheTranslator
 
 
@@ -14,14 +15,14 @@ class CallCounter:
 
 
 def test_translator_get_cache():
-    translator = CacheTranslator('xh', 'en')
+    translator = CacheTranslator('xh', Languages.EN)
     translator.delete_cache()
     assert translator.get_cache() == {}
 
 
 def test_translator_delete_cache(mocker: MockerFixture):
     """Check if the deleting of the cache works as expected."""
-    translator = CacheTranslator('xh', 'en')
+    translator = CacheTranslator('xh', Languages.EN)
     custom_translator = CallCounter(lambda a: a)
     mocker.patch('deep_translator.GoogleTranslator.translate', custom_translator)
     translator.translate('______foo_______')
@@ -32,7 +33,7 @@ def test_translator_delete_cache(mocker: MockerFixture):
 
 def test_translator_translate_cache(mocker: MockerFixture):
     """Check if a value already exists in the cache, it is used instead of the one from the translator."""
-    translator = CacheTranslator('xh', 'en')
+    translator = CacheTranslator('xh', Languages.EN)
     custom_translator = CallCounter(lambda a: a)
     mocker.patch('deep_translator.GoogleTranslator.translate', custom_translator)
     assert translator.translate('______foo_______') == '______foo_______'
@@ -47,7 +48,7 @@ def test_translator_translate_cache(mocker: MockerFixture):
 
 def test_translator_request_necessary(mocker: MockerFixture):
     """Check if translator_request_necessary works as expected."""
-    translator = CacheTranslator('xh', 'en')
+    translator = CacheTranslator('xh', Languages.EN)
     custom_translator = CallCounter(lambda a: a)
     mocker.patch('deep_translator.GoogleTranslator.translate', custom_translator)
     translator.write_to_cache('foo', 'bar')

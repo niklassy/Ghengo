@@ -1,11 +1,17 @@
+from django.contrib.auth.models import User
+
+from django_meta.model import ModelAdapter, AbstractModelAdapter
 from nlp.generate.argument import Kwarg
-from nlp.generate.expression import Expression, FunctionCallExpression, ModelFactoryExpression, ModelM2MAddExpression
+from nlp.generate.expression import Expression, FunctionCallExpression, ModelFactoryExpression, ModelM2MAddExpression, \
+    ModelQuerysetBaseExpression
+from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.generate.statement import Statement
+from nlp.generate.suite import Import, ImportPlaceholder
 
 
 def test_expression_as_statement():
     """Check that expressions can be converted to a simple statement."""
-    exp = Expression()
+    exp = Expression('')
     statement = exp.as_statement()
     assert statement.__class__ == Statement
     assert statement.expression == exp
@@ -33,3 +39,27 @@ def test_m2m_add_expression():
     """Check that m2m add expression creates the correct template."""
     exp = ModelM2MAddExpression(model_instance_variable='foo', field='baz', add_variable='bar')
     assert exp.to_template() == 'foo.baz.add(bar)'
+
+
+def test_model_queryset_base_expression():
+    """Check that ModelQuerysetBaseExpression generates the correct template."""
+    exp = ModelQuerysetBaseExpression(ModelAdapter(User, None), 'filter', [])
+    assert exp.to_template() == 'User.objects.filter()'
+    exp_2 = ModelQuerysetBaseExpression(AbstractModelAdapter('Roof'), 'all', [])
+    assert exp_2.to_template() == 'Roof.objects.all()'
+
+
+def test_model_queryset_base_expression_add_to_test_case():
+    """Check that the ModelQuerysetBaseExpression adds the correct import to the test case."""
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    exp = ModelQuerysetBaseExpression(ModelAdapter(User, None), 'filter', [])
+    exp.on_add_to_test_case(test_case)
+    exp_2 = ModelQuerysetBaseExpression(AbstractModelAdapter('Roof'), 'filter', [])
+    exp_2.on_add_to_test_case(test_case)
+
+    assert len(suite.imports) == 2
+    assert isinstance(suite.imports[0], Import)
+    assert isinstance(suite.imports[1], ImportPlaceholder)
+

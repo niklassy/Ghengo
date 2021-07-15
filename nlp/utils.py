@@ -1,10 +1,16 @@
+import zahlwort2num as w2n_de
+from word2number import w2n as w2n_en
+
+from core.constants import Languages
+from core.exception import LanguageNotSupported
 from nlp.generate.utils import to_function_name
-from nlp.vocab import NEGATIONS
+from nlp.vocab import NEGATIONS, LIKE_NUM_WORDS, NUM_END_VARIATIONS
 
 
 class NoToken:
     children = []
     is_digit = False
+    lang_ = None
 
     def __eq__(self, other):
         return False
@@ -14,6 +20,31 @@ class NoToken:
 
     def __str__(self):
         return ''
+
+
+def get_next_token(token):
+    """
+    Returns the token that follows the one that is passed to the function. If there is none, a NoToken instance is
+    returned.
+    """
+    try:
+        return token.doc[token.i + 1]
+    except IndexError:
+        return NoToken()
+
+
+def get_previous_token(token):
+    """
+    Returns the token that is behind the one that is passed to the function. If there is none, a NoToken instance is
+    returned.
+    """
+    try:
+        if token.i == 0:
+            return NoToken()
+
+        return token.doc[token.i - 1]
+    except IndexError:
+        return NoToken()
 
 
 def get_non_stop_tokens(doc):
@@ -164,3 +195,68 @@ def token_to_function_name(token):
         token_str = token_str[1:-1]
 
     return to_function_name(token_str)
+
+
+def num_word_to_integer(num_word, language):
+    """
+    Changes a word into a number. (Like two => 2)
+
+    :raises LanguageNotSupported - provided language is not supported yet
+    :raises ValueError - word cannot be converted
+    """
+    if language not in Languages.get_supported_languages():
+        raise LanguageNotSupported()
+
+    if language == Languages.DE:
+        try:
+            return w2n_de.convert(num_word)
+        except KeyError:
+            raise ValueError('No value found')
+
+    return w2n_en.word_to_num(num_word)
+
+
+def token_is_like_num(token):
+    """
+    Checks if a given token is like a number (two, zwei etc.)
+    """
+    text = str(token)
+
+    if isinstance(token, NoToken):
+        return False
+
+    # some tokens already have the value set, this does not work well for non english languages though
+    if token.like_num:
+        return True
+
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+
+    text_lower = text.lower()
+
+    try:
+        num_word_to_integer(text_lower, token.lang_)
+        return True
+    except (ValueError, LanguageNotSupported):
+        pass
+
+    try:
+        if text_lower in LIKE_NUM_WORDS[token.lang_].keys():
+            return True
+
+        for end_variation in NUM_END_VARIATIONS[token.lang]:
+            if text_lower[:-len(end_variation)].isdigit():
+                return True
+    except KeyError:
+        pass
+
+    return False

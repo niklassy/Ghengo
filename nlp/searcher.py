@@ -2,6 +2,7 @@ import inspect
 
 from django.contrib.auth.models import Permission
 
+from core.constants import Languages
 from django_meta.api import UrlPatternAdapter, Methods, AbstractApiFieldAdapter, ApiFieldAdapter
 from django_meta.model import AbstractModelFieldAdapter, AbstractModelAdapter
 from nlp.locator import RestActionLocator
@@ -28,18 +29,18 @@ class Searcher(object):
     @property
     def translator_to_en(self):
         if self._translator_to_en is None:
-            self._translator_to_en = CacheTranslator(src_language=self.src_language, target_language='en')
+            self._translator_to_en = CacheTranslator(src_language=self.src_language, target_language=Languages.EN)
         return self._translator_to_en
 
     @property
     def translator_to_src(self):
         if self._translator_to_src is None:
-            self._translator_to_src = CacheTranslator(src_language='en', target_language=self.src_language)
+            self._translator_to_src = CacheTranslator(src_language=Languages.EN, target_language=self.src_language)
         return self._translator_to_src
 
     @property
     def nlp_en(self):
-        return Nlp.for_language('en')
+        return Nlp.for_language(Languages.EN)
 
     @property
     def nlp_src_language(self):

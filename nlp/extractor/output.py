@@ -3,13 +3,15 @@ from decimal import Decimal
 
 from spacy.tokens.token import Token
 
+from core.exception import LanguageNotSupported
 from nlp.extractor.exception import ExtractionError
 from nlp.extractor.vocab import POSITIVE_BOOLEAN_INDICATORS, NEGATIVE_BOOLEAN_INDICATORS
 from nlp.generate.expression import ModelFactoryExpression, CreateUploadFileExpression
 from nlp.generate.variable import Variable
 from nlp.generate.warning import NO_VALUE_FOUND_CODE, VARIABLE_NOT_FOUND, DICT_AS_STRING, FILE_NOT_FOUND
 from nlp.utils import is_quoted, get_all_children, get_verb_for_token, token_is_negated, get_proper_noun_from_chunk, \
-    get_noun_from_chunk, token_is_proper_noun, get_noun_chunk_of_token, get_noun_chunks
+    get_noun_from_chunk, token_is_proper_noun, get_noun_chunk_of_token, get_noun_chunks, token_is_like_num, \
+    num_word_to_integer, get_next_token
 
 
 class ExtractorOutput(object):
@@ -119,20 +121,18 @@ class ExtractorOutput(object):
             if token.pos_ == 'ADV' and token.head.pos_ == 'AUX':
                 token = token.head
 
-            return not token_is_negated(token)
+            children_negated = any([token_is_negated(child) for child in get_all_children(token)])
+            return not token_is_negated(token) and not children_negated
 
         # check if any children is a digit or a proper noun, if yes they are the value
         for child in token.children:
             if child.is_digit or token_is_proper_noun(child):
                 return str(child)
 
-        try:
-            # as an alternative, if the next token is in quotes it should be the value
-            next_token = self.document[token.i + 1]
-            if is_quoted(next_token):
-                return str(next_token)
-        except IndexError:
-            pass
+        # as an alternative, if the next token is in quotes it should be the value
+        next_token = get_next_token(token)
+        if is_quoted(next_token):
+            return str(next_token)
 
         # if still nothing is found, the value might be in a previous noun chunk
         try:
@@ -200,28 +200,44 @@ class NumberAsStringOutput(ExtractorOutput):
         except ValueError:
             raise ExtractionError(NO_VALUE_FOUND_CODE)
 
+    @classmethod
+    def token_can_be_parsed_to_int(cls, token):
+        """
+        Checks if a given token can be parsed to an int
+        """
+        try:
+            num_word_to_integer(str(token), token.lang_)
+            return token_is_like_num(token)
+        except (ValueError, LanguageNotSupported):
+            return False
+
     def token_to_string_output(self, token):
         if self.source_represents_output:
+            if self.token_can_be_parsed_to_int(self.source):
+                return str(num_word_to_integer(str(self.source), self.source.lang_))
+
             return str(self.source)
 
         for child in get_all_children(token):
             if child.is_digit:
                 return str(child)
 
-        try:
-            # as an alternative, if the next token is in quotes it should be the value
-            next_token = self.document[token.i + 1]
-            if is_quoted(next_token):
-                clean_next_token_str = str(next_token)[1:-1]
+            if self.token_can_be_parsed_to_int(child):
+                return str(num_word_to_integer(str(child), child.lang_))
 
-                try:
-                    float(clean_next_token_str)
-                    return clean_next_token_str
-                except ValueError:
-                    pass
+        # as an alternative, if the next token is in quotes it should be the value
+        next_token = get_next_token(token)
+        if is_quoted(next_token):
+            clean_next_token_str = str(next_token)[1:-1]
 
-        except IndexError:
-            pass
+            if self.token_can_be_parsed_to_int(next_token):
+                return str(num_word_to_integer(str(next_token), next_token.lang_))
+
+            try:
+                float(clean_next_token_str)
+                return clean_next_token_str
+            except ValueError:
+                pass
 
         if token.is_digit:
             return str(token)

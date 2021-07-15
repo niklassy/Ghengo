@@ -1,7 +1,7 @@
 from nlp.extractor.exception import ExtractionError
-from nlp.extractor.output import ExtractorOutput, VariableOutput, NumberAsStringOutput, StringOutput
+from nlp.extractor.output import ExtractorOutput, VariableOutput, NumberAsStringOutput, StringOutput, IntegerOutput
 from nlp.generate.warning import GenerationWarning
-from nlp.utils import get_all_children, is_quoted, token_is_proper_noun
+from nlp.utils import get_all_children, is_quoted, token_is_proper_noun, get_next_token
 
 
 class Extractor(object):
@@ -148,6 +148,9 @@ class ManyExtractorMixin(object):
         """
         Overwrite the normal _extract_value. If many is True, use `_extract_many` instead.
         """
+        if token is None:
+            token = self.source
+
         if self.many:
             return self._extract_many(output_instance, token)
 
@@ -163,8 +166,15 @@ class ManyExtractorMixin(object):
         if not self.many:
             return self._extract_value(output_instance, token)
 
+        children = get_all_children(token)
+
+        # add the next token if it is quoted, just in case it was not recognized as a child
+        next_token = get_next_token(token)
+        if next_token and is_quoted(next_token) and next_token not in children:
+            children = children + [next_token]
+
         # if there is a list of values, these values are normally the children of the source
-        for child in get_all_children(self.source):
+        for child in children:
             if not child or self.skip_token_for_many(child):
                 continue
 
@@ -195,6 +205,10 @@ class ManyExtractorMixin(object):
 
 class StringExtractor(Extractor):
     output_class = StringOutput
+
+
+class IntegerExtractor(Extractor):
+    output_class = IntegerOutput
 
 
 class ManyExtractor(ManyExtractorMixin, Extractor):

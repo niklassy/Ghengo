@@ -1,3 +1,4 @@
+from core.constants import Languages
 from gherkin.compiler import GherkinLexer, GherkinParser
 from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
@@ -14,7 +15,7 @@ def test_gherkin_lexer_language():
     assert_callable_raises(lexer.on_token_added, GherkinInvalid, args=[language])
     language = LanguageToken(text='# language: de', line=Line('# language: de', 0))
     lexer.on_token_added(language)
-    assert Settings.language == 'de'
+    assert Settings.language == Languages.DE
 
 
 def test_gherkin_lexer_end_of_tokens():

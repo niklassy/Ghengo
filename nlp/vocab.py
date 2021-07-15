@@ -1,6 +1,32 @@
+from core.constants import Languages
+
 NEGATIONS = {
-    'de': ['kein', 'nicht'],
-    'en': ['not', 'no'],
+    Languages.DE: ['kein', 'nicht'],
+    Languages.EN: ['not', 'no'],
+}
+
+NUM_END_VARIATIONS = {
+    Languages.DE: ['ßig', 'zig']
+}
+
+LIKE_NUM_WORDS = {
+    Languages.DE: {
+        'eins': 1,
+        'zwei': 2,
+        'drei': 3,
+        'vier': 4,
+        'fünf': 5,
+        'sechs': 6,
+        'sieben': 7,
+        'acht': 8,
+        'neun': 9,
+        'zehn': 10,
+        'elf': 11,
+        'zwölf': 12,
+        'dreizehn': 13,
+        'zwanzig': 13,
+        'hundert': 100,
+    }
 }
 
 FILE_EXTENSIONS = {

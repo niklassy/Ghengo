@@ -1,15 +1,25 @@
+import inspect
 import mimetypes
 
 from nlp.generate.argument import Argument, Kwarg
+from nlp.generate.constants import CompareChar
 from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
 from nlp.generate.replaceable import Replaceable
 from settings import INDENT_SPACES
 from nlp.generate.statement import Statement
-from nlp.generate.suite import Import
+from nlp.generate.suite import Import, ImportPlaceholder
 from nlp.generate.utils import camel_to_snake_case
 
 
 class Expression(Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
+    template = '{child}'
+
+    def __init__(self, child=None):
+        self.child = child
+
+    def get_template_context(self, line_indent, indent):
+        return {'child': self.child if self.child else ''}
+
     def as_statement(self):
         """Expressions can be statements. This can be used to translate an expression into a Statement."""
         return Statement(self)
@@ -67,12 +77,40 @@ class ModelQuerysetBaseExpression(FunctionCallExpression):
         return context
 
     def on_add_to_test_case(self, test_case):
-        test_case.test_suite.add_import(Import('django.contrib.auth.models', 'Permission'))
+        # We can only add the import if the model already exists in the code
+        if self.model_adapter.exists_in_code:
+            test_case.test_suite.add_import(
+                Import(
+                    self.model_adapter.model.__module__,
+                    self.model_adapter.model.__name__
+                )
+            )
+        else:
+            test_case.test_suite.add_import(ImportPlaceholder(self.model_adapter.name))
 
 
 class ModelQuerysetFilterExpression(ModelQuerysetBaseExpression):
     def __init__(self, model_adapter, function_kwargs):
         super().__init__(model_adapter, 'filter', function_kwargs)
+
+
+class ModelQuerysetAllExpression(ModelQuerysetBaseExpression):
+    def __init__(self, model_adapter):
+        super().__init__(model_adapter, 'all', [])
+
+
+class CompareExpression(Expression):
+    template = '{value_1} {compare_char} {value_2}'
+
+    def __init__(self, value_1, compare_char, value_2):
+        super().__init__()
+        self.value_1 = value_1
+        self.value_2 = value_2
+        assert compare_char in CompareChar.get_all()
+        self.compare_char = compare_char
+
+    def get_template_context(self, line_indent, indent):
+        return {'compare_char': self.compare_char, 'value_1': self.value_1, 'value_2': self.value_2}
 
 
 class APIClientExpression(FunctionCallExpression):

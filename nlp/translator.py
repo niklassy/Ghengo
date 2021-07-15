@@ -1,4 +1,6 @@
+import inspect
 import json
+import os
 from json import JSONDecodeError
 from pathlib import Path
 
@@ -105,17 +107,30 @@ class CacheTranslator(object):
         """Returns the index in the cache for a given text."""
         return text
 
+    def _call_translator_safe(self, text, **kwargs):
+        """
+        This is a wrapper around the translator call. It is used to prevent calling any api while running tests.
+        """
+        # normally this is bad practice because the code considers cases where tests are run; I just wanna be safe
+        # here and not call the Google api every time the tests run
+        if os.environ.get('RUNNING_TESTS') == 'True':
+            assert not inspect.isfunction(self.translator.translate), 'Remember to replace the translator in ' \
+                                                                      'with mocker class with a __call__ to avoid ' \
+                                                                      'unnecessary api calls while testing!!'
+
+        return self.translator.translate(text, **kwargs)
+
     def translate(self, text, **kwargs):
         """
         Translates a given text.
         """
-        if text in '!"#$%&\'()*+,-./:;<=>?@[]^_`{|}~\\':
+        if all([char in '!"#$%&\'()*+,-./:;<=>?@[]^_`{|}~\\' for char in text]):
             return text
 
         if self.translator is None:
             translation = text
         elif self.translator_request_necessary(text):
-            translation = self.translator.translate(text, **kwargs)
+            translation = self._call_translator_safe(text, **kwargs)
             self.write_to_cache(text, translation)
         else:
             translation = self.read_from_cache(text)

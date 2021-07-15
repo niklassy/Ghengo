@@ -1,3 +1,4 @@
+from core.constants import Languages
 from nlp.tiler import Tiler
 
 
@@ -26,7 +27,7 @@ def test_tiler_best_converter():
     class CustomTiler(Tiler):
         converter_classes = [BadConverter]
 
-    tiler = CustomTiler('Mein Text', 'de', 'django_proj', 'test_case')
+    tiler = CustomTiler('Mein Text', Languages.DE, 'django_proj', 'test_case')
     assert isinstance(tiler.best_converter, BadConverter)
     tiler._best_converter = None
     tiler.converter_classes.append(AverageConverter)
