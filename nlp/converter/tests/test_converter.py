@@ -63,7 +63,7 @@ def test_model_factory_converter_compatibility(doc, min_compatibility, max_compa
             ['from_other_system', 'system'],
         ),
         (
-            nlp('Gegeben ein Benutzer Alice mit dem Benutzernamen Alice und "Haus1234" als Passwort'),
+            nlp('Gegeben sei ein Benutzer Alice mit dem Benutzernamen Alice und "Haus1234" als Passwort'),
             ['username', 'password'],
         ),
     ]
@@ -79,6 +79,7 @@ def test_model_factory_converter_extractors(doc, expected_field_names, mocker):
         django_project,
         test_case,
     )
+    converter.prepare_converter()
     assert len(converter.extractors) == len(expected_field_names), '{} != {}'.format(
         [e.field_name for e in converter.extractors], expected_field_names)
     for index, extractor in enumerate(converter.extractors):

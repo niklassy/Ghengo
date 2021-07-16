@@ -246,6 +246,11 @@ def token_is_like_num(token):
             return True
 
     text_lower = text.lower()
+    try:
+        num_word_to_integer(text_lower, token.lang_)
+        return token.pos_ == 'NUM'
+    except (ValueError, LanguageNotSupported):
+        pass
 
     try:
         if text_lower in LIKE_NUM_WORDS[token.lang_].keys():
