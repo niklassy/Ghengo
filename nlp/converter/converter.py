@@ -832,6 +832,17 @@ class ManyResponseConverter(ResponseConverterBase):
         self.block_token_as_argument(self.response_length_locator.fittest_token)
         self.block_token_as_argument(self.response_entry_locator.fittest_token)
 
+    def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
+        # TODO: still not happy about this
+        located = any([
+            argument_wrapper.token and self.response_length_locator.fittest_token == argument_wrapper.token,
+            argument_wrapper.token and self.response_entry_locator.fittest_token == argument_wrapper.token,
+        ])
+        if located:
+            return IntegerExtractor
+
+        return super().get_extractor_class(argument_wrapper)
+
     def get_document_compatibility(self):
         compatibility = super().get_document_compatibility()
 
@@ -849,3 +860,29 @@ class ManyResponseConverter(ResponseConverterBase):
 
         # make sure to stay between 0 and 1
         return compatibility if compatibility < 1 else 1
+
+    def prepare_statements(self, statements):
+        # TODO: move length check into another converter??
+        # TODO: check for model name for sentences like `Then it should contain three orders.`
+        statements = super().prepare_statements(statements)
+
+        located_token = self.response_length_locator.fittest_token or self.response_entry_locator.fittest_token
+        if located_token:
+            chunk = get_noun_chunk_of_token(located_token, self.document)
+
+            compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
+            compare_locator.locate()
+
+            wrapper = ConverterInitArgumentWrapper(
+                token=located_token,
+                representative=located_token,
+            )
+            extractor = self.get_extractor_instance(wrapper)
+            exp = CompareExpression(
+                FunctionCallExpression('len', [Attribute(self.get_referenced_response_variable(), 'data')]),
+                compare_locator.comparison,
+                extractor.extract_value(),
+            )
+            statements.append(AssertStatement(exp))
+
+        return statements
