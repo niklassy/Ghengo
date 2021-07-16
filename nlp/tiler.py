@@ -1,6 +1,6 @@
 from nlp.converter.base_converter import Converter
 from nlp.converter.converter import ModelVariableReferenceConverter, ModelFactoryConverter, RequestConverter, \
-    FileConverter, CountQuerysetConverter, ExistsQuerysetConverter, ResponseConverter
+    FileConverter, CountQuerysetConverter, ExistsQuerysetConverter, ResponseConverter, ManyResponseConverter
 from nlp.setup import Nlp
 
 
@@ -77,6 +77,7 @@ class WhenTiler(Tiler):
 class ThenTiler(Tiler):
     converter_classes = [
         CountQuerysetConverter,
+        ManyResponseConverter,
         ResponseConverter,
         ExistsQuerysetConverter,
     ]

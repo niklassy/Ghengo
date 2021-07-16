@@ -33,7 +33,7 @@ Funktionalität: Reference
 
   Szenario: file
     Wenn Alice die Liste der Aufträge holt
-    Dann sollte die Antwort eine Länge von 2 haben
+    Dann sollte die Antwort drei Einträge enthalten
 
 #  Szenario: Ändern von ToDo - anderer Nutzer
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "order.add_order"

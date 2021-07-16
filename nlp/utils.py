@@ -216,6 +216,10 @@ def num_word_to_integer(num_word, language):
     return w2n_en.word_to_num(num_word)
 
 
+def token_is_plural(token):
+    return token_is_noun(token) and 'Number=Plur' in token.morph
+
+
 def token_is_like_num(token):
     """
     Checks if a given token is like a number (two, zwei etc.)
@@ -242,12 +246,6 @@ def token_is_like_num(token):
             return True
 
     text_lower = text.lower()
-
-    try:
-        num_word_to_integer(text_lower, token.lang_)
-        return True
-    except (ValueError, LanguageNotSupported):
-        pass
 
     try:
         if text_lower in LIKE_NUM_WORDS[token.lang_].keys():
