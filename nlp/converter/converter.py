@@ -61,6 +61,18 @@ class ClassConverter(Converter):
         if token.pos_ == 'VERB' and token.head.pos_ != 'AUX':
             return False
 
+        last_word = NoToken()
+        for i in range(len(self.document)):
+            end_token = self.document[-(i + 1)]
+
+            if not end_token.is_punct:
+                last_word = end_token
+                break
+
+        # if there is a verb where the parent is a finites Modalverb (e.g. sollte), it should not be an argument
+        if token == last_word and token_is_verb(token) and token.head.tag_ == 'VMFIN':
+            return False
+
         return True
 
     def get_searcher_kwargs(self):
@@ -575,21 +587,6 @@ class QuerysetConverter(ModelConverter):
     """
     This converter can be used to translate text into a queryset statement.
     """
-    def token_can_be_argument(self, token):
-        last_word = NoToken()
-        for i in range(len(self.document)):
-            end_token = self.document[-(i + 1)]
-
-            if not end_token.is_punct:
-                last_word = end_token
-                break
-
-        # if there is a verb where the parent is a finites Modalverb (e.g. sollte), it should be an argument
-        if token == last_word and token_is_verb(token) and token.head.tag_ == 'VMFIN':
-            return False
-
-        return super().token_can_be_argument(token)
-
     def get_document_compatibility(self):
         """
         If the model token is not a noun, it is unlikely that this converter matches.
@@ -698,7 +695,7 @@ class CountQuerysetConverter(QuerysetConverter):
         expression = CompareExpression(
             Attribute(qs_statement.variable, 'count()'),
             compare_locator.comparison,
-            count_value,
+            Argument(count_value),
         )
         statement = AssertStatement(expression)
         statements.append(statement)
@@ -721,18 +718,57 @@ class ExistsQuerysetConverter(QuerysetConverter):
 
 
 class ResponseConverterBase(ClassConverter):
+    field_searcher_classes = [SerializerFieldSearcher, ModelFieldSearcher]
+
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
-        self.status_locator = NounLocator(self.document, 'status')
 
-        self.response_locator = NounLocator(self.document, 'response')
-        self.response_locator.locate()
-
-    def prepare_converter(self):
+        # create some locators that look for certain keywords:
+        self.status_locator = NounLocator(self.document, 'status')  # <- status of response
         self.status_locator.locate()
 
+        self.response_locator = NounLocator(self.document, 'response')  # <- response itself
+        self.response_locator.locate()
+
+        self.error_locator = NounLocator(self.document, 'error')  # <- response itself
+        self.error_locator.locate()
+
+        self.model_in_text = NewModelProperty(self, blocked_tokens=self._blocked_argument_tokens)
+
+    @property
+    def model_adapter(self):
+        referenced_variable = self.get_referenced_response_variable()
+
+        if not referenced_variable:
+            return None
+
+        return referenced_variable.value.url_adapter.model_adapter
+
+    def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
+        """Add the model and the field to the kwargs."""
+        kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
+
+        if argument_wrapper.token in self._blocked_argument_tokens:
+            return kwargs
+
+        kwargs['field_adapter'] = argument_wrapper.representative
+
+        # since the class may be for model fields or REST fields, add the model_adapter if needed
+        if issubclass(extractor_cls, ModelFieldExtractor) or extractor_cls == ModelFieldExtractor:
+            kwargs['model_adapter'] = self.model_adapter
+
+        return kwargs
+
+    def get_searcher_kwargs(self):
+        return {
+            'serializer': self.get_referenced_response_variable().value.serializer_class(),
+            'model_adapter': self.model_adapter,
+        }
+
+    def prepare_converter(self):
         self.block_token_as_argument(self.status_locator.fittest_token)
         self.block_token_as_argument(self.response_locator.fittest_token)
+        self.block_token_as_argument(self.model_in_text.token)
 
     def get_document_compatibility(self):
         compatibility = 1
@@ -750,6 +786,9 @@ class ResponseConverterBase(ClassConverter):
     def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
         if self.status_locator.fittest_token == argument_wrapper.token:
             return IntegerExtractor
+
+        if self.error_locator.fittest_token == argument_wrapper.token:
+            return StringExtractor
 
         if isinstance(argument_wrapper.representative, AbstractModelFieldAdapter):
             return get_model_field_extractor(argument_wrapper.representative)
@@ -787,30 +826,67 @@ class ResponseConverterBase(ClassConverter):
             )
             statements.append(AssertStatement(exp))
 
+        # handle checking the error
+        # TODO: maybe move to another converter?
+        if self.error_locator.fittest_token:
+            wrapper = ConverterInitArgumentWrapper(
+                token=self.error_locator.fittest_token,
+                representative=self.error_locator.best_compare_value
+            )
+            extractor = self.get_extractor_instance(wrapper)
+            exp = CompareExpression(
+                Argument(extractor.extract_value()),
+                CompareChar.IN,
+                FunctionCallExpression('str', [Attribute(response_var, 'data')]),
+            )
+            statements.append(AssertStatement(exp))
+
         return statements
 
 
 class ResponseConverter(ResponseConverterBase):
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
-        self.response_list_locator = NounLocator(self.document, 'list')
-        self.response_list_locator.locate()
 
-        self.response_entry_locator = NounLocator(self.document, 'entry')
-        self.response_entry_locator.locate()
+        self._response_data_variable = None
 
-    def prepare_converter(self):
-        super().prepare_converter()
+    @property
+    def response_data_variable(self):
+        if self._response_data_variable is None:
+            self._response_data_variable = Variable('resp_data', self.model_adapter.name if self.model_adapter else '')
+        return self._response_data_variable
 
-        self.block_token_as_argument(self.response_entry_locator.fittest_token)
-        self.block_token_as_argument(self.response_list_locator.fittest_token)
+    def prepare_statements(self, statements):
+        statements = super().prepare_statements(statements)
+
+        if len(self.extractors) > 0:
+            statement = AssignmentStatement(
+                variable=self.response_data_variable,
+                expression=Expression(Attribute(self.get_referenced_response_variable(), 'data')),
+            )
+            statements.append(statement)
+
+        return statements
 
     def handle_extractor(self, extractor, statements):
-        # TODO: determine if the response is going to be a list or an object
-        #   maybe if list is mentioned, or list call is made
+        chunk = get_noun_chunk_of_token(extractor.source, self.document)
+        compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
+        compare_locator.locate()
 
-        # TODO: support length of list
-        pass
+        assert_statement = AssertStatement(
+            CompareExpression(
+                # variable.get()
+                FunctionCallExpression(
+                    Attribute(self.response_data_variable, 'get'),
+                    [Argument(extractor.field_name)],
+                ),
+                # ==
+                compare_locator.comparison,
+                # value
+                Argument(extractor.extract_value()),
+            )
+        )
+        statements.append(assert_statement)
 
 
 class ManyResponseConverter(ResponseConverterBase):
@@ -827,17 +903,18 @@ class ManyResponseConverter(ResponseConverterBase):
         self.response_entry_locator.locate()
 
     def prepare_converter(self):
-        super().prepare_converter()
         self.block_token_as_argument(self.response_list_locator.fittest_token)
         self.block_token_as_argument(self.response_length_locator.fittest_token)
         self.block_token_as_argument(self.response_entry_locator.fittest_token)
+        # keep this at the end
+        super().prepare_converter()
 
     def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
-        # TODO: still not happy about this
         located = any([
             argument_wrapper.token and self.response_length_locator.fittest_token == argument_wrapper.token,
             argument_wrapper.token and self.response_entry_locator.fittest_token == argument_wrapper.token,
         ])
+
         if located:
             return IntegerExtractor
 
@@ -855,34 +932,95 @@ class ManyResponseConverter(ResponseConverterBase):
             compatibility *= 1.7
 
         # if there is the word `entry`, and it is in plural, it is likely that multiple objects are returned
-        if self.response_entry_locator.fittest_token and token_is_plural(self.response_entry_locator.fittest_token):
-            compatibility *= 1.5
+        if self.response_entry_locator.fittest_token:
+            compatibility *= 1.1
 
         # make sure to stay between 0 and 1
-        return compatibility if compatibility < 1 else 1
+        return compatibility
+
+
+class ManyLengthResponseConverter(ManyResponseConverter):
+    """
+    This converter is used for cases where the length of the response is detected and turned into statements.
+    """
+
+    def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
+        kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
+        if argument_wrapper.token == self.get_length_token():
+            try:
+                del kwargs['field_adapter']
+            except KeyError:
+                pass
+        return kwargs
+
+    def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
+        """
+        The length token should always use an IntegerExtractor.
+        """
+        if argument_wrapper.token == self.get_length_token():
+            return IntegerExtractor
+
+        return super().get_extractor_class(argument_wrapper)
+
+    def get_length_token(self):
+        """
+        Returns the token that represents the length of the response.
+        """
+        fittest_token = self.response_length_locator.fittest_token or self.response_entry_locator.fittest_token
+
+        if fittest_token:
+            return fittest_token
+
+        return self.model_in_text.token
+
+    def get_length_extractor(self):
+        """
+        Returns the extractor of the length token.
+        """
+        token = self.get_length_token()
+
+        if not token:
+            return None
+
+        wrapper = ConverterInitArgumentWrapper(token=token, representative=token)
+        return self.get_extractor_instance(wrapper)
+
+    def get_length_as_python_value(self):
+        """Get the length as a python value."""
+        extractor = self.get_length_extractor()
+        if not extractor:
+            return None
+
+        return extractor.extract_value()
+
+    def get_document_compatibility(self):
+        compatibility = super().get_document_compatibility()
+
+        # if there is no length extractor, this does not fit
+        length_extractor = self.get_length_extractor()
+        if not length_extractor:
+            return 0
+
+        # if an integer value is returned, it is very likely that this converter fits
+        if isinstance(self.get_length_as_python_value(), int):
+            compatibility *= 1.7
+        else:
+            compatibility *= 0.5
+
+        return compatibility
 
     def prepare_statements(self, statements):
-        # TODO: move length check into another converter??
-        # TODO: check for model name for sentences like `Then it should contain three orders.`
         statements = super().prepare_statements(statements)
 
-        located_token = self.response_length_locator.fittest_token or self.response_entry_locator.fittest_token
-        if located_token:
-            chunk = get_noun_chunk_of_token(located_token, self.document)
+        chunk = get_noun_chunk_of_token(self.get_length_token(), self.document)
+        compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
+        compare_locator.locate()
 
-            compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
-            compare_locator.locate()
-
-            wrapper = ConverterInitArgumentWrapper(
-                token=located_token,
-                representative=located_token,
-            )
-            extractor = self.get_extractor_instance(wrapper)
-            exp = CompareExpression(
-                FunctionCallExpression('len', [Attribute(self.get_referenced_response_variable(), 'data')]),
-                compare_locator.comparison,
-                extractor.extract_value(),
-            )
-            statements.append(AssertStatement(exp))
+        exp = CompareExpression(
+            FunctionCallExpression('len', [Attribute(self.get_referenced_response_variable(), 'data')]),
+            compare_locator.comparison,
+            Argument(self.get_length_as_python_value()),
+        )
+        statements.append(AssertStatement(exp))
 
         return statements

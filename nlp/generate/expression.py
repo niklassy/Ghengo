@@ -36,7 +36,7 @@ class FunctionCallExpression(Expression):
     def get_template_context(self, line_indent, indent):
         kwargs_template = ', '.join([kwarg.to_template(line_indent) for kwarg in self.function_kwargs])
 
-        if len(self.function_name + kwargs_template) > 100:
+        if len(str(self.function_name) + kwargs_template) > 100:
             long_content_start = '\n'
             long_content_end = '\n' + self.get_indent_string(line_indent)
             kwargs_template = ',\n'.join([kwarg.to_template(
