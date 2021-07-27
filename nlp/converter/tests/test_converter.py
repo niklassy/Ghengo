@@ -401,7 +401,7 @@ def test_qs_count_converter(mocker):
     assert len(statements) == 2
     assert isinstance(statements[1].expression, CompareExpression)
     assert statements[1].expression.compare_char == CompareChar.EQUAL
-    assert statements[1].expression.value_2 == 2
+    assert statements[1].expression.value_2.value == 2
 
     # check that a doc without arguments results in an all expression
     converter = CountQuerysetConverter(
@@ -414,7 +414,7 @@ def test_qs_count_converter(mocker):
     assert len(statements) == 2
     assert isinstance(statements[1].expression, CompareExpression)
     assert statements[1].expression.compare_char == CompareChar.GREATER_EQUAL
-    assert statements[1].expression.value_2 == 2
+    assert statements[1].expression.value_2.value == 2
 
 
 def test_qs_exists_converter(mocker):
