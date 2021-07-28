@@ -2,7 +2,6 @@
 Funktionalität: Reference
   Grundlage:
    Gegeben sei ein Benutzer Alice mit dem Namen alice, der Email "a@local.local"
-    Und ein ein To-Do 1
 
 #  Szenario: Permission in Text
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "Auftrag hinzufügen"
@@ -34,7 +33,7 @@ Funktionalität: Reference
 
   Szenario: file
     Wenn Alice die Liste der Aufträge holt
-    Dann sollte der zweite Eintrag den Namen "Alice" und die Mission 1 haben
+    Dann sollten drei Einträge enthalten sein
 
 #  Szenario: Ändern von ToDo - anderer Nutzer
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "order.add_order"

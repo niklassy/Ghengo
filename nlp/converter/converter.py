@@ -12,6 +12,7 @@ from nlp.converter.wrapper import ConverterInitArgumentWrapper
 from nlp.extractor.base import StringExtractor, IntegerExtractor, Extractor
 from nlp.extractor.fields_rest_api import get_api_model_field_extractor, ApiModelFieldExtractor
 from nlp.extractor.fields_model import get_model_field_extractor, ModelFieldExtractor
+from nlp.extractor.output import ModelVariableOutput
 from nlp.generate.argument import Kwarg, Argument
 from nlp.generate.attribute import Attribute
 from nlp.generate.constants import CompareChar
@@ -717,6 +718,9 @@ class ExistsQuerysetConverter(QuerysetConverter):
 
 
 class ResponseConverterBase(ClassConverter):
+    """
+    This is the base class for all converters that relate to the response.
+    """
     field_searcher_classes = [SerializerFieldSearcher, ModelFieldSearcher]
 
     def __init__(self, document, related_object, django_project, test_case):
@@ -736,6 +740,7 @@ class ResponseConverterBase(ClassConverter):
 
     @property
     def model_adapter(self):
+        """Returns the model_adapter that is referenced by the variable of the request."""
         referenced_variable = self.get_referenced_response_variable()
 
         if not referenced_variable:
@@ -745,6 +750,14 @@ class ResponseConverterBase(ClassConverter):
 
     @property
     def token_to_extractor_map(self):
+        """
+        A property that returns a dictionary of:
+            token -> extractor
+
+        It can be used to define special extractors for specific tokens. If you want to define any,
+        use `get_token_to_extractor_list`. This property is only used to access the values. This is needed because
+        some tokens might be NoToken. These instances cannot be used as a key because they have no hash.
+        """
         token_extractor_map = {}
 
         for token, extractor in self.get_token_to_extractor_list():
@@ -754,12 +767,17 @@ class ResponseConverterBase(ClassConverter):
         return token_extractor_map
 
     def get_token_to_extractor_list(self):
+        """
+        Returns a list of tuples (Token, Extractor) to define a specific extractor for a token. This tuple is
+        transformed into a dict in `token_to_extractor_map`
+        """
         return [
             (self.status_locator.fittest_token, IntegerExtractor),
             (self.error_locator.fittest_token, StringExtractor),
         ]
 
     def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
+        """Can use serializer, model fields and the custom extractors."""
         locator_extractor_map = self.token_to_extractor_map
 
         if argument_wrapper.token and argument_wrapper.token in locator_extractor_map:
@@ -796,7 +814,7 @@ class ResponseConverterBase(ClassConverter):
 
         # only block the model in text if it is actually equal to the one the serializer returns
         model_adapter_from_text = self.model_in_text.value
-        if model_adapter_from_text.models_are_equal(self.model_adapter):
+        if model_adapter_from_text and model_adapter_from_text.models_are_equal(self.model_adapter):
             self.block_token_as_argument(self.model_in_text.token)
 
     def get_document_compatibility(self):
@@ -813,6 +831,9 @@ class ResponseConverterBase(ClassConverter):
         return compatibility
 
     def get_referenced_response_variable(self):
+        """
+        Returns the variable that holds the request that was previously made.
+        """
         valid_variables = []
 
         for statement in self.test_case.statements:
@@ -822,8 +843,18 @@ class ResponseConverterBase(ClassConverter):
         if len(valid_variables) == 0:
             return None
 
-        # TODO: handle multiple request expressions!
-        return valid_variables[0]
+        # right now there is no way to determine the exact request that is meant. So just return the last entry
+        return valid_variables[-1]
+
+    def extract_and_handle_output(self, extractor):
+        extracted_value = super().extract_and_handle_output(extractor)
+
+        # sine we are currently not supporting nested objects, if a model variable is returned from the extractor
+        # use the pk instead of that variable
+        if extractor.get_output_class() == ModelVariableOutput:
+            return Attribute(extracted_value, 'pk')
+
+        return extracted_value
 
 
 class ResponseStatusCodeConverter(ResponseConverterBase):
@@ -854,7 +885,7 @@ class ResponseStatusCodeConverter(ResponseConverterBase):
                 CompareChar.EQUAL,
                 self.extract_and_handle_output(extractor),
             )
-            statements.append(AssertStatement(exp))
+            statements.append(AssertStatement(expression=exp))
 
         return statements
 
@@ -887,7 +918,7 @@ class ResponseErrorConverter(ResponseConverterBase):
                 CompareChar.IN,
                 FunctionCallExpression('str', [Attribute(response_var, 'data')]),
             )
-            statements.append(AssertStatement(exp))
+            statements.append(AssertStatement(expression=exp))
 
         return statements
 
@@ -908,6 +939,9 @@ class ResponseConverter(ResponseConverterBase):
         return self._response_data_variable
 
     def prepare_statements(self, statements):
+        """
+        First, save the data field in a separate variable to have easier access later on.
+        """
         statements = super().prepare_statements(statements)
 
         if len(self.extractors) > 0:
@@ -920,6 +954,9 @@ class ResponseConverter(ResponseConverterBase):
         return statements
 
     def handle_extractor(self, extractor, statements):
+        """
+        For each extractor create an assert statement and check for the value.
+        """
         super().handle_extractor(extractor, statements)
 
         chunk = get_noun_chunk_of_token(extractor.source, self.document)
@@ -943,9 +980,13 @@ class ResponseConverter(ResponseConverterBase):
 
 
 class ManyResponseConverter(ResponseConverterBase):
+    """
+    This converter is a base class for response that return a list instead of a simple object.
+    """
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
 
+        # keywords to identify a list:
         self.response_list_locator = NounLocator(self.document, 'list')
         self.response_list_locator.locate()
 
@@ -973,17 +1014,17 @@ class ManyResponseConverter(ResponseConverterBase):
     def get_document_compatibility(self):
         compatibility = super().get_document_compatibility()
 
-        # if the length of the response is checked, most likely multiple objects are returned
-        if self.response_length_locator.fittest_token:
-            compatibility *= 1.1
-
         # if a list is mentioned, the response will most likely be a list
-        if self.response_list_locator.fittest_token:
-            compatibility *= 1.7
+        list_token = self.response_list_locator.fittest_token
 
-        # if there is the word `entry`, and it is in plural, it is likely that multiple objects are returned
-        if self.response_entry_locator.fittest_token:
-            compatibility *= 1.1
+        # if the length of the response is checked, most likely multiple objects are returned
+        length_token = self.response_length_locator.fittest_token
+
+        # if there is the word `entry` it is likely that multiple objects are returned
+        entry_token = self.response_entry_locator.fittest_token
+
+        if not list_token and not length_token and not entry_token:
+            compatibility *= 0.3
 
         # make sure to stay between 0 and 1
         return compatibility
@@ -1037,6 +1078,7 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
         output_source = entry_extractor.output.output_source
 
         # since we are referring to the first or second or third entry, those words should be adjectives
+        # when checking the length, direct numbers are used instead (e.g. two entries)
         if not entry_token or (output_source and output_source.pos_ != 'ADJ'):
             compatibility *= 0.2
 
@@ -1047,6 +1089,9 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
         To prepare the statements, create an assignment statement that will hold the referenced entry of the list.
         """
         number_extractor = self.get_entry_extractor()
+        if number_extractor is None:
+            return
+
         # extracted value might be a GenerationWarning
         extracted_number = self.extract_and_handle_output(number_extractor)
 
@@ -1070,7 +1115,6 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
         For each extractor, create an assert statement and compare the value of the previously created variable
         via `get` and the desired value that is extracted.
         """
-        # TODO: handle case where response should be variable.pk instead! Here and the normal response converter!
         statement = AssertStatement(
             CompareExpression(
                 FunctionCallExpression(
@@ -1128,9 +1172,7 @@ class ManyLengthResponseConverter(ManyResponseConverter):
             return 0
 
         # if an integer value is returned, it is very likely that this converter fits
-        if isinstance(length_extractor.extract_value(), int):
-            compatibility *= 1.7
-        else:
+        if not isinstance(length_extractor.extract_value(), int):
             compatibility *= 0.5
 
         return compatibility
