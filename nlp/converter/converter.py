@@ -302,9 +302,7 @@ class ModelFactoryConverter(ModelConverter):
         super().handle_extractor(extractor, statements)
         factory_kwargs = statements[0].expression.function_kwargs
 
-        extracted_value = extractor.extract_value()
-        if extracted_value is None:
-            return
+        extracted_value = self.extract_and_handle_output(extractor)
 
         kwarg = Kwarg(extractor.field_name, extracted_value)
         factory_kwargs.append(kwarg)
@@ -333,17 +331,18 @@ class ModelVariableReferenceConverter(ModelConverter):
     def handle_extractor(self, extractor, statements):
         """Each value that was extracted represents a statement in which the value is set on the model instance."""
         super().handle_extractor(extractor, statements)
+        extracted_value = self.extract_and_handle_output(extractor)
 
         statement = ModelFieldAssignmentStatement(
             variable=self.variable.value,
-            assigned_value=Argument(value=extractor.extract_value()),
+            assigned_value=Argument(value=extracted_value),
             field_name=extractor.field_name,
         )
         statements.append(statement)
 
-    def get_statements_from_extractors(self, extractors):
+    def finish_statements(self, statements):
         """At the end there has to be a `save` call."""
-        statements = super().get_statements_from_extractors(extractors)
+        statements = super().finish_statements(statements)
         # only add a save statement if any model field was changed
         if len(statements) > 0:
             statements.append(ModelSaveExpression(self.variable.value).as_statement())
@@ -426,9 +425,7 @@ class FileConverter(ClassConverter):
         super().handle_extractor(extractor, statements)
         expression = statements[0].expression
 
-        extracted_value = extractor.extract_value()
-        if extracted_value is None:
-            return
+        extracted_value = self.extract_and_handle_output(extractor)
 
         # get the representative which should be name or content
         representative = extractor.representative
@@ -567,9 +564,7 @@ class RequestConverter(ClassConverter):
         """
         super().handle_extractor(extractor, statements)
 
-        extracted_value = extractor.extract_value()
-        if extracted_value is None:
-            return
+        extracted_value = self.extract_and_handle_output(extractor)
 
         # the request is always the last statement that was created in `prepare_statements`
         request_expression = statements[-1].expression
@@ -627,10 +622,7 @@ class QuerysetConverter(ModelConverter):
 
         factory_kwargs = qs_statement.expression.function_kwargs
 
-        extracted_value = extractor.extract_value()
-        if extracted_value is None:
-            return
-
+        extracted_value = self.extract_and_handle_output(extractor)
         kwarg = Kwarg(extractor.field_name, extracted_value)
         factory_kwargs.append(kwarg)
 
@@ -689,8 +681,7 @@ class CountQuerysetConverter(QuerysetConverter):
             source_represents_output=True,
         )
         count_extractor = self.get_extractor_instance(count_wrapper)
-        self.handle_extractor(count_extractor, statements)
-        count_value = count_extractor.extract_value()
+        count_value = self.extract_and_handle_output(count_extractor)
 
         # get the comparison value (==, <= etc.)
         compare_locator = ComparisonLocator(self.count.chunk, reverse=False)
@@ -850,11 +841,10 @@ class ResponseStatusCodeConverter(ResponseConverterBase):
                 representative=self.status_locator.best_compare_value
             )
             extractor = self.get_extractor_instance(wrapper)
-            self.handle_extractor(extractor, statements)
             exp = CompareExpression(
                 Attribute(response_var, 'status_code'),
                 CompareChar.EQUAL,
-                extractor.extract_value(),
+                self.extract_and_handle_output(extractor),
             )
             statements.append(AssertStatement(exp))
 
@@ -884,9 +874,8 @@ class ResponseErrorConverter(ResponseConverterBase):
                 representative=self.error_locator.best_compare_value
             )
             extractor = self.get_extractor_instance(wrapper)
-            self.handle_extractor(extractor, statements)
             exp = CompareExpression(
-                Argument(extractor.extract_value()),
+                Argument(self.extract_and_handle_output(extractor)),
                 CompareChar.IN,
                 FunctionCallExpression('str', [Attribute(response_var, 'data')]),
             )
@@ -939,7 +928,7 @@ class ResponseConverter(ResponseConverterBase):
                 # ==
                 compare_locator.comparison,
                 # value
-                Argument(extractor.extract_value()),
+                Argument(self.extract_and_handle_output(extractor)),
             )
         )
         statements.append(assert_statement)
@@ -1053,12 +1042,10 @@ class ManyLengthResponseConverter(ManyResponseConverter):
         if not length_extractor:
             return statements
 
-        self.handle_extractor(length_extractor, statements)
-
         exp = CompareExpression(
             FunctionCallExpression('len', [Attribute(self.get_referenced_response_variable(), 'data')]),
             compare_locator.comparison,
-            Argument(length_extractor.extract_value()),
+            Argument(self.extract_and_handle_output(length_extractor)),
         )
         statements.append(AssertStatement(exp))
 
