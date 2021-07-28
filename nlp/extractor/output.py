@@ -19,16 +19,30 @@ class ExtractorOutput(object):
     This class represents the output from an extractor. It converts the source into a valid python value.
     The value can be accessed via `get_output`.
     """
+    class NoOutputYet:
+        def __bool__(self):
+            return False
+
     def __init__(self, source, document):
         self.source = source
         self.document = document
         self.source_represents_output = False
+
+        self._output_source = self.NoOutputYet()
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
 
         return self.get_output() == other.get_output() and self.source == other.source
+
+    @property
+    def output_source(self):
+        """Returns the source that was used to actually get the output."""
+        if isinstance(self._output_source, self.NoOutputYet):
+            self.get_output()
+
+        return self._output_source
 
     @classmethod
     def copy_from(cls, extractor_output):
@@ -97,6 +111,7 @@ class ExtractorOutput(object):
                 previous_propn = get_proper_noun_from_chunk(previous_chunk)
 
                 if get_noun_from_chunk(previous_chunk) is None and previous_propn:
+                    self._output_source = previous_propn
                     return str(previous_propn)
             except (IndexError, ValueError):
                 pass
@@ -111,6 +126,7 @@ class ExtractorOutput(object):
         """
         # in some cases the parent might force that the source is the output
         if self.source_represents_output:
+            self._output_source = self.source
             return str(self.source)
 
         # if the token is an adjective or verb, it will most likely be a boolean field
@@ -122,16 +138,19 @@ class ExtractorOutput(object):
                 token = token.head
 
             children_negated = any([token_is_negated(child) for child in get_all_children(token)])
+            self._output_source = token
             return not token_is_negated(token) and not children_negated
 
         # check if any children is a digit or a proper noun, if yes they are the value
         for child in token.children:
             if child.is_digit or token_is_proper_noun(child):
+                self._output_source = child
                 return str(child)
 
         # as an alternative, if the next token is in quotes it should be the value
         next_token = get_next_token(token)
         if is_quoted(next_token):
+            self._output_source = next_token
             return str(next_token)
 
         # if still nothing is found, the value might be in a previous noun chunk
@@ -152,6 +171,7 @@ class ExtractorOutput(object):
 
         # if the input is not a token, we can only guess its type
         if not isinstance(token, Token):
+            self._output_source = token
             return self.guess_output_type(token)
 
         return self.guess_output_type(self.token_to_string_output(token))
@@ -213,6 +233,8 @@ class NumberAsStringOutput(ExtractorOutput):
 
     def token_to_string_output(self, token):
         if self.source_represents_output:
+            self._output_source = self.source
+
             if self.token_can_be_parsed_to_int(self.source):
                 return str(num_word_to_integer(str(self.source), self.source.lang_))
 
@@ -220,9 +242,11 @@ class NumberAsStringOutput(ExtractorOutput):
 
         for child in get_all_children(token):
             if child.is_digit:
+                self._output_source = child
                 return str(child)
 
             if self.token_can_be_parsed_to_int(child):
+                self._output_source = child
                 return str(num_word_to_integer(str(child), child.lang_))
 
         # as an alternative, if the next token is in quotes it should be the value
@@ -231,15 +255,18 @@ class NumberAsStringOutput(ExtractorOutput):
             clean_next_token_str = str(next_token)[1:-1]
 
             if self.token_can_be_parsed_to_int(next_token):
+                self._output_source = next_token
                 return str(num_word_to_integer(str(next_token), next_token.lang_))
 
             try:
                 float(clean_next_token_str)
+                self._output_source = next_token
                 return clean_next_token_str
             except ValueError:
                 pass
 
         if token.is_digit:
+            self._output_source = token
             return str(token)
 
         raise ExtractionError(NO_VALUE_FOUND_CODE)
@@ -286,15 +313,18 @@ class BooleanOutput(ExtractorOutput):
     def token_to_string_output(self, token):
         """While handling a token, get the verb of the token and determine if the verb and/or the token are negated."""
         if self.source_represents_output:
+            self._output_source = self.source
             return str(self.source)
 
         verb = get_verb_for_token(token)
         token_value_true = not token_is_negated(token)
 
         if not verb:
+            self._output_source = token
             return token_value_true
 
         verb_value_true = not token_is_negated(verb)
+        self._output_source = verb
         return verb_value_true and token_value_true
 
 

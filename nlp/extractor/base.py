@@ -41,22 +41,24 @@ class Extractor(object):
         """Returns the output class of this extractor."""
         return self.output_class
 
-    def get_output_instance(self) -> ExtractorOutput:
-        """
-        Returns an instance of ExtractorOutput.
-        """
-        output_class = self.get_output_class()
-        instance = output_class(**self.get_output_kwargs())
-        if self.source_represents_output:
-            instance.source_represents_output = True
-        return instance
-
     @classmethod
     def fits_input(cls, *args, **kwargs):
         """
         Can be used to check if this extractor fits for a given use case.
         """
         return False
+
+    @property
+    def output(self) -> ExtractorOutput:
+        """
+        Returns the output instance that is used to extract the value and convert it to python.
+        """
+        output_class = self.get_output_class()
+        instance = output_class(**self.get_output_kwargs())
+        if self.source_represents_output:
+            instance.source_represents_output = True
+
+        return instance
 
     def _get_output_value(self, output_instance, token):
         """
@@ -74,7 +76,7 @@ class Extractor(object):
             token = self.source
 
         if output_instance is None:
-            output_instance = self.get_output_instance()
+            output_instance = self.output
 
         try:
             return self._get_output_value(output_instance, token)
@@ -190,7 +192,7 @@ class ManyExtractorMixin(object):
                 continue
 
             # get the output class - which is the output from the child extractor
-            output_instance = self.get_output_instance()
+            output_instance = self.output
 
             # set the child as a source and tell the output that that token is the output
             output_instance.source_represents_output = True

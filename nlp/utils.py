@@ -209,11 +209,17 @@ def num_word_to_integer(num_word, language):
 
     if language == Languages.DE:
         try:
-            return w2n_de.convert(num_word)
+            output = w2n_de.convert(num_word)
         except KeyError:
             raise ValueError('No value found')
 
-    return w2n_en.word_to_num(num_word)
+    else:
+        output = w2n_en.word_to_num(num_word)
+
+    if isinstance(output, int):
+        return output
+
+    return ''.join(c for c in output if c.isdigit())
 
 
 def token_is_plural(token):
@@ -248,7 +254,7 @@ def token_is_like_num(token):
     text_lower = text.lower()
     try:
         num_word_to_integer(text_lower, token.lang_)
-        return token.pos_ == 'NUM'
+        return token.pos_ == 'NUM' or token.pos_ == 'ADJ'
     except (ValueError, LanguageNotSupported):
         pass
 

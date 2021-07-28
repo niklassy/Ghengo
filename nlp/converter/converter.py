@@ -1,3 +1,5 @@
+from typing import Optional
+
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from django_meta.api import UrlPatternAdapter
@@ -7,7 +9,7 @@ from nlp.converter.property import NewModelProperty, ReferenceModelVariablePrope
     ReferenceModelProperty, UserReferenceVariableProperty, ModelWithUserProperty, \
     MethodProperty, FileProperty, NewFileVariableProperty, NewModelVariableProperty, ModelCountProperty
 from nlp.converter.wrapper import ConverterInitArgumentWrapper
-from nlp.extractor.base import StringExtractor, IntegerExtractor
+from nlp.extractor.base import StringExtractor, IntegerExtractor, Extractor
 from nlp.extractor.fields_rest_api import get_api_model_field_extractor, ApiModelFieldExtractor
 from nlp.extractor.fields_model import get_model_field_extractor, ModelFieldExtractor
 from nlp.generate.argument import Kwarg, Argument
@@ -16,6 +18,7 @@ from nlp.generate.constants import CompareChar
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression, RequestExpression, APIClientExpression, \
     APIClientAuthenticateExpression, CreateUploadFileExpression, ModelQuerysetAllExpression, \
     ModelQuerysetFilterExpression, CompareExpression, Expression, FunctionCallExpression
+from nlp.generate.index import Index
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement, AssertStatement
 from nlp.generate.variable import Variable
 from nlp.locator import FileExtensionLocator, ComparisonLocator, NounLocator
@@ -90,7 +93,7 @@ class ClassConverter(Converter):
         if span:
             search_texts += [str(span), str(span.root.lemma_)]
 
-        if token:
+        if token and str(token) not in search_texts:
             search_texts.append(str(token))
 
         for index, searcher_class in enumerate(self.field_searcher_classes):
@@ -247,7 +250,7 @@ class ModelConverter(ClassConverter):
 
     def get_extractor_class(self, argument_wrapper):
         """The extractor class needs to be determined based on the kwarg_representative which is a model field."""
-        return get_model_field_extractor(argument_wrapper.representative)
+        return get_model_field_extractor(argument_wrapper.representative.field)
 
     def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
         """Add the model and the field to the kwargs."""
@@ -486,7 +489,7 @@ class RequestConverter(ClassConverter):
         classes.
         """
         # if the field is referencing the model, use the extractors normally
-        field = argument_wrapper.representative
+        field = argument_wrapper.representative.field
         if isinstance(field, AbstractModelFieldAdapter):
             return super().get_extractor_class(argument_wrapper)
 
@@ -763,9 +766,9 @@ class ResponseConverterBase(ClassConverter):
             return locator_extractor_map[argument_wrapper.token]
 
         if isinstance(argument_wrapper.representative, AbstractModelFieldAdapter):
-            return get_model_field_extractor(argument_wrapper.representative)
+            return get_model_field_extractor(argument_wrapper.representative.field)
 
-        return get_api_model_field_extractor(argument_wrapper.representative)
+        return get_api_model_field_extractor(argument_wrapper.representative.field)
 
     def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
         """Add the model and the field to the kwargs."""
@@ -777,6 +780,7 @@ class ResponseConverterBase(ClassConverter):
         # since the class may be for model fields or REST fields, add the model_adapter if needed
         if issubclass(extractor_cls, ModelFieldExtractor) or extractor_cls == ModelFieldExtractor:
             kwargs['model_adapter'] = self.model_adapter
+            kwargs['field_adapter'] = argument_wrapper.representative
 
         return kwargs
 
@@ -789,7 +793,11 @@ class ResponseConverterBase(ClassConverter):
     def prepare_converter(self):
         self.block_token_as_argument(self.status_locator.fittest_token)
         self.block_token_as_argument(self.response_locator.fittest_token)
-        self.block_token_as_argument(self.model_in_text.token)
+
+        # only block the model in text if it is actually equal to the one the serializer returns
+        model_adapter_from_text = self.model_in_text.value
+        if model_adapter_from_text.models_are_equal(self.model_adapter):
+            self.block_token_as_argument(self.model_in_text.token)
 
     def get_document_compatibility(self):
         compatibility = 1
@@ -981,10 +989,107 @@ class ManyResponseConverter(ResponseConverterBase):
         return compatibility
 
 
+class ManyCheckEntryResponseConverter(ManyResponseConverter):
+    """
+    This converter can be used to check specific entries in a given list from the response.
+    """
+    def __init__(self, document, related_object, django_project, test_case):
+        super().__init__(document, related_object, django_project, test_case)
+
+        if self.get_entry_extractor() is not None:
+            extractor = self.get_entry_extractor()
+            extracted_value = extractor.extract_value()
+
+            # if there is a warning set number to 1 to get the first entry
+            if not extractor.generates_warning:
+                index = extracted_value - 1
+            else:
+                index = extracted_value
+
+            # use the index
+            self.entry_variable = Variable('entry_{}'.format(index), self.model_adapter)
+        else:
+            self.entry_variable = None
+
+    def get_entry_extractor(self) -> Optional[Extractor]:
+        """
+        Return the extractor that is responsible for getting the index of the entry.
+        """
+        source = self.response_entry_locator.fittest_token
+
+        if not source:
+            return None
+
+        wrapper = ConverterInitArgumentWrapper(token=source, representative=source)
+        return self.get_extractor_instance(wrapper)
+
+    def get_document_compatibility(self):
+        compatibility = super().get_document_compatibility()
+
+        entry_extractor = self.get_entry_extractor()
+
+        # if there is no extractor for the entry, we cannot determine which entry we should check
+        if entry_extractor is None:
+            compatibility *= 0.1
+            return compatibility
+
+        entry_token = self.response_entry_locator.fittest_token
+        output_source = entry_extractor.output.output_source
+
+        # since we are referring to the first or second or third entry, those words should be adjectives
+        if not entry_token or (output_source and output_source.pos_ != 'ADJ'):
+            compatibility *= 0.2
+
+        return compatibility
+
+    def prepare_statements(self, statements):
+        """
+        To prepare the statements, create an assignment statement that will hold the referenced entry of the list.
+        """
+        number_extractor = self.get_entry_extractor()
+        # extracted value might be a GenerationWarning
+        extracted_number = self.extract_and_handle_output(number_extractor)
+
+        # if there is no warning, subtract 1 since we need to translate to index values
+        if not number_extractor.generates_warning:
+            extracted_number = extracted_number - 1
+
+        statement = AssignmentStatement(
+            variable=self.entry_variable,
+            expression=Expression(
+                Index(Attribute(self.get_referenced_response_variable(), 'data'), extracted_number)
+            )
+        )
+
+        statements.append(statement)
+
+        return statements
+
+    def handle_extractor(self, extractor, statements):
+        """
+        For each extractor, create an assert statement and compare the value of the previously created variable
+        via `get` and the desired value that is extracted.
+        """
+        # TODO: handle case where response should be variable.pk instead! Here and the normal response converter!
+        statement = AssertStatement(
+            CompareExpression(
+                FunctionCallExpression(
+                    Attribute(self.entry_variable, 'get'),
+                    [Argument(extractor.field_name)],
+                ),
+                CompareChar.EQUAL,
+                Argument(self.extract_and_handle_output(extractor)),
+            )
+        )
+
+        statements.append(statement)
+
+
 class ManyLengthResponseConverter(ManyResponseConverter):
     """
     This converter is used for cases where the length of the response is detected and turned into statements.
     """
+    field_searcher_classes = []
 
     def get_token_to_extractor_list(self):
         token_extractor_list = super().get_token_to_extractor_list()

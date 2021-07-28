@@ -257,7 +257,7 @@ class ReferenceModelProperty(NewModelProperty):
         # try to find a statement where the found model is saved in the expression
         for statement in self.converter.test_case.statements:
             exp = statement.expression
-            if isinstance(exp, ModelFactoryExpression) and found_m_adapter.model == exp.model_adapter.model:
+            if isinstance(exp, ModelFactoryExpression) and found_m_adapter.models_are_equal(exp.model_adapter):
                 return found_m_adapter
 
         return None
