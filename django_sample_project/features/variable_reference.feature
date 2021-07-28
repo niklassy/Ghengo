@@ -33,7 +33,8 @@ Funktionalität: Reference
 
   Szenario: file
     Wenn Alice die Liste der Aufträge holt
-    Dann sollten drei Einträge enthalten sein
+    Und Alice die Liste der Aufträge lädt
+    Dann sollten in der ersten Antwort drei Einträge enthalten sein
 
 #  Szenario: Ändern von ToDo - anderer Nutzer
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "order.add_order"

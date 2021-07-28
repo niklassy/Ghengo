@@ -556,7 +556,18 @@ class RequestConverter(ClassConverter):
             reverse_kwargs=reverse_kwargs,
             url_adapter=self.url_pattern_adapter,
         )
-        response_variable = Variable('response', self.url_pattern_adapter.reverse_name)
+
+        # get the variable name by checking how many other request expressions already exist
+        other_request_expressions = [
+            s for s in self.test_case.statements if isinstance(s.expression, RequestExpression)
+        ]
+
+        if len(other_request_expressions) == 0:
+            variable_name = 'response'
+        else:
+            variable_name = 'response_{}'.format(len(other_request_expressions))
+
+        response_variable = Variable(variable_name, self.url_pattern_adapter.reverse_name)
         statement_request = AssignmentStatement(expression_request, response_variable)
         statements.append(statement_request)
 
@@ -733,7 +744,7 @@ class ResponseConverterBase(ClassConverter):
         self.response_locator = NounLocator(self.document, 'response')  # <- response itself
         self.response_locator.locate()
 
-        self.error_locator = NounLocator(self.document, 'error')  # <- response itself
+        self.error_locator = NounLocator(self.document, 'error')  # <- error
         self.error_locator.locate()
 
         self.model_in_text = NewModelProperty(self, blocked_tokens=self._blocked_argument_tokens)
@@ -774,6 +785,7 @@ class ResponseConverterBase(ClassConverter):
         return [
             (self.status_locator.fittest_token, IntegerExtractor),
             (self.error_locator.fittest_token, StringExtractor),
+            (self.response_locator.fittest_token, IntegerExtractor),
         ]
 
     def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
@@ -832,10 +844,11 @@ class ResponseConverterBase(ClassConverter):
 
     def get_referenced_response_variable(self):
         """
-        Returns the variable that holds the request that was previously made.
+        Returns the variable that holds the request that was previously made and that is referenced here.
         """
         valid_variables = []
 
+        # first get all variables that hold an expression for a request
         for statement in self.test_case.statements:
             if hasattr(statement, 'variable') and isinstance(statement.expression, RequestExpression):
                 valid_variables.append(statement.variable)
@@ -843,8 +856,25 @@ class ResponseConverterBase(ClassConverter):
         if len(valid_variables) == 0:
             return None
 
-        # right now there is no way to determine the exact request that is meant. So just return the last entry
-        return valid_variables[-1]
+        # there is the option that a specific request was referenced (e.g. `the first response`), if not simply return
+        # the last entry
+        if not self.response_locator.fittest_token:
+            return valid_variables[-1]
+
+        wrapper = ConverterInitArgumentWrapper(
+            representative=self.response_locator.best_compare_value,
+            token=self.response_locator.fittest_token,
+        )
+        response_extractor = self.get_extractor_instance(wrapper)
+        if response_extractor.generates_warning:
+            return valid_variables[-1]
+
+        # if the return value is fine, extract the number and try to access it from all the variables
+        response_number = response_extractor.extract_value()
+        try:
+            return valid_variables[response_number - 1]
+        except IndexError:
+            return valid_variables[-1]
 
     def extract_and_handle_output(self, extractor):
         extracted_value = super().extract_and_handle_output(extractor)
