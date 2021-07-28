@@ -8,7 +8,7 @@ from nlp.converter.property import NewModelProperty, ReferenceModelVariablePrope
     MethodProperty, FileProperty, NewFileVariableProperty, NewModelVariableProperty, ModelCountProperty
 from nlp.converter.wrapper import ConverterInitArgumentWrapper
 from nlp.extractor.base import StringExtractor, IntegerExtractor
-from nlp.extractor.fields_rest_api import get_api_model_field_extractor
+from nlp.extractor.fields_rest_api import get_api_model_field_extractor, ApiModelFieldExtractor
 from nlp.extractor.fields_model import get_model_field_extractor, ModelFieldExtractor
 from nlp.generate.argument import Kwarg, Argument
 from nlp.generate.attribute import Attribute
@@ -22,7 +22,7 @@ from nlp.locator import FileExtensionLocator, ComparisonLocator, NounLocator
 from nlp.searcher import ModelFieldSearcher, NoConversionFound, UrlSearcher, SerializerFieldSearcher, \
     ClassArgumentSearcher
 from nlp.utils import get_non_stop_tokens, get_noun_chunk_of_token, token_is_noun, get_root_of_token, NoToken, \
-    token_is_verb, token_is_plural
+    token_is_verb
 
 
 class ClassConverter(Converter):
@@ -332,6 +332,8 @@ class ModelVariableReferenceConverter(ModelConverter):
 
     def handle_extractor(self, extractor, statements):
         """Each value that was extracted represents a statement in which the value is set on the model instance."""
+        super().handle_extractor(extractor, statements)
+
         statement = ModelFieldAssignmentStatement(
             variable=self.variable.value,
             assigned_value=Argument(value=extractor.extract_value()),
@@ -616,6 +618,8 @@ class QuerysetConverter(ModelConverter):
         return statements
 
     def handle_extractor(self, extractor, statements):
+        super().handle_extractor(extractor, statements)
+
         qs_statement = statements[0]
 
         if isinstance(qs_statement.expression, ModelQuerysetAllExpression):
@@ -685,6 +689,7 @@ class CountQuerysetConverter(QuerysetConverter):
             source_represents_output=True,
         )
         count_extractor = self.get_extractor_instance(count_wrapper)
+        self.handle_extractor(count_extractor, statements)
         count_value = count_extractor.extract_value()
 
         # get the comparison value (==, <= etc.)
@@ -744,14 +749,39 @@ class ResponseConverterBase(ClassConverter):
 
         return referenced_variable.value.url_adapter.model_adapter
 
+    @property
+    def token_to_extractor_map(self):
+        token_extractor_map = {}
+
+        for token, extractor in self.get_token_to_extractor_list():
+            if token:
+                token_extractor_map[token] = extractor
+
+        return token_extractor_map
+
+    def get_token_to_extractor_list(self):
+        return [
+            (self.status_locator.fittest_token, IntegerExtractor),
+            (self.error_locator.fittest_token, StringExtractor),
+        ]
+
+    def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
+        locator_extractor_map = self.token_to_extractor_map
+
+        if argument_wrapper.token and argument_wrapper.token in locator_extractor_map:
+            return locator_extractor_map[argument_wrapper.token]
+
+        if isinstance(argument_wrapper.representative, AbstractModelFieldAdapter):
+            return get_model_field_extractor(argument_wrapper.representative)
+
+        return get_api_model_field_extractor(argument_wrapper.representative)
+
     def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
         """Add the model and the field to the kwargs."""
         kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
 
-        if argument_wrapper.token in self._blocked_argument_tokens:
-            return kwargs
-
-        kwargs['field_adapter'] = argument_wrapper.representative
+        if extractor_cls == ApiModelFieldExtractor or issubclass(extractor_cls, ApiModelFieldExtractor):
+            kwargs['field_adapter'] = argument_wrapper.representative
 
         # since the class may be for model fields or REST fields, add the model_adapter if needed
         if issubclass(extractor_cls, ModelFieldExtractor) or extractor_cls == ModelFieldExtractor:
@@ -783,20 +813,6 @@ class ResponseConverterBase(ClassConverter):
 
         return compatibility
 
-    def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
-        if self.status_locator.fittest_token == argument_wrapper.token:
-            return IntegerExtractor
-
-        if self.error_locator.fittest_token == argument_wrapper.token:
-            return StringExtractor
-
-        if isinstance(argument_wrapper.representative, AbstractModelFieldAdapter):
-            return get_model_field_extractor(argument_wrapper.representative)
-
-        # TODO: use the serializer fields for a response!!
-        #   is this correct??
-        return get_api_model_field_extractor(argument_wrapper.representative)
-
     def get_referenced_response_variable(self):
         valid_variables = []
 
@@ -810,15 +826,31 @@ class ResponseConverterBase(ClassConverter):
         # TODO: handle multiple request expressions!
         return valid_variables[0]
 
-    def prepare_statements(self, statements):
-        response_var = self.get_referenced_response_variable()
 
+class ResponseStatusCodeConverter(ResponseConverterBase):
+    """
+    This converter is responsible for checking the status code of a response.
+    """
+    field_searcher_classes = []
+
+    def get_document_compatibility(self):
+        compatibility = super().get_document_compatibility()
+
+        if not self.status_locator.fittest_token:
+            compatibility *= 0.2
+
+        return compatibility
+
+    def prepare_statements(self, statements):
         if self.status_locator.fittest_token:
+            response_var = self.get_referenced_response_variable()
+
             wrapper = ConverterInitArgumentWrapper(
                 token=self.status_locator.fittest_token,
                 representative=self.status_locator.best_compare_value
             )
             extractor = self.get_extractor_instance(wrapper)
+            self.handle_extractor(extractor, statements)
             exp = CompareExpression(
                 Attribute(response_var, 'status_code'),
                 CompareChar.EQUAL,
@@ -826,14 +858,33 @@ class ResponseConverterBase(ClassConverter):
             )
             statements.append(AssertStatement(exp))
 
-        # handle checking the error
-        # TODO: maybe move to another converter?
+        return statements
+
+
+class ResponseErrorConverter(ResponseConverterBase):
+    """
+    This converter is responsible for checking the error message of a response.
+    """
+    field_searcher_classes = []
+
+    def get_document_compatibility(self):
+        compatibility = super().get_document_compatibility()
+
+        if not self.error_locator.fittest_token:
+            compatibility *= 0.2
+
+        return compatibility
+
+    def prepare_statements(self, statements):
         if self.error_locator.fittest_token:
+            response_var = self.get_referenced_response_variable()
+
             wrapper = ConverterInitArgumentWrapper(
                 token=self.error_locator.fittest_token,
                 representative=self.error_locator.best_compare_value
             )
             extractor = self.get_extractor_instance(wrapper)
+            self.handle_extractor(extractor, statements)
             exp = CompareExpression(
                 Argument(extractor.extract_value()),
                 CompareChar.IN,
@@ -845,6 +896,9 @@ class ResponseConverterBase(ClassConverter):
 
 
 class ResponseConverter(ResponseConverterBase):
+    """
+    This converter is responsible for text that checks an object that is returned in the response.
+    """
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
 
@@ -869,6 +923,8 @@ class ResponseConverter(ResponseConverterBase):
         return statements
 
     def handle_extractor(self, extractor, statements):
+        super().handle_extractor(extractor, statements)
+
         chunk = get_noun_chunk_of_token(extractor.source, self.document)
         compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
         compare_locator.locate()
@@ -909,16 +965,13 @@ class ManyResponseConverter(ResponseConverterBase):
         # keep this at the end
         super().prepare_converter()
 
-    def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
-        located = any([
-            argument_wrapper.token and self.response_length_locator.fittest_token == argument_wrapper.token,
-            argument_wrapper.token and self.response_entry_locator.fittest_token == argument_wrapper.token,
-        ])
+    def get_token_to_extractor_list(self):
+        token_locator_list = super().get_token_to_extractor_list()
 
-        if located:
-            return IntegerExtractor
+        token_locator_list.append((self.response_length_locator.fittest_token, IntegerExtractor))
+        token_locator_list.append((self.response_entry_locator.fittest_token, IntegerExtractor))
 
-        return super().get_extractor_class(argument_wrapper)
+        return token_locator_list
 
     def get_document_compatibility(self):
         compatibility = super().get_document_compatibility()
@@ -944,23 +997,10 @@ class ManyLengthResponseConverter(ManyResponseConverter):
     This converter is used for cases where the length of the response is detected and turned into statements.
     """
 
-    def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
-        kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
-        if argument_wrapper.token == self.get_length_token():
-            try:
-                del kwargs['field_adapter']
-            except KeyError:
-                pass
-        return kwargs
-
-    def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
-        """
-        The length token should always use an IntegerExtractor.
-        """
-        if argument_wrapper.token == self.get_length_token():
-            return IntegerExtractor
-
-        return super().get_extractor_class(argument_wrapper)
+    def get_token_to_extractor_list(self):
+        token_extractor_list = super().get_token_to_extractor_list()
+        token_extractor_list.append((self.get_length_token(), IntegerExtractor))
+        return token_extractor_list
 
     def get_length_token(self):
         """
@@ -985,14 +1025,6 @@ class ManyLengthResponseConverter(ManyResponseConverter):
         wrapper = ConverterInitArgumentWrapper(token=token, representative=token)
         return self.get_extractor_instance(wrapper)
 
-    def get_length_as_python_value(self):
-        """Get the length as a python value."""
-        extractor = self.get_length_extractor()
-        if not extractor:
-            return None
-
-        return extractor.extract_value()
-
     def get_document_compatibility(self):
         compatibility = super().get_document_compatibility()
 
@@ -1002,7 +1034,7 @@ class ManyLengthResponseConverter(ManyResponseConverter):
             return 0
 
         # if an integer value is returned, it is very likely that this converter fits
-        if isinstance(self.get_length_as_python_value(), int):
+        if isinstance(length_extractor.extract_value(), int):
             compatibility *= 1.7
         else:
             compatibility *= 0.5
@@ -1016,10 +1048,17 @@ class ManyLengthResponseConverter(ManyResponseConverter):
         compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
         compare_locator.locate()
 
+        length_extractor = self.get_length_extractor()
+
+        if not length_extractor:
+            return statements
+
+        self.handle_extractor(length_extractor, statements)
+
         exp = CompareExpression(
             FunctionCallExpression('len', [Attribute(self.get_referenced_response_variable(), 'data')]),
             compare_locator.comparison,
-            Argument(self.get_length_as_python_value()),
+            Argument(length_extractor.extract_value()),
         )
         statements.append(AssertStatement(exp))
 

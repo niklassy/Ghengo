@@ -17,16 +17,19 @@ class Extractor(object):
         self.representative = representative
         self.source_represents_output = source_represents_output
 
-        self._generates_warning = None
-
     def __str__(self):
         return '{} | {} -> {}'.format(self.__class__.__name__, str(self.source), self._extract_value())
 
     @property
     def generates_warning(self):
-        if self._generates_warning is None:
-            self._generates_warning = isinstance(self.extract_value(), GenerationWarning)
-        return self._generates_warning
+        return len(self.get_generated_warnings()) > 0
+
+    def get_generated_warnings(self):
+        """
+        Returns all the generation warnings that this extractor generated.
+        """
+        extracted_value = self.extract_value()
+        return [extracted_value] if isinstance(extracted_value, GenerationWarning) else []
 
     def get_output_kwargs(self):
         """
@@ -76,7 +79,7 @@ class Extractor(object):
         try:
             return self._get_output_value(output_instance, token)
         except ExtractionError as e:
-            return GenerationWarning.create_for_test_case(e.code, self.test_case)
+            return GenerationWarning(e.code)
 
     def extract_value(self):
         """
@@ -113,6 +116,9 @@ class ManyExtractorMixin(object):
         By default the output class is the output class from the child extractor.
         """
         return self.get_child_extractor_class().output_class
+
+    def get_generated_warnings(self):
+        return [entry for entry in self.extract_value() if isinstance(entry, GenerationWarning)]
 
     def get_child_extractor_kwargs(self):
         """Returns the kwargs that are passed to the child extractor __init__"""
@@ -196,7 +202,7 @@ class ManyExtractorMixin(object):
             try:
                 value = extractor._get_output_value(output_instance, child)
             except ExtractionError as e:
-                value = GenerationWarning.create_for_test_case(e.code, self.test_case)
+                value = GenerationWarning(e.code)
 
             output.append(value)
 

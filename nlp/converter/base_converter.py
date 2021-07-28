@@ -64,10 +64,19 @@ class Converter(object):
         """
         return 1
 
+    def add_extractor_warnings_to_test_case(self, extractor):
+        """Adds any warnings that the given extractor generated to the test case."""
+        if extractor.generates_warning:
+            warnings = extractor.get_generated_warnings()
+
+            for warning in warnings:
+                self.test_case.test_suite.warning_collection.add_warning(warning.code)
+
     def handle_extractor(self, extractor, statements):
         """Does everything that is needed when an extractor is called."""
         # some extractors add more statements, so add them here if needed
         extractor.on_handled_by_converter(statements)
+        self.add_extractor_warnings_to_test_case(extractor)
 
     def prepare_statements(self, statements):
         """Can be used to do something before the extractors are handled."""
