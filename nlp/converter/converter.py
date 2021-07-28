@@ -842,7 +842,7 @@ class ResponseConverterBase(ClassConverter):
 
         return compatibility
 
-    def get_referenced_response_variable(self):
+    def get_referenced_response_variable(self) -> Optional[Variable]:
         """
         Returns the variable that holds the request that was previously made and that is referenced here.
         """

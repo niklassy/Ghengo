@@ -182,6 +182,7 @@ class NoneOutput(ExtractorOutput):
     This output will always return None.
     """
     def get_output(self, token=None):
+        self._output_source = None
         return None
 
 

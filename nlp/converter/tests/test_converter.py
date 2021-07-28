@@ -444,3 +444,17 @@ def test_qs_exists_converter(mocker):
     statements = converter.convert_to_statements()
     assert len(statements) == 2
     assert str(statements[1]) == 'assert qs.exists()'
+
+
+# TODO: test ManyCheckEntryResponseConverter compatibility
+# TODO: test ManyCheckEntryResponseConverter output
+# TODO: test ManyLengthResponseConverter compatibility
+# TODO: test ManyLengthResponseConverter output
+# TODO: test ManyResponseConverter compatibility
+# TODO: test ResponseConverter compatibility
+# TODO: test ResponseConverter output
+# TODO: test ResponseErrorConverter compatibility
+# TODO: test ResponseErrorConverter output
+# TODO: test ResponseStatusCodeConverter compatibility
+# TODO: test ResponseStatusCodeConverter output
+# TODO: test ResponseConverterBase compatibility
