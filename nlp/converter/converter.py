@@ -523,6 +523,7 @@ class RequestConverter(ClassConverter):
         """
         When preparing the statements, there are several things that need to be done before adding the fields.
         """
+        # TODO: handle cases where no url pattern adapter was found/ aka when the routes do not exist yet
         if not self.url_pattern_adapter:
             return statements
 
@@ -750,7 +751,7 @@ class ResponseConverterBase(ClassConverter):
         self.model_in_text = NewModelProperty(self, blocked_tokens=self._blocked_argument_tokens)
 
     @property
-    def model_adapter_asdasd(self):
+    def model_adapter_from_request(self):
         """Returns the model_adapter that is referenced by the variable of the request."""
         referenced_variable = self.get_referenced_response_variable()
 
@@ -760,8 +761,9 @@ class ResponseConverterBase(ClassConverter):
         return referenced_variable.value.url_adapter.model_adapter
 
     @property
-    def model_in_text_exists(self):
-        model_adapter = self.model_adapter_asdasd
+    def model_in_text_fits_request(self):
+        """Checks if the model in the text is valid and fits to the one provided by the request."""
+        model_adapter = self.model_adapter_from_request
 
         if not model_adapter:
             return False
@@ -769,7 +771,7 @@ class ResponseConverterBase(ClassConverter):
         return model_adapter.models_are_equal(self.model_in_text.value)
 
     @property
-    def token_to_extractor_map(self):
+    def _token_to_extractor_map(self):
         """
         A property that returns a dictionary of:
             token -> extractor
@@ -789,7 +791,7 @@ class ResponseConverterBase(ClassConverter):
     def get_token_to_extractor_list(self):
         """
         Returns a list of tuples (Token, Extractor) to define a specific extractor for a token. This tuple is
-        transformed into a dict in `token_to_extractor_map`
+        transformed into a dict in `_token_to_extractor_map`
         """
         return [
             (self.status_locator.fittest_token, IntegerExtractor),
@@ -799,7 +801,7 @@ class ResponseConverterBase(ClassConverter):
 
     def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
         """Can use serializer, model fields and the custom extractors."""
-        locator_extractor_map = self.token_to_extractor_map
+        locator_extractor_map = self._token_to_extractor_map
 
         if argument_wrapper.token and argument_wrapper.token in locator_extractor_map:
             return locator_extractor_map[argument_wrapper.token]
@@ -818,7 +820,7 @@ class ResponseConverterBase(ClassConverter):
 
         # since the class may be for model fields or REST fields, add the model_adapter if needed
         if issubclass(extractor_cls, ModelFieldExtractor) or extractor_cls == ModelFieldExtractor:
-            kwargs['model_adapter'] = self.model_adapter_asdasd
+            kwargs['model_adapter'] = self.model_adapter_from_request
             kwargs['field_adapter'] = argument_wrapper.representative
 
         return kwargs
@@ -826,7 +828,7 @@ class ResponseConverterBase(ClassConverter):
     def get_searcher_kwargs(self):
         return {
             'serializer': self.get_referenced_response_variable().value.serializer_class(),
-            'model_adapter': self.model_adapter_asdasd,
+            'model_adapter': self.model_adapter_from_request,
         }
 
     def prepare_converter(self):
@@ -834,15 +836,11 @@ class ResponseConverterBase(ClassConverter):
         self.block_token_as_argument(self.response_locator.fittest_token)
 
         # only block the model in text if it is actually equal to the one the serializer returns
-        if self.model_in_text_exists:
+        if self.model_in_text_fits_request:
             self.block_token_as_argument(self.model_in_text.token)
 
     def get_document_compatibility(self):
         compatibility = 1
-
-        # if there is word for response, this converter should be perfect
-        if bool(self.response_locator.fittest_token):
-            return compatibility
 
         # if there was no request previously, it is unlikely that this converter is compatible
         if not any([isinstance(s.expression, RequestExpression) for s in self.test_case.statements]):
@@ -973,7 +971,7 @@ class ResponseConverter(ResponseConverterBase):
     @property
     def response_data_variable(self):
         if self._response_data_variable is None:
-            self._response_data_variable = Variable('resp_data', self.model_adapter_asdasd.name if self.model_adapter_asdasd else '')
+            self._response_data_variable = Variable('resp_data', self.model_adapter_from_request.name if self.model_adapter_from_request else '')
         return self._response_data_variable
 
     def prepare_statements(self, statements):
@@ -1065,7 +1063,7 @@ class ManyResponseConverter(ResponseConverterBase):
         # if there is the word `entry` it is likely that multiple objects are returned
         entry_token = self.response_entry_locator.fittest_token
 
-        if not list_token and not length_token and not entry_token and not self.model_in_text_exists:
+        if not list_token and not length_token and not entry_token and not self.model_in_text_fits_request:
             compatibility *= 0.3
 
         # make sure to stay between 0 and 1
@@ -1083,20 +1081,21 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
             extractor = self.get_entry_extractor()
             extracted_value = extractor.extract_value()
 
-            # if there is a warning set number to 1 to get the first entry
+            # if there is a warning set number to 0 to get the first entry
             if not extractor.generates_warning:
                 index = extracted_value - 1
             else:
-                index = extracted_value
+                index = 0
 
             # use the index
-            self.entry_variable = Variable('entry_{}'.format(index), self.model_adapter_asdasd)
+            self.entry_variable = Variable('entry_{}'.format(index), self.model_adapter_from_request)
         else:
             self.entry_variable = None
 
     def get_token_to_extractor_list(self):
         token_extractor_list = super().get_token_to_extractor_list()
-        token_extractor_list.append((self.model_in_text.token, IntegerExtractor))
+        if self.model_in_text_fits_request:
+            token_extractor_list.append((self.model_in_text.token, IntegerExtractor))
         return token_extractor_list
 
     def get_entry_token(self):

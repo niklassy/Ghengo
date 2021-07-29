@@ -7,7 +7,8 @@ from django_meta.project import DjangoProject
 from django_sample_project.apps.order.models import Order
 from gherkin.ast import Given, DataTable, TableRow, TableCell, Then
 from nlp.converter.converter import ModelFactoryConverter, ModelVariableReferenceConverter, RequestConverter, \
-    QuerysetConverter, CountQuerysetConverter, ExistsQuerysetConverter, ManyCheckEntryResponseConverter
+    QuerysetConverter, CountQuerysetConverter, ExistsQuerysetConverter, ManyCheckEntryResponseConverter, \
+    ResponseConverterBase
 from nlp.generate.argument import Kwarg
 from nlp.generate.constants import CompareChar
 from nlp.generate.expression import ModelSaveExpression, APIClientExpression, RequestExpression, \
@@ -16,6 +17,7 @@ from nlp.generate.pytest import PyTestModelFactoryExpression
 from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement
 from nlp.generate.variable import Variable
+from nlp.generate.warning import GenerationWarning
 from nlp.setup import Nlp
 from nlp.tests.utils import MockTranslator
 
@@ -446,6 +448,75 @@ def test_qs_exists_converter(mocker):
     assert str(statements[1]) == 'assert qs.exists()'
 
 
+def add_request_statement(test_case, doc=None):
+    """
+    Creates and adds a request statement to a test case.
+    """
+    if doc is None:
+        doc = nlp('Wenn ein Auftrag erstellt wird')
+
+    converter = RequestConverter(
+        doc,
+        Given(keyword='Und', text='der Auftrag 3 hat das Passwort 3.'),
+        django_project,
+        test_case,
+    )
+
+    for statement in converter.convert_to_statements():
+        test_case.add_statement(statement)
+
+
+@pytest.mark.parametrize(
+    'doc, min_compatibility, max_compatibility, with_request', [
+        (nlp('Dann sollte die Antwort stimmen.'), 0, 0.2, False),
+        (nlp('Dann sollte die Antwort stimmen.'), 0.7, 1, True),
+        (nlp('Ich rede komisches Zeug.'), 0.7, 1, True),
+        (nlp('Ich rede komisches Zeug.'), 0, 0.2, False),
+    ]
+)
+def test_response_base_converter_compatibility(doc, min_compatibility, max_compatibility, mocker, with_request):
+    """Check that the ResponseConverterBase detects the compatibility of different documents correctly."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    if with_request:
+        add_request_statement(test_case)
+        assert len(test_case.statements) > 0
+
+    converter = ResponseConverterBase(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    assert converter.get_document_compatibility() >= min_compatibility
+    assert converter.get_document_compatibility() <= max_compatibility
+
+
+@pytest.mark.parametrize(
+    'doc, request_doc, expected_value', [
+        (nlp('Dann sollte der Auftrag den Namen Alice haben.'), nlp('Wenn ein Auftrag erstellt wird.'), True),
+        (nlp('Dann sollte das ToDo den Namen Alice haben.'), nlp('Wenn ein Auftrag erstellt wird.'), False),
+        (nlp('Dann sollte das ToDo den Namen Alice haben.'), nlp('Wenn ein ToDo erstellt wird.'), True),
+    ]
+)
+def test_response_base_converter_model_in_text(mocker, doc, expected_value, request_doc):
+    """Check that the converter correctly detects if the model in the text fits the request."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+    add_request_statement(test_case, request_doc)
+
+    converter = ResponseConverterBase(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    assert converter.model_in_text_fits_request == expected_value
+
+
 @pytest.mark.parametrize(
     'doc, min_compatibility, max_compatibility', [
         (nlp('Dann sollte der zweite Eintrag den Namen "Alice" haben.'), 0.7, 1),
@@ -456,21 +527,13 @@ def test_qs_exists_converter(mocker):
         (nlp('Dann sollte der Fehler "abc" enthalten.'), 0, 0.4),
     ]
 )
-def test_model_factory_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
+def test_many_check_entry_response_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
     """Check that the ManyCheckEntryResponseConverter detects the compatibility of different documents correctly."""
     mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
-    converter = RequestConverter(
-        nlp('Wenn ein Auftrag erstellt wird'),
-        Given(keyword='Und', text='der Auftrag 3 hat das Passwort 3.'),
-        django_project,
-        test_case,
-    )
-
-    for statement in converter.convert_to_statements():
-        test_case.add_statement(statement)
+    add_request_statement(test_case)
     assert len(test_case.statements) > 0
 
     converter = ManyCheckEntryResponseConverter(
@@ -483,7 +546,44 @@ def test_model_factory_converter_compatibility(doc, min_compatibility, max_compa
     assert converter.get_document_compatibility() <= max_compatibility
 
 
-# TODO: test ManyCheckEntryResponseConverter output
+@pytest.mark.parametrize(
+    'doc, desired_entry_index, field_count', [
+        (nlp('Dann sollte der zweite Eintrag den Namen "Alice" haben.'), 1, 1),
+        (nlp('Dann sollte der zweite Auftrag den Namen "Alice" haben.'), 1, 1),
+        (nlp('Dann sollte der zweite Auftrag den Namen "Alice" und die Beschreibung "Test" haben.'), 1, 2),
+        (nlp('Dann sollte der dritte Auftrag den Namen "Alice" haben.'), 2, 1),
+        (nlp('Dann sollte der dritte Eintrag den Namen "Alice" haben.'), 2, 1),
+        (nlp('Dann sollte der fünfte Auftrag den Namen "Alice" haben.'), 4, 1),
+        (nlp('Dann sollte der fünfte Eintrag den Namen "Alice" haben.'), 4, 1),
+        (nlp('Dann sollte ein Auftrag den Namen "Alice" haben.'), None, 1),
+        (nlp('Dann sollte ein Eintrag den Namen "Alice" haben.'), None, 1),
+    ]
+)
+def test_many_check_entry_response_converter_output(doc, desired_entry_index, mocker, field_count):
+    """Check that the ManyCheckEntryResponseConverter detects the compatibility of different documents correctly."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    add_request_statement(test_case)
+
+    converter = ManyCheckEntryResponseConverter(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    statements = converter.convert_to_statements()
+    assert len(statements) == field_count + 1
+    if desired_entry_index:
+        assert statements[0].expression.child.index == desired_entry_index
+    else:
+        assert isinstance(statements[0].expression.child.index, GenerationWarning)
+
+    # check that the correct amount of fields is returned in statements after the first one
+    assert len(statements[1:]) == field_count
+
+
 # TODO: test ManyLengthResponseConverter compatibility
 # TODO: test ManyLengthResponseConverter output
 # TODO: test ManyResponseConverter compatibility
@@ -493,4 +593,3 @@ def test_model_factory_converter_compatibility(doc, min_compatibility, max_compa
 # TODO: test ResponseErrorConverter output
 # TODO: test ResponseStatusCodeConverter compatibility
 # TODO: test ResponseStatusCodeConverter output
-# TODO: test ResponseConverterBase compatibility

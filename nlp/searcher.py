@@ -245,6 +245,7 @@ class UrlSearcher(Searcher):
         self.valid_methods = valid_methods
 
     def get_convert_fallback(self):
+        # TODO: add fallback??
         return None
 
     def get_keywords(self, url_pattern):
