@@ -555,8 +555,8 @@ def test_many_check_entry_response_converter_compatibility(doc, min_compatibilit
         (nlp('Dann sollte der dritte Eintrag den Namen "Alice" haben.'), 2, 1),
         (nlp('Dann sollte der fünfte Auftrag den Namen "Alice" haben.'), 4, 1),
         (nlp('Dann sollte der fünfte Eintrag den Namen "Alice" haben.'), 4, 1),
-        (nlp('Dann sollte ein Auftrag den Namen "Alice" haben.'), None, 1),
-        (nlp('Dann sollte ein Eintrag den Namen "Alice" haben.'), None, 1),
+        (nlp('Dann sollte der Auftrag den Namen "Alice" haben.'), None, 1),
+        (nlp('Dann sollte der Eintrag den Namen "Alice" haben.'), None, 1),
     ]
 )
 def test_many_check_entry_response_converter_output(doc, desired_entry_index, mocker, field_count):
@@ -596,8 +596,8 @@ def test_many_check_entry_response_converter_output(doc, desired_entry_index, mo
         (nlp('Dann sollte der Fehler "abc" enthalten.'), 0, 0.4),
     ]
 )
-def test_many_check_entry_response_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
-    """Check that the ManyCheckEntryResponseConverter detects the compatibility of different documents correctly."""
+def test_many_check_length_response_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
+    """Check that the ManyLengthResponseConverter detects the compatibility of different documents correctly."""
     mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
@@ -615,7 +615,37 @@ def test_many_check_entry_response_converter_compatibility(doc, min_compatibilit
     assert converter.get_document_compatibility() <= max_compatibility
 
 
-# TODO: test ManyLengthResponseConverter output
+@pytest.mark.parametrize(
+    'doc, desired_length', [
+        (nlp('Dann sollte die Antwort einen Eintrag haben.'), 1),
+        (nlp('Dann sollte die Antwort sieben Einträge haben.'), 7),
+        (nlp('Dann sollte die Antwort sieben Einträge haben.'), 7),
+        (nlp('Dann sollten drei Aufträge gegeben sein.'), 3),
+        (nlp('Dann sollte ein Auftrag gegeben sein.'), 1),
+    ]
+)
+def test_many_check_length_response_converter_output(doc, desired_length, mocker):
+    """Check that the output of ManyLengthResponseConverter is correct."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    add_request_statement(test_case)
+
+    converter = ManyLengthResponseConverter(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    statements = converter.convert_to_statements()
+    assert len(statements) == 1
+    assert statements[0].expression.value_2.value == desired_length
+    assert statements[0].expression.value_1.function_name == 'len'
+    assert statements[0].expression.value_1.function_kwargs[0].variable == converter.get_referenced_response_variable()
+    assert statements[0].expression.value_1.function_kwargs[0].attribute_name == 'data'
+
+
 # TODO: test ManyResponseConverter compatibility
 # TODO: test ResponseConverter compatibility
 # TODO: test ResponseConverter output

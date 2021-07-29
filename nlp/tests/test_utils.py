@@ -191,6 +191,7 @@ def test_num_word_to_integer(text, language, output):
         ('Haus', False, 0),
         ('eine Liste', False, 1),
         ('ein Eintrag', False, 1),
+        ('Es ist ein Auftrag in der Liste.', True, 2),
     ]
 )
 def test_token_is_like_num(nlp_de, word, output, index):

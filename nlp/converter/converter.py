@@ -171,9 +171,11 @@ class ClassConverter(Converter):
             'representative': argument_wrapper.representative,
         }
 
-    def get_extractor_instance(self, argument_wrapper: ConverterInitArgumentWrapper):
+    def get_extractor_instance(self, argument_wrapper: ConverterInitArgumentWrapper, extractor_class=None):
         """Returns an instance of an extractor for a given argument wrapper."""
-        extractor_class = self.get_extractor_class(argument_wrapper=argument_wrapper)
+        if extractor_class is None:
+            extractor_class = self.get_extractor_class(argument_wrapper=argument_wrapper)
+
         kwargs = self.get_extractor_kwargs(
             argument_wrapper=argument_wrapper,
             extractor_cls=extractor_class,
@@ -796,7 +798,6 @@ class ResponseConverterBase(ClassConverter):
         return [
             (self.status_locator.fittest_token, IntegerExtractor),
             (self.error_locator.fittest_token, StringExtractor),
-            (self.response_locator.fittest_token, IntegerExtractor),
         ]
 
     def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
@@ -871,7 +872,9 @@ class ResponseConverterBase(ClassConverter):
             representative=self.response_locator.best_compare_value,
             token=self.response_locator.fittest_token,
         )
-        response_extractor = self.get_extractor_instance(wrapper)
+
+        # always get the integer for the response -> which response is meant?
+        response_extractor = self.get_extractor_instance(wrapper, IntegerExtractor)
         if response_extractor.generates_warning:
             return valid_variables[-1]
 
@@ -1099,6 +1102,7 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
         return token_extractor_list
 
     def get_entry_token(self):
+        """Returns the token that represents the keyword entries in the doc."""
         return self.response_entry_locator.fittest_token or self.model_in_text.token
 
     def get_entry_extractor(self) -> Optional[Extractor]:
@@ -1111,7 +1115,9 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
             return None
 
         wrapper = ConverterInitArgumentWrapper(token=source, representative=source)
-        return self.get_extractor_instance(wrapper)
+
+        # always use an integer extractor -> which entry is meant?
+        return self.get_extractor_instance(wrapper, IntegerExtractor)
 
     def get_document_compatibility(self):
         compatibility = super().get_document_compatibility()
@@ -1202,7 +1208,10 @@ class ManyLengthResponseConverter(ManyResponseConverter):
         if fittest_token:
             return fittest_token
 
-        return self.model_in_text.token
+        if self.model_in_text_fits_request:
+            return self.model_in_text.token
+
+        return NoToken()
 
     def get_length_extractor(self):
         """

@@ -227,22 +227,39 @@ class NumberAsStringOutput(ExtractorOutput):
             raise ExtractionError(NO_VALUE_FOUND_CODE)
 
     @classmethod
-    def token_can_be_parsed_to_int(cls, token):
+    def token_to_integer(cls, token, raise_exception=False):
+        """
+        Translates a token to an integer, if it works either an exception is raised or None
+        returned.
+        """
+        try:
+            return num_word_to_integer(str(token), token.lang_)
+        except (ValueError, LanguageNotSupported):
+            try:
+                return num_word_to_integer(str(token.lemma_), token.lang_)
+            except (ValueError, LanguageNotSupported):
+                if raise_exception:
+                    raise ValueError()
+
+        return None
+
+    def token_can_be_parsed_to_int(self, token):
         """
         Checks if a given token can be parsed to an int
         """
         try:
-            num_word_to_integer(str(token), token.lang_)
-            return token_is_like_num(token)
-        except (ValueError, LanguageNotSupported):
+            self.token_to_integer(token, raise_exception=True)
+        except ValueError:
             return False
+
+        return token_is_like_num(token)
 
     def token_to_string_output(self, token):
         if self.source_represents_output:
             self._output_source = self.source
 
             if self.token_can_be_parsed_to_int(self.source):
-                return str(num_word_to_integer(str(self.source), self.source.lang_))
+                return str(self.token_to_integer(self.source, raise_exception=True))
 
             return str(self.source)
 
@@ -253,7 +270,7 @@ class NumberAsStringOutput(ExtractorOutput):
 
             if self.token_can_be_parsed_to_int(child):
                 self._output_source = child
-                return str(num_word_to_integer(str(child), child.lang_))
+                return str(self.token_to_integer(child, raise_exception=True))
 
         # as an alternative, if the next token is in quotes it should be the value
         next_token = get_next_token(token)
@@ -262,7 +279,7 @@ class NumberAsStringOutput(ExtractorOutput):
 
             if self.token_can_be_parsed_to_int(next_token):
                 self._output_source = next_token
-                return str(num_word_to_integer(str(next_token), next_token.lang_))
+                return str(self.token_to_integer(next_token, raise_exception=True))
 
             try:
                 float(clean_next_token_str)
