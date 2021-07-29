@@ -1226,7 +1226,12 @@ class ManyLengthResponseConverter(ManyResponseConverter):
 
         # if an integer value is returned, it is very likely that this converter fits
         if not isinstance(length_extractor.extract_value(), int):
-            compatibility *= 0.5
+            compatibility *= 0.3
+
+        # the length is normally described in numbers not in adjectives (`first` vs. `one`)
+        output_source = length_extractor.output.output_source
+        if output_source and output_source.pos_ != 'NUM':
+            compatibility *= 0.3
 
         return compatibility
 

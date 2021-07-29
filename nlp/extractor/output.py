@@ -199,6 +199,7 @@ class DictOutput(ExtractorOutput):
         output = super().get_output(token)
 
         if not isinstance(output, dict):
+            self._output_source = NoToken()
             raise ExtractionError(DICT_AS_STRING)
 
         return output
@@ -222,6 +223,7 @@ class NumberAsStringOutput(ExtractorOutput):
             float(value_str)
             return value_str
         except ValueError:
+            self._output_source = NoToken()
             raise ExtractionError(NO_VALUE_FOUND_CODE)
 
     @classmethod
@@ -273,6 +275,7 @@ class NumberAsStringOutput(ExtractorOutput):
             self._output_source = token
             return str(token)
 
+        self._output_source = NoToken()
         raise ExtractionError(NO_VALUE_FOUND_CODE)
 
 

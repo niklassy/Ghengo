@@ -8,7 +8,7 @@ from django_sample_project.apps.order.models import Order
 from gherkin.ast import Given, DataTable, TableRow, TableCell, Then
 from nlp.converter.converter import ModelFactoryConverter, ModelVariableReferenceConverter, RequestConverter, \
     QuerysetConverter, CountQuerysetConverter, ExistsQuerysetConverter, ManyCheckEntryResponseConverter, \
-    ResponseConverterBase
+    ResponseConverterBase, ManyLengthResponseConverter
 from nlp.generate.argument import Kwarg
 from nlp.generate.constants import CompareChar
 from nlp.generate.expression import ModelSaveExpression, APIClientExpression, RequestExpression, \
@@ -584,7 +584,37 @@ def test_many_check_entry_response_converter_output(doc, desired_entry_index, mo
     assert len(statements[1:]) == field_count
 
 
-# TODO: test ManyLengthResponseConverter compatibility
+@pytest.mark.parametrize(
+    'doc, min_compatibility, max_compatibility', [
+        (nlp('Dann sollte der zweite Eintrag den Namen "Alice" haben.'), 0, 0.3),
+        (nlp('Dann sollte der zweite Auftrag den Namen "Alice" haben.'), 0, 0.3),
+        (nlp('Dann sollte die Antwort zwei Einträge haben.'), 0.7, 1),
+        (nlp('Dann sollte die Antwort vier Aufträge haben.'), 0.7, 1),
+        (nlp('Dann sollte vier Einträge enthalten sein.'), 0.7, 1),
+        (nlp('Dann sollte der Auftrag den Namen "Alice" haben.'), 0, 0.4),
+        (nlp('Dann sollte die Antwort den Status 200 haben.'), 0, 0.4),
+        (nlp('Dann sollte der Fehler "abc" enthalten.'), 0, 0.4),
+    ]
+)
+def test_many_check_entry_response_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
+    """Check that the ManyCheckEntryResponseConverter detects the compatibility of different documents correctly."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    add_request_statement(test_case)
+    assert len(test_case.statements) > 0
+
+    converter = ManyLengthResponseConverter(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    assert converter.get_document_compatibility() >= min_compatibility
+    assert converter.get_document_compatibility() <= max_compatibility
+
+
 # TODO: test ManyLengthResponseConverter output
 # TODO: test ManyResponseConverter compatibility
 # TODO: test ResponseConverter compatibility
