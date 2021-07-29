@@ -11,7 +11,7 @@ from nlp.generate.variable import Variable
 from nlp.generate.warning import NO_VALUE_FOUND_CODE, VARIABLE_NOT_FOUND, DICT_AS_STRING, FILE_NOT_FOUND
 from nlp.utils import is_quoted, get_all_children, get_verb_for_token, token_is_negated, get_proper_noun_from_chunk, \
     get_noun_from_chunk, token_is_proper_noun, get_noun_chunk_of_token, get_noun_chunks, token_is_like_num, \
-    num_word_to_integer, get_next_token
+    num_word_to_integer, get_next_token, NoToken
 
 
 class ExtractorOutput(object):
@@ -40,7 +40,10 @@ class ExtractorOutput(object):
     def output_source(self):
         """Returns the source that was used to actually get the output."""
         if isinstance(self._output_source, self.NoOutputYet):
-            self.get_output()
+            try:
+                self.get_output()
+            except ExtractionError:
+                self._output_source = NoToken()
 
         return self._output_source
 

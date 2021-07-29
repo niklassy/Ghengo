@@ -1,5 +1,5 @@
 from django.apps import apps
-from django.db.models import Model
+from django.db.models.base import ModelBase
 
 from django_meta.base import ExistsInCode
 from nlp.generate.utils import to_function_name
@@ -17,7 +17,7 @@ class AbstractModelAdapter(ExistsInCode):
 
     def models_are_equal(self, model_adapter):
         """Can be used to check if the models from this and another model adapter are equal."""
-        if not isinstance(model_adapter, AbstractModelAdapter) or isinstance(model_adapter.model, Model):
+        if not isinstance(model_adapter, AbstractModelAdapter) or isinstance(model_adapter.model, ModelBase):
             return False
 
         return self.model.__name__ == model_adapter.model.__name__
@@ -44,7 +44,7 @@ class ModelAdapter(AbstractModelAdapter):
         self.app = app
 
     def models_are_equal(self, model_adapter):
-        if not isinstance(model_adapter, AbstractModelAdapter) or not isinstance(model_adapter.model, Model):
+        if not isinstance(model_adapter, AbstractModelAdapter) or not isinstance(model_adapter.model, ModelBase):
             return False
 
         return self.model == model_adapter.model

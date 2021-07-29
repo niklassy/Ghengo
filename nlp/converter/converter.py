@@ -750,7 +750,7 @@ class ResponseConverterBase(ClassConverter):
         self.model_in_text = NewModelProperty(self, blocked_tokens=self._blocked_argument_tokens)
 
     @property
-    def model_adapter(self):
+    def model_adapter_asdasd(self):
         """Returns the model_adapter that is referenced by the variable of the request."""
         referenced_variable = self.get_referenced_response_variable()
 
@@ -758,6 +758,15 @@ class ResponseConverterBase(ClassConverter):
             return None
 
         return referenced_variable.value.url_adapter.model_adapter
+
+    @property
+    def model_in_text_exists(self):
+        model_adapter = self.model_adapter_asdasd
+
+        if not model_adapter:
+            return False
+
+        return model_adapter.models_are_equal(self.model_in_text.value)
 
     @property
     def token_to_extractor_map(self):
@@ -809,7 +818,7 @@ class ResponseConverterBase(ClassConverter):
 
         # since the class may be for model fields or REST fields, add the model_adapter if needed
         if issubclass(extractor_cls, ModelFieldExtractor) or extractor_cls == ModelFieldExtractor:
-            kwargs['model_adapter'] = self.model_adapter
+            kwargs['model_adapter'] = self.model_adapter_asdasd
             kwargs['field_adapter'] = argument_wrapper.representative
 
         return kwargs
@@ -817,7 +826,7 @@ class ResponseConverterBase(ClassConverter):
     def get_searcher_kwargs(self):
         return {
             'serializer': self.get_referenced_response_variable().value.serializer_class(),
-            'model_adapter': self.model_adapter,
+            'model_adapter': self.model_adapter_asdasd,
         }
 
     def prepare_converter(self):
@@ -825,8 +834,7 @@ class ResponseConverterBase(ClassConverter):
         self.block_token_as_argument(self.response_locator.fittest_token)
 
         # only block the model in text if it is actually equal to the one the serializer returns
-        model_adapter_from_text = self.model_in_text.value
-        if model_adapter_from_text and model_adapter_from_text.models_are_equal(self.model_adapter):
+        if self.model_in_text_exists:
             self.block_token_as_argument(self.model_in_text.token)
 
     def get_document_compatibility(self):
@@ -965,7 +973,7 @@ class ResponseConverter(ResponseConverterBase):
     @property
     def response_data_variable(self):
         if self._response_data_variable is None:
-            self._response_data_variable = Variable('resp_data', self.model_adapter.name if self.model_adapter else '')
+            self._response_data_variable = Variable('resp_data', self.model_adapter_asdasd.name if self.model_adapter_asdasd else '')
         return self._response_data_variable
 
     def prepare_statements(self, statements):
@@ -1026,6 +1034,10 @@ class ManyResponseConverter(ResponseConverterBase):
         self.response_entry_locator = NounLocator(self.document, 'entry')
         self.response_entry_locator.locate()
 
+        # since we are trying to access the blocked tokens before even creating the statements, we need to prepare
+        # the converter immediately
+        self.prepare_converter()
+
     def prepare_converter(self):
         self.block_token_as_argument(self.response_list_locator.fittest_token)
         self.block_token_as_argument(self.response_length_locator.fittest_token)
@@ -1053,7 +1065,7 @@ class ManyResponseConverter(ResponseConverterBase):
         # if there is the word `entry` it is likely that multiple objects are returned
         entry_token = self.response_entry_locator.fittest_token
 
-        if not list_token and not length_token and not entry_token:
+        if not list_token and not length_token and not entry_token and not self.model_in_text_exists:
             compatibility *= 0.3
 
         # make sure to stay between 0 and 1
@@ -1078,15 +1090,23 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
                 index = extracted_value
 
             # use the index
-            self.entry_variable = Variable('entry_{}'.format(index), self.model_adapter)
+            self.entry_variable = Variable('entry_{}'.format(index), self.model_adapter_asdasd)
         else:
             self.entry_variable = None
+
+    def get_token_to_extractor_list(self):
+        token_extractor_list = super().get_token_to_extractor_list()
+        token_extractor_list.append((self.model_in_text.token, IntegerExtractor))
+        return token_extractor_list
+
+    def get_entry_token(self):
+        return self.response_entry_locator.fittest_token or self.model_in_text.token
 
     def get_entry_extractor(self) -> Optional[Extractor]:
         """
         Return the extractor that is responsible for getting the index of the entry.
         """
-        source = self.response_entry_locator.fittest_token
+        source = self.get_entry_token()
 
         if not source:
             return None
@@ -1104,8 +1124,12 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
             compatibility *= 0.1
             return compatibility
 
-        entry_token = self.response_entry_locator.fittest_token
+        entry_token = self.get_entry_token()
         output_source = entry_extractor.output.output_source
+
+        # if no entry number is defined, it is more unlikely that this converter does not fit
+        if not output_source:
+            compatibility *= 0.4
 
         # since we are referring to the first or second or third entry, those words should be adjectives
         # when checking the length, direct numbers are used instead (e.g. two entries)
