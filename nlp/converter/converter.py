@@ -468,7 +468,12 @@ class RequestConverter(ClassConverter):
         serializer = None
 
         if self.url_pattern_adapter:
-            serializer = self.url_pattern_adapter.get_serializer_class(self.method.value)()
+            serializer_class = self.url_pattern_adapter.get_serializer_class(self.method.value)
+
+            if serializer_class:
+                serializer = self.url_pattern_adapter.get_serializer_class(self.method.value)()
+            else:
+                serializer = None
 
         return {
             'serializer': serializer,
@@ -493,8 +498,8 @@ class RequestConverter(ClassConverter):
         """
         # if the field is referencing the model, use the extractors normally
         field = argument_wrapper.representative.field
-        if isinstance(field, AbstractModelFieldAdapter):
-            return super().get_extractor_class(argument_wrapper)
+        if isinstance(argument_wrapper.representative, AbstractModelFieldAdapter):
+            return get_model_field_extractor(field)
 
         # if the field is referencing fields that exist on the serializer, use the extractors that are defined for
         # serializers
@@ -525,7 +530,6 @@ class RequestConverter(ClassConverter):
         """
         When preparing the statements, there are several things that need to be done before adding the fields.
         """
-        # TODO: handle cases where no url pattern adapter was found/ aka when the routes do not exist yet
         if not self.url_pattern_adapter:
             return statements
 
@@ -547,7 +551,10 @@ class RequestConverter(ClassConverter):
 
         # check if a primary key is needed in the request, and if yes collect it from the model variable
         reverse_kwargs = []
-        if self.model_variable.token and 'pk' in self.url_pattern_adapter.route_kwargs:
+        model_token = self.model_variable.token
+        user_token = self.user.token
+
+        if model_token and model_token != user_token and self.url_pattern_adapter.key_exists_in_route_kwargs('pk'):
             reverse_kwargs.append(Kwarg('pk', Attribute(self.model_variable.value, 'pk')))
 
         # create the statement with the request
@@ -590,7 +597,7 @@ class RequestConverter(ClassConverter):
 
         # some data may be passed via the url or the body, so check if the defined field exists on the url; if yes
         # add it to the reverse expression instead
-        if extractor.field_name in self.url_pattern_adapter.route_kwargs:
+        if self.url_pattern_adapter.key_exists_in_route_kwargs(extractor.field_name):
             kwarg_list = request_expression.reverse_expression.function_kwargs
         else:
             kwarg_list = request_expression.function_kwargs

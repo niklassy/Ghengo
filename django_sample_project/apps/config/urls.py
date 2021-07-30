@@ -18,12 +18,11 @@ from django.contrib import admin
 from django.urls import include
 from rest_framework import routers
 
-from django_sample_project.apps.order.api.views import OrderViewSet, ToDoViewSet
+from django_sample_project.apps.order.api.views import OrderViewSet
 
 router = routers.DefaultRouter()
 
 router.register(r'api/v1/orders', OrderViewSet, basename='orders')
-router.register(r'api/v1/todos', ToDoViewSet, basename='todos')
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),

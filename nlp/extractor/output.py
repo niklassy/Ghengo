@@ -14,6 +14,9 @@ from nlp.utils import is_quoted, get_all_children, get_verb_for_token, token_is_
     num_word_to_integer, get_next_token, NoToken
 
 
+# TODO: move source_represents_output logic to one place, currently everywhere
+# TODO: move logic for variable handling to one place, currently everywhere
+
 class ExtractorOutput(object):
     """
     This class represents the output from an extractor. It converts the source into a valid python value.
@@ -35,6 +38,18 @@ class ExtractorOutput(object):
             return False
 
         return self.get_output() == other.get_output() and self.source == other.source
+
+    @classmethod
+    def string_represents_variable(cls, string):
+        """
+        Checks if a given string represents a variable. Normally this is the case for
+        "<foo>" and <foo>.
+        """
+        clean_string = string
+        if is_quoted(string):
+            clean_string = clean_string[1:-1]
+
+        return len(clean_string) > 2 and clean_string[0] == '<' and clean_string[-1] == '>'
 
     @property
     def output_source(self):
@@ -71,8 +86,8 @@ class ExtractorOutput(object):
             value_str = value_str[1:-1]
 
             # any values in `<??>` are variables
-            if value_str[0] == '<' and value_str[-1] == '>':
-                return Variable(value_str, '')
+            if self.string_represents_variable(value_str):
+                return Variable(value_str[1:-1], '')
 
         # try to return it as int or float
         try:
@@ -185,20 +200,26 @@ class NoneOutput(ExtractorOutput):
     This output will always return None.
     """
     def get_output(self, token=None):
-        self._output_source = None
+        self._output_source = NoToken()
         return None
 
 
 class StringOutput(ExtractorOutput):
     def get_output(self, token=None):
-        return str(super().get_output(token))
+        output = super().get_output(token)
+
+        # handle cases where the data was defined as variable
+        if not isinstance(output, Variable):
+            return str(output)
+
+        return output
 
 
 class DictOutput(ExtractorOutput):
     def get_output(self, token=None):
         output = super().get_output(token)
 
-        if not isinstance(output, dict):
+        if not isinstance(output, dict) and not isinstance(output, Variable):
             self._output_source = NoToken()
             raise ExtractionError(DICT_AS_STRING)
 
@@ -209,6 +230,20 @@ class NumberAsStringOutput(ExtractorOutput):
     """
     This output is a base class for several numbers. Numbers can be found in different places than other data.
     """
+    def get_number_cast_fn(self):
+        """A function that can be overwritten to parse the string of a number to a number format."""
+        return lambda a: a
+
+    def get_output(self, token=None):
+        """Since there still might be a variable output here, catch that case and simply return the Variable."""
+        output = super().get_output(token)
+
+        # this will be the case every time except for variables that are passed by `"<asd>"` values
+        if isinstance(output, str):
+            output = self.get_number_cast_fn()(output)
+
+        return output
+
     def guess_output_type(self, input_value):
         if isinstance(input_value, (int, float, Decimal)):
             return input_value
@@ -218,6 +253,10 @@ class NumberAsStringOutput(ExtractorOutput):
         # remove any quotations
         if is_quoted(value_str):
             value_str = value_str[1:-1]
+
+            # any values in `<??>` are variables - this is still valid here
+            if self.string_represents_variable(value_str):
+                return Variable(value_str[1:-1], '')
 
         try:
             float(value_str)
@@ -277,6 +316,10 @@ class NumberAsStringOutput(ExtractorOutput):
         if is_quoted(next_token):
             clean_next_token_str = str(next_token)[1:-1]
 
+            if self.string_represents_variable(clean_next_token_str):
+                self._output_source = next_token
+                return str(next_token)
+
             if self.token_can_be_parsed_to_int(next_token):
                 self._output_source = next_token
                 return str(self.token_to_integer(next_token, raise_exception=True))
@@ -300,24 +343,24 @@ class IntegerOutput(NumberAsStringOutput):
     """
     This output will return an integer.
     """
-    def get_output(self, token=None):
-        return int(super().get_output(token))
+    def get_number_cast_fn(self):
+        return int
 
 
 class FloatOutput(NumberAsStringOutput):
     """
     This output will return a float.
     """
-    def get_output(self, token=None):
-        return float(super().get_output(token))
+    def get_number_cast_fn(self):
+        return float
 
 
 class DecimalOutput(NumberAsStringOutput):
     """
     This output will return a decimal.
     """
-    def get_output(self, token=None):
-        return Decimal(super().get_output(token))
+    def get_number_cast_fn(self):
+        return Decimal
 
 
 class BooleanOutput(ExtractorOutput):
@@ -331,6 +374,10 @@ class BooleanOutput(ExtractorOutput):
 
         if is_quoted(input_value):
             input_value = input_value[1:-1]
+
+            # any values in `<??>` are variables
+            if self.string_represents_variable(input_value):
+                return Variable(input_value[1:-1], '')
 
         return input_value in POSITIVE_BOOLEAN_INDICATORS[self.document.lang_]
 
