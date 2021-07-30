@@ -8,7 +8,8 @@ from django_sample_project.apps.order.models import Order
 from gherkin.ast import Given, DataTable, TableRow, TableCell, Then
 from nlp.converter.converter import ModelFactoryConverter, ModelVariableReferenceConverter, RequestConverter, \
     QuerysetConverter, CountQuerysetConverter, ExistsQuerysetConverter, ManyCheckEntryResponseConverter, \
-    ResponseConverterBase, ManyLengthResponseConverter, ManyResponseConverter, ResponseConverter
+    ResponseConverterBase, ManyLengthResponseConverter, ManyResponseConverter, ResponseConverter, \
+    ResponseErrorConverter, ResponseStatusCodeConverter
 from nlp.generate.argument import Kwarg
 from nlp.generate.constants import CompareChar
 from nlp.generate.expression import ModelSaveExpression, APIClientExpression, RequestExpression, \
@@ -621,6 +622,7 @@ def test_many_check_length_response_converter_compatibility(doc, min_compatibili
         (nlp('Dann sollte die Antwort sieben Einträge haben.'), 7),
         (nlp('Dann sollte die Antwort sieben Einträge haben.'), 7),
         (nlp('Dann sollten drei Aufträge gegeben sein.'), 3),
+        (nlp('Dann sollten drei Aufträge zurückgegeben werden.'), 3),
         (nlp('Dann sollte ein Auftrag gegeben sein.'), 1),
     ]
 )
@@ -680,16 +682,19 @@ def test_many_response_converter_compatibility(doc, min_compatibility, max_compa
 
 
 @pytest.mark.parametrize(
-    'doc, amount_of_checked_fields', [
-        (nlp('Dann sollte die Antwort den Namen "Alice" enthalten.'), 1),
+    'doc, field_names', [
+        (nlp('Dann sollte die Antwort existieren'), []),
+        (nlp('Dann sollte die Antwort den Namen "Alice" enthalten.'), ['name']),
+        (nlp('Dann sollte die Antwort den Namen "Alice" und die Beschreibung "Test" enthalten.'), ['name', 'description']),
     ]
 )
-def test_many_check_length_response_converter_output(doc, amount_of_checked_fields, mocker):
+def test_response_converter_output(doc, mocker, field_names):
     """Check that the output of ResponseConverter is correct."""
     mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
+    amount_of_checked_fields = len(field_names)
     add_request_statement(test_case)
 
     converter = ResponseConverter(
@@ -699,12 +704,135 @@ def test_many_check_length_response_converter_output(doc, amount_of_checked_fiel
         test_case,
     )
     statements = converter.convert_to_statements()
-    assert len(statements) == 1 + amount_of_checked_fields
+    if amount_of_checked_fields > 0:
+        assert len(statements) == 1 + amount_of_checked_fields
+        # check the statement that sets the variable
+        assert statements[0].expression.child.attribute_name == 'data'
+
+        # check the statements that are assert statements for each field
+        for index, statement in enumerate(statements[1:]):
+            assert statement.expression.value_1.function_name.attribute_name == 'get'
+            assert statement.expression.value_1.function_kwargs[0].value == field_names[index]
+    else:
+        assert len(statements) == 0
 
 
+@pytest.mark.parametrize(
+    'doc, min_compatibility, max_compatibility', [
+        (nlp('Dann sollte die Antwort den Status 200 haben.'), 0.7, 1),
+        (nlp('Dann sollte die Antwort den Status 400 haben.'), 0.7, 1),
+        (nlp('Dann sollte die Antwort den Status 403 haben.'), 0.7, 1),
+        (nlp('Dann sollte die Antwort den Namen Alice enthalten.'), 0, 0.3),
+        (nlp('Dann sollte die Antwort die Beschreibung "test" enthalten.'), 0, 0.3),
+        (nlp('Dann sollte der zweite Eintrag den Namen Alice enthalten.'), 0, 0.3),
+        (nlp('Dann sollten sieben Eintrage zurückgegeben werden.'), 0, 0.3),
+    ]
+)
+def test_many_response_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
+    """Check that the ResponseStatusCodeConverter detects the compatibility of different documents correctly."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
 
-# TODO: test ResponseConverter output
-# TODO: test ResponseErrorConverter compatibility
-# TODO: test ResponseErrorConverter output
-# TODO: test ResponseStatusCodeConverter compatibility
-# TODO: test ResponseStatusCodeConverter output
+    add_request_statement(test_case)
+    assert len(test_case.statements) > 0
+
+    converter = ResponseStatusCodeConverter(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    assert converter.get_document_compatibility() >= min_compatibility
+    assert converter.get_document_compatibility() <= max_compatibility
+
+
+@pytest.mark.parametrize(
+    'doc, status_code', [
+        (nlp('Dann sollte die Antwort existieren'), None),
+        (nlp('Dann sollte die Antwort den Status 200 haben.'), 200),
+        (nlp('Dann sollte die Antwort den Status 400 haben.'), 400),
+        (nlp('Dann sollte die Antwort den Status 404 haben.'), 404),
+    ]
+)
+def test_response_converter_output(doc, mocker, status_code):
+    """Check that the output of ResponseStatusCodeConverter is correct."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    add_request_statement(test_case)
+
+    converter = ResponseStatusCodeConverter(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    statements = converter.convert_to_statements()
+    if status_code:
+        assert len(statements) == 1
+        assert statements[0].expression.value_1.attribute_name == 'status_code'
+        assert statements[0].expression.value_2.value == status_code
+    else:
+        assert len(statements) == 0
+
+
+@pytest.mark.parametrize(
+    'doc, min_compatibility, max_compatibility', [
+        (nlp('Dann sollte der Fehler "asd" enthalten.'), 0.7, 1),
+        (nlp('Dann sollte es einen Fehler "error" geben.'), 0.7, 1),
+        (nlp('Dann sollte ein Auftrag existieren.'), 0, 0.3),
+        (nlp('Dann sollte ein Test existieren.'), 0, 0.3),
+        (nlp('Dann sollte die Antwort zwei Einträge enthalten.'), 0, 0.3),
+    ]
+)
+def test_many_response_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
+    """Check that the ResponseErrorConverter detects the compatibility of different documents correctly."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    add_request_statement(test_case)
+    assert len(test_case.statements) > 0
+
+    converter = ResponseErrorConverter(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    assert converter.get_document_compatibility() >= min_compatibility
+    assert converter.get_document_compatibility() <= max_compatibility
+
+
+@pytest.mark.parametrize(
+    'doc, error_str', [
+        (nlp('Dann sollte die Antwort existieren'), None),
+        (nlp('Dann sollte die Antwort den Fehler "asd" haben.'), 'asd'),
+        (nlp('Dann sollte die Antwort einen Fehler "error" zurückgeben.'), 'error'),
+    ]
+)
+def test_response_converter_output(doc, mocker, error_str):
+    """Check that the output of ResponseErrorConverter is correct."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    add_request_statement(test_case)
+
+    converter = ResponseErrorConverter(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    statements = converter.convert_to_statements()
+    if error_str:
+        assert len(statements) == 1
+        assert statements[0].expression.value_1.value == error_str
+        assert statements[0].expression.compare_char == 'in'
+        assert statements[0].expression.value_2.function_name == 'str'
+        assert statements[0].expression.value_2.function_kwargs[0].attribute_name == 'data'
+    else:
+        assert len(statements) == 0

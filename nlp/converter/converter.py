@@ -922,7 +922,7 @@ class ResponseStatusCodeConverter(ResponseConverterBase):
             exp = CompareExpression(
                 Attribute(response_var, 'status_code'),
                 CompareChar.EQUAL,
-                self.extract_and_handle_output(extractor),
+                Argument(self.extract_and_handle_output(extractor)),
             )
             statements.append(AssertStatement(expression=exp))
 
