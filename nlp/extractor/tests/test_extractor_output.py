@@ -86,7 +86,7 @@ def test_none_extractor_output(doc, token_index):
     """Test if the none output always returns None."""
     extractor_output = NoneOutput(doc[token_index], doc)
     assert extractor_output.get_output() is None
-    assert extractor_output.output_source is None
+    assert not extractor_output.output_source
 
 
 @pytest.mark.parametrize(
