@@ -17,7 +17,7 @@ from settings import Settings
 from test_utils import assert_callable_raises
 
 
-class TestTokenWrapper(TokenWrapper):
+class CustomTokenWrapper(TokenWrapper):
     def get_place_to_search(self) -> str:
         """In tests we simply pass None to the tokens, so simplify the place to search."""
         return ''
@@ -40,7 +40,7 @@ def get_sequence(sequence, add_end_of=False):
     output = []
 
     for entry in sequence:
-        output.append(TestTokenWrapper(entry))
+        output.append(CustomTokenWrapper(entry))
 
         if add_end_of:
             output.append(TestTokenWrapper(EndOfLineToken(None, None)))

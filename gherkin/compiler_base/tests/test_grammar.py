@@ -4,13 +4,13 @@ from gherkin.token import DescriptionToken, EndOfLineToken, EOFToken, FeatureTok
 from test_utils import assert_callable_raises
 
 
-class TestTokenWrapper(TokenWrapper):
+class CustomTokenWrapper(TokenWrapper):
     def get_place_to_search(self) -> str:
         return ''
 
 
 def token_sequence(sequence):
-    return [TestTokenWrapper(t) for t in sequence]
+    return [CustomTokenWrapper(t) for t in sequence]
 
 
 def test_grammar_invalid_input():

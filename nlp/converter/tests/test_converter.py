@@ -8,7 +8,7 @@ from django_sample_project.apps.order.models import Order
 from gherkin.ast import Given, DataTable, TableRow, TableCell, Then
 from nlp.converter.converter import ModelFactoryConverter, ModelVariableReferenceConverter, RequestConverter, \
     QuerysetConverter, CountQuerysetConverter, ExistsQuerysetConverter, ManyCheckEntryResponseConverter, \
-    ResponseConverterBase, ManyLengthResponseConverter, ManyResponseConverter
+    ResponseConverterBase, ManyLengthResponseConverter, ManyResponseConverter, ResponseConverter
 from nlp.generate.argument import Kwarg
 from nlp.generate.constants import CompareChar
 from nlp.generate.expression import ModelSaveExpression, APIClientExpression, RequestExpression, \
@@ -679,7 +679,30 @@ def test_many_response_converter_compatibility(doc, min_compatibility, max_compa
     assert converter.get_document_compatibility() <= max_compatibility
 
 
-# TODO: test ResponseConverter compatibility
+@pytest.mark.parametrize(
+    'doc, amount_of_checked_fields', [
+        (nlp('Dann sollte die Antwort den Namen "Alice" enthalten.'), 1),
+    ]
+)
+def test_many_check_length_response_converter_output(doc, amount_of_checked_fields, mocker):
+    """Check that the output of ResponseConverter is correct."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    add_request_statement(test_case)
+
+    converter = ResponseConverter(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    statements = converter.convert_to_statements()
+    assert len(statements) == 1 + amount_of_checked_fields
+
+
+
 # TODO: test ResponseConverter output
 # TODO: test ResponseErrorConverter compatibility
 # TODO: test ResponseErrorConverter output
