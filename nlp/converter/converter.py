@@ -1137,7 +1137,7 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
             return compatibility
 
         entry_token = self.get_entry_token()
-        output_source = entry_extractor.output.output_source
+        output_source = entry_extractor.output.output_token
 
         # if no entry number is defined, it is more unlikely that this converter does not fit
         if not output_source:
@@ -1245,7 +1245,7 @@ class ManyLengthResponseConverter(ManyResponseConverter):
             compatibility *= 0.3
 
         # the length is normally described in numbers not in adjectives (`first` vs. `one`)
-        output_source = length_extractor.output.output_source
+        output_source = length_extractor.output.output_token
         if output_source and output_source.pos_ != 'NUM':
             compatibility *= 0.3
 

@@ -37,12 +37,12 @@ document = nlp('Sie hat 3 Äpfel.')
 def test_extractor_output_guess_output_type(value, output):
     """Check if guessing the input works as expected."""
     extractor_output = ExtractorOutput(value, document)
-    guessed_value = extractor_output.guess_output_type(value)
+    guessed_value = extractor_output.get_output_from_python_type(value)
     if isinstance(output, Variable):
         assert isinstance(guessed_value, Variable)
     else:
         assert guessed_value == output
-    assert extractor_output.output_source == value
+    assert extractor_output.output_token == value
 
 
 @pytest.mark.parametrize(
@@ -66,7 +66,7 @@ def test_extractor_output_token_to_string_output(doc, token_index, expected_outp
     assert expected_output == actual_output
     extractor_output.source_represents_output = True
     assert extractor_output.token_to_string_output(extractor_output.source) == str(extractor_output.source)
-    assert extractor_output.output_source == doc[source_output_index]
+    assert extractor_output.output_token == doc[source_output_index]
 
 
 @pytest.mark.parametrize(
@@ -86,7 +86,7 @@ def test_none_extractor_output(doc, token_index):
     """Test if the none output always returns None."""
     extractor_output = NoneOutput(doc[token_index], doc)
     assert extractor_output.get_output() is None
-    assert not extractor_output.output_source
+    assert not extractor_output.output_token
 
 
 @pytest.mark.parametrize(
@@ -106,7 +106,7 @@ def test_string_extractor_output(doc, token_index, expected_output, source_outpu
         assert extractor_output.get_output().name_predetermined == expected_output.name_predetermined
     else:
         assert extractor_output.get_output() == expected_output
-    assert extractor_output.output_source == doc[source_output_index]
+    assert extractor_output.output_token == doc[source_output_index]
 
 
 @pytest.mark.parametrize(
@@ -149,7 +149,7 @@ def test_number_as_string_output(doc, token_index, expected_output, raises, sour
             assert extractor_output.get_output().name_predetermined == expected_output.name_predetermined
         else:
             assert extractor_output.get_output() == expected_output
-        assert extractor_output.output_source == doc[source_output_index]
+        assert extractor_output.output_token == doc[source_output_index]
     else:
         assert_callable_raises(extractor_output.get_output, ExtractionError)
 
@@ -173,7 +173,7 @@ def test_integer_extractor_output(doc, token_index, expected_output, raises, sou
             assert extractor_output.get_output().name_predetermined == expected_output.name_predetermined
         else:
             assert extractor_output.get_output() == expected_output
-        assert extractor_output.output_source == doc[source_output_index]
+        assert extractor_output.output_token == doc[source_output_index]
     else:
         assert_callable_raises(extractor_output.get_output, ExtractionError)
 
@@ -192,7 +192,7 @@ def test_float_extractor_output(doc, token_index, expected_output, raises, sourc
 
     if not raises:
         assert extractor_output.get_output() == expected_output
-        assert extractor_output.output_source == doc[source_output_index]
+        assert extractor_output.output_token == doc[source_output_index]
     else:
         assert_callable_raises(extractor_output.get_output, ExtractionError)
 
@@ -211,7 +211,7 @@ def test_bool_extractor_output(doc, token_index, expected_output, source_output_
     """Check if floats are extracted correctly."""
     extractor_output = BooleanOutput(doc[token_index], doc)
     assert extractor_output.get_output() == expected_output
-    assert extractor_output.output_source == doc[source_output_index]
+    assert extractor_output.output_token == doc[source_output_index]
 
 
 @pytest.mark.parametrize(
@@ -237,7 +237,7 @@ def test_variable_extractor_output(doc, token_index, raises, source_output_index
     if not raises:
         assert isinstance(extractor_output.get_output(), Variable)
         assert extractor_output.get_output() == var
-        assert extractor_output.output_source == doc[source_output_index]
+        assert extractor_output.output_token == doc[source_output_index]
     else:
         assert_callable_raises(extractor_output.get_output, ExtractionError)
 
@@ -267,6 +267,6 @@ def test_model_variable_extractor_output(doc, token_index, raises, model_input, 
     if not raises:
         assert isinstance(extractor_output.get_output(), Variable)
         assert extractor_output.get_output() == var
-        assert extractor_output.output_source == doc[source_output_index]
+        assert extractor_output.output_token == doc[source_output_index]
     else:
         assert_callable_raises(extractor_output.get_output, ExtractionError)
