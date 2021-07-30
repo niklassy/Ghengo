@@ -43,10 +43,10 @@ def get_sequence(sequence, add_end_of=False):
         output.append(CustomTokenWrapper(entry))
 
         if add_end_of:
-            output.append(TestTokenWrapper(EndOfLineToken(None, None)))
+            output.append(CustomTokenWrapper(EndOfLineToken(None, None)))
 
     if add_end_of:
-        output.append(TestTokenWrapper(EOFToken(None, None)))
+        output.append(CustomTokenWrapper(EOFToken(None, None)))
     return output
 
 
