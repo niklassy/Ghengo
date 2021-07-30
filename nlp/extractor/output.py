@@ -38,6 +38,10 @@ class ExtractorOutput(object):
 
     @classmethod
     def string_represents_variable(cls, string):
+        """
+        Checks if a given string represents a variable. Normally this is the case for
+        "<foo>" and <foo>.
+        """
         clean_string = string
         if is_quoted(string):
             clean_string = clean_string[1:-1]
