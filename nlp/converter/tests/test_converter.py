@@ -8,7 +8,7 @@ from django_sample_project.apps.order.models import Order
 from gherkin.ast import Given, DataTable, TableRow, TableCell, Then
 from nlp.converter.converter import ModelFactoryConverter, ModelVariableReferenceConverter, RequestConverter, \
     QuerysetConverter, CountQuerysetConverter, ExistsQuerysetConverter, ManyCheckEntryResponseConverter, \
-    ResponseConverterBase, ManyLengthResponseConverter
+    ResponseConverterBase, ManyLengthResponseConverter, ManyResponseConverter
 from nlp.generate.argument import Kwarg
 from nlp.generate.constants import CompareChar
 from nlp.generate.expression import ModelSaveExpression, APIClientExpression, RequestExpression, \
@@ -646,7 +646,39 @@ def test_many_check_length_response_converter_output(doc, desired_length, mocker
     assert statements[0].expression.value_1.function_kwargs[0].attribute_name == 'data'
 
 
-# TODO: test ManyResponseConverter compatibility
+@pytest.mark.parametrize(
+    'doc, min_compatibility, max_compatibility', [
+        (nlp('Dann sollte der zweite Eintrag den Namen "Alice" haben.'), 0.7, 1),
+        (nlp('Dann sollte der zweite Auftrag der Liste den Namen "Alice" haben.'), 0.7, 1),
+        (nlp('Dann sollte der zweite Eintrag der Liste den Namen "Alice" haben.'), 0.7, 1),
+        (nlp('Dann sollte die Antwort eine Länge von 2 haben.'), 0.7, 1),
+        (nlp('Dann sollte die Antwort zwei Einträge haben.'), 0.7, 1),
+        (nlp('Dann sollten fünf Einträge enthalten sein.'), 0.7, 1),
+        (nlp('Dann sollten in der ersten Antwort zwei Einträge enthalten sein.'), 0.7, 1),
+        (nlp('Dann sollte der erste Eintrag in der Antwort den Namen "Alice" enthalten.'), 0.7, 1),
+        (nlp('Dann sollte der erste Auftrag in der Antwort den Namen "Alice" enthalten.'), 0.7, 1),
+        (nlp('Dann sollte die Antwort den Namen "Alice" enthalten.'), 0, 0.3),
+    ]
+)
+def test_many_response_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
+    """Check that the ManyResponseConverter detects the compatibility of different documents correctly."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    add_request_statement(test_case)
+    assert len(test_case.statements) > 0
+
+    converter = ManyResponseConverter(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    assert converter.get_document_compatibility() >= min_compatibility
+    assert converter.get_document_compatibility() <= max_compatibility
+
+
 # TODO: test ResponseConverter compatibility
 # TODO: test ResponseConverter output
 # TODO: test ResponseErrorConverter compatibility
