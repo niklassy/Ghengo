@@ -36,7 +36,7 @@ def test_extract_python_value(value, expected_value):
 def test_output_instance():
     """Check if the output instance is set correctly and the data is passed."""
     extractor = Extractor(default_test_case, '', '1', document)
-    output_instance = extractor.get_output_instance()
+    output_instance = extractor.output
     assert isinstance(output_instance, extractor.output_class)
     assert output_instance.document == document
     assert output_instance.source == '1'

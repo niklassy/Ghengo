@@ -5,13 +5,13 @@ from gherkin.compiler_base.token import Token
 from test_utils import assert_callable_raises
 
 
-class TestToken(Token):
+class CustomToken(Token):
     @classmethod
     def get_keywords(cls):
         return ['ABCDE ', 'ABCDE']
 
 
-class TestToken2(TestToken):
+class CustomToken2(CustomToken):
     @classmethod
     def get_keywords(cls):
         return ['12345']
@@ -31,7 +31,7 @@ def test_lexer_init():
 def test_lexer_token_fits_string():
     """Check that the default lexer checks tokens via its function."""
     lexer = Lexer(None)
-    token = TestToken(None, None)
+    token = CustomToken(None, None)
     assert lexer.token_fits_string(token, '123') is False
     assert lexer.token_fits_string(token, 'abcd') is False
     assert lexer.token_fits_string(token, 'ABCDE') is True
@@ -40,17 +40,17 @@ def test_lexer_token_fits_string():
 def test_lexer_get_fitting_token_cls():
     """Check that the lexer can extract the correct token class."""
     lexer = Lexer(None)
-    lexer.token_classes = [TestToken, TestToken2]
+    lexer.token_classes = [CustomToken, CustomToken2]
     assert lexer.get_fitting_token_cls('123') is None
-    assert lexer.get_fitting_token_cls('ABCDE') == TestToken
-    assert lexer.get_fitting_token_cls('12345') == TestToken2
+    assert lexer.get_fitting_token_cls('ABCDE') == CustomToken
+    assert lexer.get_fitting_token_cls('12345') == CustomToken2
 
 
 def test_lexer_init_and_add_token():
     """Check that the lexer can add tokens with init_and_add_token"""
     lexer = Lexer(None)
-    add_token = lexer.init_and_add_token(TestToken, 'a', 'b')
-    assert isinstance(add_token, TestToken)
+    add_token = lexer.init_and_add_token(CustomToken, 'a', 'b')
+    assert isinstance(add_token, CustomToken)
     assert len(lexer.tokens) == 1
     assert lexer.tokens[0] == add_token
 
@@ -62,23 +62,23 @@ def test_lexer_tokenize():
     lexer = Lexer(None)
     assert_callable_raises(lexer.tokenize, NotImplementedError, args=[text])     # <- no token classes defined
 
-    lexer.token_classes = [TestToken, TestToken2]
+    lexer.token_classes = [CustomToken, CustomToken2]
     tokens = lexer.tokenize(text)
     assert lexer.tokens == tokens
-    assert isinstance(tokens[0], TestToken)
+    assert isinstance(tokens[0], CustomToken)
     assert tokens[0].text == 'ABCDE'
-    assert isinstance(tokens[1], TestToken2)
+    assert isinstance(tokens[1], CustomToken2)
     assert tokens[1].text == '12345 FOO'
-    assert isinstance(tokens[2], TestToken)
+    assert isinstance(tokens[2], CustomToken)
     assert tokens[2].text == 'ABCDE '
-    assert isinstance(tokens[3], TestToken2)
+    assert isinstance(tokens[3], CustomToken2)
     assert tokens[3].text == '12345 778293'     # <-- TestToken2 matches till the end of the line
 
 
 def test_custom_lexer():
     """Check that custom implementations of the lexer work."""
     class CustomLexer(Lexer):
-        token_classes = [TestToken, TestToken2]
+        token_classes = [CustomToken, CustomToken2]
         on_token_added_calls = []
         on_end_of_line_calls = []
         on_end_of_doc_calls = 0

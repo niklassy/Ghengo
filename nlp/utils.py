@@ -209,11 +209,21 @@ def num_word_to_integer(num_word, language):
 
     if language == Languages.DE:
         try:
-            return w2n_de.convert(num_word)
+            output = w2n_de.convert(num_word)
         except KeyError:
             raise ValueError('No value found')
 
-    return w2n_en.word_to_num(num_word)
+    else:
+        output = w2n_en.word_to_num(num_word)
+
+    if isinstance(output, int):
+        return output
+
+    return ''.join(c for c in output if c.isdigit())
+
+
+def token_is_plural(token):
+    return token_is_noun(token) and 'Number=Plur' in token.morph
 
 
 def token_is_like_num(token):
@@ -242,12 +252,16 @@ def token_is_like_num(token):
             return True
 
     text_lower = text.lower()
-
+    lemma_lower = str(token.lemma_).lower()
     try:
-        num_word_to_integer(text_lower, token.lang_)
-        return True
+        num_word_to_integer(lemma_lower, token.lang_)
+        return token.pos_ == 'NUM' or token.pos_ == 'ADJ' or token.pos_ == 'DET'
     except (ValueError, LanguageNotSupported):
-        pass
+        try:
+            num_word_to_integer(text_lower, token.lang_)
+            return token.pos_ == 'NUM' or token.pos_ == 'ADJ' or token.pos_ == 'DET'
+        except (ValueError, LanguageNotSupported):
+            pass
 
     try:
         if text_lower in LIKE_NUM_WORDS[token.lang_].keys():

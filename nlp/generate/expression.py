@@ -36,7 +36,7 @@ class FunctionCallExpression(Expression):
     def get_template_context(self, line_indent, indent):
         kwargs_template = ', '.join([kwarg.to_template(line_indent) for kwarg in self.function_kwargs])
 
-        if len(self.function_name + kwargs_template) > 100:
+        if len(str(self.function_name) + kwargs_template) > 100:
             long_content_start = '\n'
             long_content_end = '\n' + self.get_indent_string(line_indent)
             kwargs_template = ',\n'.join([kwarg.to_template(
@@ -149,16 +149,22 @@ class ReverseCallExpression(FunctionCallExpression):
 class RequestExpression(FunctionCallExpression):
     template = '{client_variable}.{fn_name}({long_content_start}{reverse}{kwargs}{long_content_end})'
 
-    def __init__(self, function_name, function_kwargs, reverse_name, client_variable, reverse_kwargs):
+    def __init__(self, function_name, function_kwargs, reverse_name, client_variable, reverse_kwargs, url_adapter):
         super().__init__(function_name, function_kwargs)
         self.client_variable = client_variable
         self.reverse_expression = ReverseCallExpression(reverse_name, reverse_kwargs)
+        self.url_adapter = url_adapter
+
+    @property
+    def serializer_class(self):
+        return self.url_adapter.get_serializer_class(self.function_name)
 
     def get_template_context(self, line_indent, indent):
         context = super().get_template_context(line_indent, indent)
 
         context['reverse'] = self.reverse_expression.to_template(line_indent, 0)
-        dict_content_str = ', '.join(['\'{}\': {}'.format(k.name, k.value.to_template(line_indent)) for k in self.function_kwargs])
+        dict_content_str = ', '.join(
+            ['\'{}\': {}'.format(k.name, k.value.to_template(line_indent)) for k in self.function_kwargs])
 
         # add `,` because it is an argument as well
         context['kwargs'] = ', {' + dict_content_str + '}' if dict_content_str else ''

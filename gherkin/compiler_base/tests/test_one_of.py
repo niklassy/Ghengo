@@ -4,14 +4,14 @@ from gherkin.token import DescriptionToken, EndOfLineToken, EOFToken, FeatureTok
 from test_utils import assert_callable_raises
 
 
-class TestTokenWrapper(TokenWrapper):
+class CustomTokenWrapper(TokenWrapper):
     def get_place_to_search(self) -> str:
         return ''
 
 
 def token_sequence(sequence):
     assert all([isinstance(t, Token) for t in sequence])
-    return [TestTokenWrapper(t) for t in sequence]
+    return [CustomTokenWrapper(t) for t in sequence]
 
 
 def test_one_of_invalid_input():

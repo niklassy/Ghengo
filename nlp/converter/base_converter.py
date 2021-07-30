@@ -23,6 +23,11 @@ class Converter(object):
         self._extractors = None
         self._prepared = False
 
+        self._creating_statements = False
+
+    class ExtractorReturnedNone(Exception):
+        pass
+
     @property
     def extractors(self):
         if self._extractors is None:
@@ -64,6 +69,31 @@ class Converter(object):
         """
         return 1
 
+    def add_extractor_warnings_to_test_case(self, extractor):
+        """Adds any warnings that the given extractor generated to the test case."""
+        if extractor.generates_warning:
+            warnings = extractor.get_generated_warnings()
+
+            for warning in warnings:
+                self.test_case.test_suite.warning_collection.add_warning(warning.code)
+
+    def extract_and_handle_output(self, extractor):
+        """
+        This function is a wrapper around the extract_value function. It is used to perform tasks before returning the
+        extracted value.
+        """
+        assert self._creating_statements, 'You should only call this function in `handle_extractor`, ' \
+                                          '`prepare_statements` and `finish_statements`. If you want to get the ' \
+                                          'value from an extractor, call `extract_value` instead.'
+
+        self.add_extractor_warnings_to_test_case(extractor)
+        extracted_value = extractor.extract_value()
+
+        if extracted_value is None:
+            raise self.ExtractorReturnedNone()
+
+        return extracted_value
+
     def handle_extractor(self, extractor, statements):
         """Does everything that is needed when an extractor is called."""
         # some extractors add more statements, so add them here if needed
@@ -73,13 +103,32 @@ class Converter(object):
         """Can be used to do something before the extractors are handled."""
         return statements
 
+    def finish_statements(self, statements):
+        """Can be used to do something after the extractors are handled."""
+        return statements
+
     def get_statements_from_extractors(self, extractors):
         """Function to return statements based on extractors."""
         statements = []
-        prepared_statements = self.prepare_statements(statements)
+        self._creating_statements = True
+
+        try:
+            prepared_statements = self.prepare_statements(statements)
+        except self.ExtractorReturnedNone:
+            prepared_statements = []
 
         # go through each extractor and append its kwargs to the factory kwargs
         for extractor in extractors:
-            self.handle_extractor(extractor, prepared_statements)
+            try:
+                self.handle_extractor(extractor, prepared_statements)
+            except self.ExtractorReturnedNone:
+                continue
 
-        return prepared_statements
+        try:
+            finished_statements = self.finish_statements(prepared_statements)
+        except self.ExtractorReturnedNone:
+            finished_statements = prepared_statements
+
+        self._creating_statements = False
+
+        return finished_statements

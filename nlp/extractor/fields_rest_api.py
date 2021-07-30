@@ -82,7 +82,7 @@ class ModelApiFieldExtractor(ApiModelFieldExtractor):
         if self.field.read_only:
             return NoneOutput
 
-        model_field_extractor = get_model_field_extractor(self.field.model_field)
+        model_field_extractor = get_model_field_extractor(self.field.model_field.field)
         return model_field_extractor.output_class
 
 

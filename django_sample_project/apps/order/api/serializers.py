@@ -13,3 +13,11 @@ class OrderSerializer(ModelSerializer):
     class Meta:
         model = Order
         fields = ['id', 'uses_coal', 'name', 'owner', 'collections', 'file']
+
+
+class ToDoSerializer(ModelSerializer):
+    system = serializers.IntegerField()
+
+    class Meta:
+        model = ToDo
+        fields = ['system']

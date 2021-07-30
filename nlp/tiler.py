@@ -1,6 +1,7 @@
 from nlp.converter.base_converter import Converter
 from nlp.converter.converter import ModelVariableReferenceConverter, ModelFactoryConverter, RequestConverter, \
-    FileConverter, QuerysetConverter, CountQuerysetConverter, ExistsQuerysetConverter
+    FileConverter, CountQuerysetConverter, ExistsQuerysetConverter, ResponseConverter, \
+    ManyLengthResponseConverter, ResponseStatusCodeConverter, ResponseErrorConverter, ManyCheckEntryResponseConverter
 from nlp.setup import Nlp
 
 
@@ -44,6 +45,9 @@ class Tiler(object):
                     highest_compatibility = compatibility
                     self._best_converter = converter
 
+                    if compatibility >= 1:
+                        break
+
         return self._best_converter
 
     def add_statements_to_test_case(self):
@@ -73,6 +77,11 @@ class WhenTiler(Tiler):
 
 class ThenTiler(Tiler):
     converter_classes = [
+        ManyCheckEntryResponseConverter,
+        ManyLengthResponseConverter,
+        ResponseStatusCodeConverter,
+        ResponseErrorConverter,
+        ResponseConverter,
         CountQuerysetConverter,
         ExistsQuerysetConverter,
     ]

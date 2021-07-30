@@ -72,10 +72,8 @@ class GenerationWarning(TemplateMixin):
         return {'code': self.code}
 
     @classmethod
-    def create_for_test_case(cls, code, test_case):
-        ref = GenerationWarning(code)
-        test_case.test_suite.warning_collection.add_warning(code)
-        return ref
+    def create_for_test_case(cls, code):
+        return GenerationWarning(code)
 
 
 class GenerationWarningCollection(TemplateMixin):

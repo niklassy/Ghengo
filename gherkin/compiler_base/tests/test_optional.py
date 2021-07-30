@@ -4,13 +4,13 @@ from gherkin.token import DescriptionToken, EndOfLineToken, EOFToken, FeatureTok
 from test_utils import assert_callable_raises
 
 
-class TestTokenWrapper(TokenWrapper):
+class CustomTokenWrapper(TokenWrapper):
     def get_place_to_search(self) -> str:
         return ''
 
 
 def token_sequence(sequence):
-    return [TestTokenWrapper(t) for t in sequence]
+    return [CustomTokenWrapper(t) for t in sequence]
 
 
 def test_optional_invalid_input():
@@ -30,11 +30,11 @@ def test_optional_rule_alias():
 
 def test_optional_grammar():
     """Check that an optional makes grammars pass if they are not used."""
-    class TestGrammar(Grammar):
+    class CustomGrammar(Grammar):
         criterion_rule_alias = RuleAlias(DescriptionToken)
         rule = Chain([criterion_rule_alias, RuleAlias(EndOfLineToken)])
 
-    optional = Optional(TestGrammar())
+    optional = Optional(CustomGrammar())
     # the grammar is used, so the grammar should raise an error and Optional should not catch it
     assert_callable_raises(
         optional.validate_sequence,

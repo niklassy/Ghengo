@@ -116,7 +116,13 @@ class CacheTranslator(object):
         if os.environ.get('RUNNING_TESTS') == 'True':
             assert not inspect.isfunction(self.translator.translate), 'Remember to replace the translator in ' \
                                                                       'with mocker class with a __call__ to avoid ' \
-                                                                      'unnecessary api calls while testing!!'
+                                                                      'unnecessary api calls while testing!! You need' \
+                                                                      ' to add the following: \n\n ' \
+                                                                      '"{}" for {} -> {}'.format(
+                                                                            text,
+                                                                            self.src_language,
+                                                                            self.target_language
+                                                                      )
 
         return self.translator.translate(text, **kwargs)
 

@@ -124,7 +124,8 @@ class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):
                 ]
             )
         except NoConversionFound:
-            permission_query = GenerationWarning.create_for_test_case(PERMISSION_NOT_FOUND, self.test_case)
+            permission_query = GenerationWarning(PERMISSION_NOT_FOUND)
+            self.test_case.test_suite.warning_collection.add_warning(permission_query.code)
 
         m2m_expression = ModelM2MAddExpression(
             model_instance_variable=factory_statement.variable,

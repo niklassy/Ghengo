@@ -5,6 +5,7 @@ from rest_framework import serializers
 from core.constants import Languages
 from django_meta.api import AbstractApiFieldAdapter, ApiFieldAdapter
 from django_meta.model import ModelAdapter
+from django_sample_project.apps.order.api.serializers import OrderSerializer
 from django_sample_project.apps.order.models import ToDo
 from nlp.extractor.exception import ExtractionError
 from nlp.extractor.fields_rest_api import ApiModelFieldExtractor, BooleanApiModelFieldExtractor, \
@@ -154,7 +155,8 @@ def test_model_field_get_output_class():
     assert extractor.get_output_class() == NoneOutput
 
     field_valid = AbstractApiFieldAdapter('name_2')
-    field_valid.model_field = CharField(max_length=10)
+    serializer = OrderSerializer()
+    field_valid.field = serializer.fields.fields.get('name')
     extractor = ModelApiFieldExtractor(default_test_case, document[1], field_valid, document)
     assert extractor.get_output_class() == StringOutput
 

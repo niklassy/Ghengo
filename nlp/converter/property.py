@@ -13,9 +13,17 @@ from nlp.utils import token_to_function_name, NoToken, is_proper_noun_of, token_
 
 class NewModelProperty(ConverterProperty):
     """This property can be used to get the chunk, token and value to create a new model instance."""
+    def __init__(self, converter, blocked_tokens=None):
+        super().__init__(converter)
+
+        if blocked_tokens is None:
+            self.blocked_tokens = []
+        else:
+            self.blocked_tokens = blocked_tokens
+
     def get_chunk(self):
         for chunk in self.converter.get_noun_chunks():
-            if any([token_is_noun(t) for t in chunk]):
+            if any([token_is_noun(t) and t not in self.blocked_tokens for t in chunk]):
                 return chunk
 
         return None
@@ -249,7 +257,7 @@ class ReferenceModelProperty(NewModelProperty):
         # try to find a statement where the found model is saved in the expression
         for statement in self.converter.test_case.statements:
             exp = statement.expression
-            if isinstance(exp, ModelFactoryExpression) and found_m_adapter.model == exp.model_adapter.model:
+            if isinstance(exp, ModelFactoryExpression) and found_m_adapter.models_are_equal(exp.model_adapter):
                 return found_m_adapter
 
         return None

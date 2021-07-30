@@ -180,18 +180,21 @@ def test_num_word_to_integer(text, language, output):
 
 
 @pytest.mark.parametrize(
-    'word, output', [
-        ('zwei', True),
-        ('zehn', True),
-        ('siebzehn', True),
-        ('dreißig', True),
-        ('asdasd', False),
-        ('"§$"§$"', False),
-        ('Banane', False),
-        ('Haus', False),
+    'word, output, index', [
+        ('zwei', True, 0),
+        ('zehn', True, 0),
+        ('siebzehn', True, 0),
+        ('dreißig', True, 0),
+        ('asdasd', False, 0),
+        ('"§$"§$"', False, 0),
+        ('Banane', False, 0),
+        ('Haus', False, 0),
+        ('eine Liste', False, 1),
+        ('ein Eintrag', False, 1),
+        ('Es ist ein Auftrag in der Liste.', True, 2),
     ]
 )
-def test_token_is_like_num(nlp_de, word, output):
+def test_token_is_like_num(nlp_de, word, output, index):
     """Check that token_is_like_num works as expected."""
-    token = nlp_de(word)[0]
+    token = nlp_de(word)[index]
     assert token_is_like_num(token) == output
