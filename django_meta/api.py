@@ -19,21 +19,80 @@ class Methods:
     PUT = 'put'
     DELETE = 'delete'
 
+    @classmethod
+    def get_all(cls):
+        return [cls.GET, cls.PUT, cls.POST, cls.DELETE, cls.PATCH]
 
-class UrlPatternAdapter(object):
-    def __init__(self, url_pattern):
-        self.url_pattern = url_pattern
-        self._view_set = None
-        self._api_view = None
-        self._view_set_determined = False
-        self._api_view_determined = False
+
+class AbstractUrlPatternAdapter(object):
+    def __init__(self, model_adapter):
+        self.model_adapter = model_adapter
+
+    def key_exists_in_route_kwargs(self, key):
+        return True
+
+    @property
+    def is_represented_by_view_set(self):
+        return True
+
+    @property
+    def methods(self):
+        """
+        Returns all methods that this adapter supports. By default, all of them are returned.
+        """
+        return Methods.get_all()
+
+    def method_is_supported(self, method):
+        return method in self.methods
+
+    @property
+    def reverse_url_name(self):
+        """Returns the part of the reverse name that represents the url"""
+        return '-'.join(self.reverse_name.split('-')[1:])
+
+    @property
+    def reverse_viewset_name(self):
+        """Returns the part of the reverse name that represents the viewset"""
+        return '-'.join(self.reverse_name.split('-')[0])
 
     @property
     def reverse_name(self):
-        return self.url_pattern.name
+        """Get a guessed reverse name for the pattern."""
+        return '{}-{}'.format(self.model_adapter.name.lower(), 'detail')
+
+    def get_serializer_class(self, for_method):
+        """
+        Returns the class of the serializer for a given method.
+
+        :argument for_method - one of Methods
+        """
+        # TODO: !!!
+        pass
+
+
+class UrlPatternAdapter(AbstractUrlPatternAdapter):
+    def __init__(self, url_pattern):
+        super().__init__(model_adapter=self._get_model_adapter())
+        self.url_pattern = url_pattern
+        self._view_set_cached = None
+        self._api_view_cached = None
+        self._view_set_determined = False
+        self._api_view_determined = False
+
+    def key_exists_in_route_kwargs(self, key):
+        """
+        Function that checks if a given key exists in the route_kwargs.
+        """
+        return key in self._route_kwargs
 
     @property
-    def model_adapter(self):
+    def reverse_name(self):
+        """
+        Returns the reverse name for the url that can be used via reverse(<name>).
+        """
+        return self.url_pattern.name
+
+    def _get_model_adapter(self):
         view_cls = self._get_view_cls()
         view = view_cls(request=None, format_kwarg=None)
         try:
@@ -47,7 +106,7 @@ class UrlPatternAdapter(object):
         return ModelAdapter.create_with_model(serializer_cls.Meta.model)
 
     @property
-    def route_kwargs(self):
+    def _route_kwargs(self):
         resolver = get_resolver(get_urlconf())
 
         try:
@@ -56,23 +115,21 @@ class UrlPatternAdapter(object):
             return []
 
     @property
-    def view_set_name(self):
-        return self.reverse_name.split('-')[0]
+    def _all_api_actions(self):
+        """
+        Returns all api actions for the view set.
+        """
+        if self._api_view is not None:
+            return self._api_view.get_all_actions()
 
-    @property
-    def url_name(self):
-        return '-'.join(self.reverse_name.split('-')[1:])
-
-    @property
-    def all_api_actions(self):
-        if self.api_view is not None:
-            return self.api_view.get_all_actions()
-
-        return self.view_set.get_all_actions()
+        return self._view_set.get_all_actions()
 
     def get_serializer_class(self, for_method):
-        for fn_name, method, url_name in self.all_api_actions:
-            if for_method == method and url_name == self.url_name:
+        """
+        Returns the serializer class that is responsible for the url.
+        """
+        for fn_name, method, url_name in self._all_api_actions:
+            if for_method == method and url_name == self.reverse_url_name:
                 view_cls = self._get_view_cls()
                 view = view_cls(request=None, format_kwarg=None, action=fn_name)
                 return view.get_serializer_class()
@@ -80,24 +137,30 @@ class UrlPatternAdapter(object):
 
     @property
     def methods(self):
-        if self.view_set is None and self.api_view is None:
+        """
+        Returns all the methods that the api view/ view set supports.
+        """
+        if self._view_set is None and self._api_view is None:
             return []
 
         methods = []
-        if self.api_view is not None:
-            for _, method, url_name in self.api_view.get_all_actions():
+        if self._api_view is not None:
+            for _, method, url_name in self._api_view.get_all_actions():
                 if method not in methods:
                     methods.append(method)
 
             return methods
 
-        for _, method, url_name in self.view_set.get_all_actions():
-            if url_name == self.url_name and method not in methods:
+        for _, method, url_name in self._view_set.get_all_actions():
+            if url_name == self.reverse_url_name and method not in methods:
                 methods.append(method)
 
         return methods
 
     def _get_view_cls(self):
+        """
+        Returns the actual view class for the url.
+        """
         lookup_str = self.url_pattern.lookup_str
 
         full_name_as_list = lookup_str.split('.')
@@ -120,7 +183,10 @@ class UrlPatternAdapter(object):
         return getattr(module, view_name[0])
 
     @property
-    def api_view(self):
+    def _api_view(self):
+        """
+        Returns the api view that belongs to the url pattern.
+        """
         if self._api_view_determined is False:
             view_cls = self._get_view_cls()
 
@@ -128,26 +194,33 @@ class UrlPatternAdapter(object):
             is_view_set = issubclass(view_cls, GenericViewSet)
 
             if inspect.isclass(view_cls) and is_valid_api_view and not is_view_set:
-                self._api_view = ApiViewAdapter(view_cls(request=None, format_kwargs=None))
+                self._api_view_cached = ApiViewAdapter(view_cls(request=None, format_kwargs=None))
             else:
-                self._api_view = None
+                self._api_view_cached = None
 
             self._api_view_determined = True
-        return self._api_view
+        return self._api_view_cached
 
     @property
-    def view_set(self):
+    def is_represented_by_view_set(self):
+        return self._view_set is not None
+
+    @property
+    def _view_set(self):
+        """
+        Returns the view set that represents the url pattern. May be None
+        """
         if self._view_set_determined is False:
             view_cls = self._get_view_cls()
 
             if inspect.isclass(view_cls) and issubclass(view_cls, GenericViewSet):
-                self._view_set = ViewSetAdapter(view_cls(request=None, format_kwarg=None))
+                self._view_set_cached = ViewSetAdapter(view_cls(request=None, format_kwarg=None))
             else:
-                self._view_set = None
+                self._view_set_cached = None
 
             self._view_set_determined = True
 
-        return self._view_set
+        return self._view_set_cached
 
 
 class ApiViewAdapter(object):
@@ -195,7 +268,7 @@ class ViewSetAdapter(object):
 
         for extra_action in extra_actions:
             for method in extra_action.mapping:
-                actions.append((extra_action.url_path, method, extra_action.url_name))
+                actions.append((extra_action.url_path, method, extra_action.reverse_url_name))
 
         return actions
 

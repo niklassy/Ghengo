@@ -3,7 +3,8 @@ import inspect
 from django.contrib.auth.models import Permission
 
 from core.constants import Languages
-from django_meta.api import UrlPatternAdapter, Methods, AbstractApiFieldAdapter, ApiFieldAdapter
+from django_meta.api import UrlPatternAdapter, Methods, AbstractApiFieldAdapter, ApiFieldAdapter, \
+    AbstractUrlPatternAdapter
 from django_meta.model import AbstractModelFieldAdapter, AbstractModelAdapter
 from nlp.locator import RestActionLocator
 from nlp.setup import Nlp
@@ -245,22 +246,21 @@ class UrlSearcher(Searcher):
         self.valid_methods = valid_methods
 
     def get_convert_fallback(self):
-        # TODO: add fallback??
-        return None
+        return AbstractUrlPatternAdapter(model_adapter=self.model_adapter)
 
     def get_keywords(self, url_pattern):
-        keywords = [url_pattern.url_name, url_pattern.reverse_name]
+        keywords = [url_pattern.reverse_url_name, url_pattern.reverse_name]
 
-        if Methods.GET in url_pattern.methods:
+        if url_pattern.method_is_supported(Methods.GET):
             keywords += RestActionLocator.GET_VALUES
 
-        if Methods.POST in url_pattern.methods:
+        if url_pattern.method_is_supported(Methods.POST):
             keywords += RestActionLocator.CREATE_VALUES
 
-        if Methods.POST in url_pattern.methods or Methods.PATCH in url_pattern.methods:
+        if url_pattern.method_is_supported(Methods.PUT) or url_pattern.method_is_supported(Methods.PATCH):
             keywords += RestActionLocator.UPDATE_VALUES
 
-        if Methods.DELETE in url_pattern.methods:
+        if url_pattern.method_is_supported(Methods.DELETE):
             keywords += RestActionLocator.DELETE_VALUES
 
         return keywords
@@ -272,7 +272,7 @@ class UrlSearcher(Searcher):
         for pattern in url_patterns:
             adapter = UrlPatternAdapter(pattern)
 
-            if adapter.view_set is not None:
+            if adapter.is_represented_by_view_set:
                 # if the url does not have a valid method, skip it
                 if not any([m in self.valid_methods for m in adapter.methods]):
                     continue
