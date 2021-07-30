@@ -14,6 +14,9 @@ from nlp.utils import is_quoted, get_all_children, get_verb_for_token, token_is_
     num_word_to_integer, get_next_token, NoToken
 
 
+# TODO: move source_represents_output logic to one place, currently everywhere
+# TODO: move logic for variable handling to one place, currently everywhere
+
 class ExtractorOutput(object):
     """
     This class represents the output from an extractor. It converts the source into a valid python value.
@@ -197,7 +200,7 @@ class NoneOutput(ExtractorOutput):
     This output will always return None.
     """
     def get_output(self, token=None):
-        self._output_source = None
+        self._output_source = NoToken()
         return None
 
 
