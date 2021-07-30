@@ -29,10 +29,16 @@ class AbstractUrlPatternAdapter(object):
         self.model_adapter = model_adapter
 
     def key_exists_in_route_kwargs(self, key):
+        """
+        Check if a given key exists in the kwargs of the url. By default all are allowed.
+        """
         return True
 
     @property
     def is_represented_by_view_set(self):
+        """
+        Check if this url is represented by a view set. By default set to true to continue normally.
+        """
         return True
 
     @property
@@ -43,6 +49,7 @@ class AbstractUrlPatternAdapter(object):
         return Methods.get_all()
 
     def method_is_supported(self, method):
+        """Checks if a given method is supported by the url."""
         return method in self.methods
 
     @property
@@ -53,7 +60,7 @@ class AbstractUrlPatternAdapter(object):
     @property
     def reverse_viewset_name(self):
         """Returns the part of the reverse name that represents the viewset"""
-        return '-'.join(self.reverse_name.split('-')[0])
+        return self.reverse_name.split('-')[0]
 
     @property
     def reverse_name(self):
@@ -62,22 +69,21 @@ class AbstractUrlPatternAdapter(object):
 
     def get_serializer_class(self, for_method):
         """
-        Returns the class of the serializer for a given method.
+        Returns the class of the serializer for a given method. By default None is returned.
 
         :argument for_method - one of Methods
         """
-        # TODO: !!!
-        pass
+        return None
 
 
 class UrlPatternAdapter(AbstractUrlPatternAdapter):
     def __init__(self, url_pattern):
-        super().__init__(model_adapter=self._get_model_adapter())
         self.url_pattern = url_pattern
         self._view_set_cached = None
         self._api_view_cached = None
         self._view_set_determined = False
         self._api_view_determined = False
+        super().__init__(model_adapter=self._get_model_adapter())
 
     def key_exists_in_route_kwargs(self, key):
         """
@@ -94,7 +100,11 @@ class UrlPatternAdapter(AbstractUrlPatternAdapter):
 
     def _get_model_adapter(self):
         view_cls = self._get_view_cls()
-        view = view_cls(request=None, format_kwarg=None)
+        try:
+            view = view_cls(request=None, format_kwarg=None)
+        except TypeError:
+            return None
+
         try:
             serializer_cls = view.get_serializer_class()
         except Exception:
@@ -268,7 +278,7 @@ class ViewSetAdapter(object):
 
         for extra_action in extra_actions:
             for method in extra_action.mapping:
-                actions.append((extra_action.url_path, method, extra_action.reverse_url_name))
+                actions.append((extra_action.url_path, method, extra_action.mapping[method]))
 
         return actions
 

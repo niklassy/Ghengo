@@ -17,6 +17,7 @@ class OrderViewSet(ModelViewSet):
         return super().list(*args, **kwargs)
 
 
+# Currently not used
 class ToDoViewSet(ModelViewSet):
     queryset = ToDo.objects.all()
     serializer_class = ToDoSerializer

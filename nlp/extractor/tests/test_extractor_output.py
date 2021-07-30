@@ -94,19 +94,25 @@ def test_none_extractor_output(doc, token_index):
         (nlp('Gegeben sei ein Benutzer mit dem Namen Franz'), 6, 'Franz', 7),
         (nlp('Gegeben sei ein Dach mit der Länge 2'), 6, '2', 7),
         (nlp('Gegeben sei ein Auftrag mit dem Typen "ABCD"'), 6, 'ABCD', 7),
+        (nlp('Gegeben sei ein Auftrag mit dem Typen "<my_type>"'), 6, Variable('my_type', ''), 7),
         (nlp('Gegeben sei ein Benutzer der Fußball spielt.'), 6, 'True', 6),
     ]
 )
 def test_string_extractor_output(doc, token_index, expected_output, source_output_index):
     """Test if the string output always returns stringifies the output."""
     extractor_output = StringOutput(doc[token_index], doc)
-    assert extractor_output.get_output() == expected_output
+    if isinstance(expected_output, Variable):
+        assert isinstance(extractor_output.get_output(), Variable)
+        assert extractor_output.get_output().name_predetermined == expected_output.name_predetermined
+    else:
+        assert extractor_output.get_output() == expected_output
     assert extractor_output.output_source == doc[source_output_index]
 
 
 @pytest.mark.parametrize(
     'doc, token_index, expected_output, raises', [
         (nlp('Gegeben sei ein Benutzer mit dem Namen "{\'1\': 123}"'), 6, {'1': 123}, False),
+        (nlp('Gegeben sei ein Benutzer mit dem Namen "<name>"'), 6, Variable('name', ''), False),
         (nlp('Gegeben sei ein Benutzer mit dem Namen Alice'), 6, None, True),
     ]
 )
@@ -115,7 +121,11 @@ def test_dict_extractor_output(doc, token_index, expected_output, raises):
     extractor_output = DictOutput(doc[token_index], doc)
 
     if not raises:
-        assert extractor_output.get_output() == expected_output
+        if isinstance(expected_output, Variable):
+            assert isinstance(extractor_output.get_output(), Variable)
+            assert extractor_output.get_output().name_predetermined == expected_output.name_predetermined
+        else:
+            assert extractor_output.get_output() == expected_output
     else:
         assert_callable_raises(extractor_output.get_output, ExtractionError)
 
@@ -125,6 +135,7 @@ def test_dict_extractor_output(doc, token_index, expected_output, raises):
         (nlp('Gegeben sei ein Benutzer mit dem Alter 12'), 6, '12', False, 7),
         (nlp('Gegeben sei ein Benutzer mit dem Alter Alice'), 6, None, True, None),
         (nlp('Gegeben sei ein Dach mit der Länge 13'), 6, '13', False, 7),
+        (nlp('Gegeben sei ein Dach mit der Länge "<length>"'), 6, Variable('length', ''), False, 7),
         (nlp('Gegeben sei ein Dach mit der Länge "3.123"'), 6, '3.123', False, 7),
     ]
 )
@@ -133,7 +144,11 @@ def test_number_as_string_output(doc, token_index, expected_output, raises, sour
     extractor_output = NumberAsStringOutput(doc[token_index], doc)
 
     if not raises:
-        assert extractor_output.get_output() == expected_output
+        if isinstance(expected_output, Variable):
+            assert isinstance(extractor_output.get_output(), Variable)
+            assert extractor_output.get_output().name_predetermined == expected_output.name_predetermined
+        else:
+            assert extractor_output.get_output() == expected_output
         assert extractor_output.output_source == doc[source_output_index]
     else:
         assert_callable_raises(extractor_output.get_output, ExtractionError)
@@ -144,6 +159,7 @@ def test_number_as_string_output(doc, token_index, expected_output, raises, sour
         (nlp('Gegeben sei ein Benutzer mit dem Alter 12'), 6, 12, False, 7),
         (nlp('Gegeben sei ein Benutzer mit dem Alter Alice'), 6, None, True, None),
         (nlp('Gegeben sei ein Dach mit der Länge 13'), 6, 13, False, 7),
+        (nlp('Gegeben sei ein Dach mit der Länge "<length>"'), 6, Variable('length', ''), False, 7),
         (nlp('Gegeben sei ein Dach mit der Länge "3"'), 6, 3, False, 7),
     ]
 )
@@ -152,7 +168,11 @@ def test_integer_extractor_output(doc, token_index, expected_output, raises, sou
     extractor_output = IntegerOutput(doc[token_index], doc)
 
     if not raises:
-        assert extractor_output.get_output() == expected_output
+        if isinstance(expected_output, Variable):
+            assert isinstance(extractor_output.get_output(), Variable)
+            assert extractor_output.get_output().name_predetermined == expected_output.name_predetermined
+        else:
+            assert extractor_output.get_output() == expected_output
         assert extractor_output.output_source == doc[source_output_index]
     else:
         assert_callable_raises(extractor_output.get_output, ExtractionError)

@@ -31,10 +31,13 @@ Funktionalität: Reference
 #    Und ein Auftrag mit dem Namen "Hallo"
 #    Wenn Alice einen Auftrag mit der Datei "asd" erstellt
 
-  Szenario: file
-    Wenn Alice die Liste der Aufträge holt
-    Und Alice die Liste der Aufträge lädt
-    Dann sollten drei Einträge enthalten sein
+  Szenariogrundriss: : file
+    Gegeben sei ein Todo mit dem System "<system>"
+
+  Beispiele:
+    |system|
+    |   1  |
+#    Wenn Alice ein Dach mit dem System 3 ändert
 
 #  Szenario: Ändern von ToDo - anderer Nutzer
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "order.add_order"
