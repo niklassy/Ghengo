@@ -14,11 +14,14 @@ from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.generate.statement import AssignmentStatement
 from nlp.generate.variable import Variable
 from nlp.setup import Nlp
+from nlp.utils import NoToken
 from test_utils import assert_callable_raises
 
 nlp = Nlp.for_language(Languages.DE)
 document = nlp('Sie hat 3 Äpfel.')
 
+
+# TODO: add tests for primitive values for all outputs types!!!
 
 @pytest.mark.parametrize(
     'value, output', [
@@ -37,12 +40,12 @@ document = nlp('Sie hat 3 Äpfel.')
 def test_extractor_output_guess_output_type(value, output):
     """Check if guessing the input works as expected."""
     extractor_output = ExtractorOutput(value, document)
-    guessed_value = extractor_output.get_output_from_python_type(value)
+    guessed_value = extractor_output.get_output_from_python_value(value)
     if isinstance(output, Variable):
         assert isinstance(guessed_value, Variable)
     else:
         assert guessed_value == output
-    assert extractor_output.output_token == value
+    assert isinstance(extractor_output.output_token, NoToken)
 
 
 @pytest.mark.parametrize(
@@ -62,10 +65,10 @@ def test_extractor_output_guess_output_type(value, output):
 def test_extractor_output_token_to_string_output(doc, token_index, expected_output, source_output_index):
     """Check if the correct string is extracted given a specific token."""
     extractor_output = ExtractorOutput(doc[token_index], doc)
-    actual_output = extractor_output.token_to_string_output(extractor_output.source)
+    actual_output = extractor_output.token_to_python(extractor_output.source)
     assert expected_output == actual_output
     extractor_output.source_represents_output = True
-    assert extractor_output.token_to_string_output(extractor_output.source) == str(extractor_output.source)
+    assert extractor_output.token_to_python(extractor_output.source) == str(extractor_output.source)
     assert extractor_output.output_token == doc[source_output_index]
 
 

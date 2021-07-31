@@ -96,10 +96,10 @@ class ForeignKeyApiFieldExtractor(ApiModelFieldExtractor):
         kwargs['test_case'] = self.test_case
         return kwargs
 
-    def _get_output_value(self, output_instance, token):
+    def _get_output_value(self, output_instance):
         """We want to handle Variable references but also give the option to simply set values like `1`."""
         try:
-            value = super()._get_output_value(output_instance=output_instance, token=token)
+            value = super()._get_output_value(output_instance=output_instance)
         except ExtractionError:
             # if no variable is found that fits, simply try to set a normal value
             new_output = ExtractorOutput.copy_from(output_instance)
