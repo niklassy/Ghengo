@@ -60,26 +60,23 @@ class Extractor(object):
 
         return instance
 
-    def _get_output_value(self, output_instance, token):
+    def _get_output_value(self, output_instance):
         """
         Is responsible for getting the value from the output instance. This method can also be overwritten if
         the extractor wants to change the value before returning it.
         """
-        return output_instance.get_output(token)
+        return output_instance.get_output()
 
-    def _extract_value(self, output_instance=None, token=None):
+    def _extract_value(self, output_instance=None):
         """
         A private method for extracting the value. It handles the case where the extractor searches for multiple
         values (defined by `self.many`).
         """
-        if token is None:
-            token = self.source
-
         if output_instance is None:
             output_instance = self.output
 
         try:
-            return self._get_output_value(output_instance, token)
+            return self._get_output_value(output_instance)
         except ExtractionError as e:
             return GenerationWarning(e.code)
 
@@ -202,7 +199,7 @@ class ManyExtractorMixin(object):
             # it is sufficient to use _get_output_value - it is also better to avoid recursive calls
             extractor = extractor_class(**self.get_child_extractor_kwargs())
             try:
-                value = extractor._get_output_value(output_instance, child)
+                value = extractor._get_output_value(output_instance)
             except ExtractionError as e:
                 value = GenerationWarning(e.code)
 
@@ -241,13 +238,13 @@ class FieldExtractor(Extractor):
     def fits_input(cls, field, *args, **kwargs):
         return isinstance(field, cls.field_classes)
 
-    def _get_output_value(self, output_instance, token):
-        output_value = super()._get_output_value(output_instance=output_instance, token=token)
+    def _get_output_value(self, output_instance):
+        output_value = super()._get_output_value(output_instance=output_instance)
 
         # if the field does not exist yet, see if there is any variable in the test case that matches the variable.
         # If yes, we assume that the variable is meant
         if isinstance(self.field, self.default_field_class):
-            variable_output = VariableOutput(token, self.document, self.test_case)
+            variable_output = VariableOutput(self.source, self.document, self.test_case)
 
             try:
                 return variable_output.get_output()

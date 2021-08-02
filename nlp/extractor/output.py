@@ -1,5 +1,6 @@
 import ast
 from decimal import Decimal
+from typing import Union, Tuple, Any
 
 from spacy.tokens.token import Token
 
@@ -8,20 +9,19 @@ from nlp.extractor.exception import ExtractionError
 from nlp.extractor.vocab import POSITIVE_BOOLEAN_INDICATORS, NEGATIVE_BOOLEAN_INDICATORS
 from nlp.generate.expression import ModelFactoryExpression, CreateUploadFileExpression
 from nlp.generate.variable import Variable
-from nlp.generate.warning import NO_VALUE_FOUND_CODE, VARIABLE_NOT_FOUND, DICT_AS_STRING, FILE_NOT_FOUND
-from nlp.utils import is_quoted, get_all_children, get_verb_for_token, token_is_negated, get_proper_noun_from_chunk, \
-    get_noun_from_chunk, token_is_proper_noun, get_noun_chunk_of_token, get_noun_chunks, token_is_like_num, \
-    num_word_to_integer, get_next_token, NoToken
+from nlp.generate.warning import NO_VALUE_FOUND_CODE, VARIABLE_NOT_FOUND, DICT_AS_STRING, FILE_NOT_FOUND, NUMBER_ERROR
+from nlp.utils import is_quoted, get_all_children, get_verb_for_token, token_is_negated, \
+    token_is_proper_noun, token_is_like_num, \
+    num_word_to_integer, get_next_token, NoToken, get_propn_from_previous_chunk
 
-
-# TODO: move source_represents_output logic to one place, currently everywhere
-# TODO: move logic for variable handling to one place, currently everywhere
 
 class ExtractorOutput(object):
     """
     This class represents the output from an extractor. It converts the source into a valid python value.
     The value can be accessed via `get_output`.
     """
+    supports_variable_source = True
+
     class NoOutputYet:
         def __bool__(self):
             return False
@@ -31,7 +31,8 @@ class ExtractorOutput(object):
         self.document = document
         self.source_represents_output = False
 
-        self._output_source = self.NoOutputYet()
+        self._output_token = self.NoOutputYet()
+        self._output = self.NoOutputYet()
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -39,28 +40,43 @@ class ExtractorOutput(object):
 
         return self.get_output() == other.get_output() and self.source == other.source
 
+    @property
+    def source_is_token(self):
+        """Returns if the source of this output is a Token."""
+        return isinstance(self.source, Token)
+
+    @property
+    def source_is_python_value(self):
+        """Returns if the source of this output is a Token."""
+        return not self.source_is_token
+
     @classmethod
     def string_represents_variable(cls, string):
         """
         Checks if a given string represents a variable. Normally this is the case for
         "<foo>" and <foo>.
         """
-        clean_string = string
+        clean_string = str(string)
         if is_quoted(string):
             clean_string = clean_string[1:-1]
 
         return len(clean_string) > 2 and clean_string[0] == '<' and clean_string[-1] == '>'
 
     @property
-    def output_source(self):
-        """Returns the source that was used to actually get the output."""
-        if isinstance(self._output_source, self.NoOutputYet):
+    def output_token(self) -> Union[NoToken, Token]:
+        """
+        Returns the source that was used to actually get the output.
+
+        If there was an exception or no output token is found, NoToken is returned. Else the token that
+        was used to get the output is returned. The output token is actually fully determined in `_get_output`.
+        """
+        if isinstance(self._output_token, self.NoOutputYet):
             try:
                 self.get_output()
             except ExtractionError:
-                self._output_source = NoToken()
+                self._output_token = NoToken()
 
-        return self._output_source
+        return self._output_token
 
     @classmethod
     def copy_from(cls, extractor_output):
@@ -69,25 +85,32 @@ class ExtractorOutput(object):
         copy.source_represents_output = extractor_output.source_represents_output
         return copy
 
-    def guess_output_type(self, input_value):
-        """
-        This function will return a python value from a string. It will guess the type of
-        that value from different criteria.
-        """
-        # if the value is already native, just return it
-        if isinstance(input_value, (int, float, Decimal, bool)):
-            return input_value
+    def handle_variable_value(self, value):
+        """This method is responsible for handling variables."""
+        value_str = str(value)
 
-        # otherwise turn the value into a string to check it more
-        value_str = str(input_value)
-
-        # remove any quotations
         if is_quoted(value_str):
             value_str = value_str[1:-1]
 
-            # any values in `<??>` are variables
-            if self.string_represents_variable(value_str):
-                return Variable(value_str[1:-1], '')
+        # any values in `<??>` are variables
+        if self.string_represents_variable(value_str):
+            return Variable(value_str[1:-1], '')
+
+        raise ValueError()
+
+    def get_output_from_python_value(self, python_value):
+        """
+        This method will actually return the value that will be the output. This value will be prepared one last
+        time before it is returned. This method is also used if the source is not a Token.
+        """
+        # numbers, decimals and boolean values are simple returned
+        if isinstance(python_value, (int, float, Decimal, bool)):
+            return python_value
+
+        # otherwise turn the value into a string to check it more
+        value_str = str(python_value)
+        if is_quoted(value_str):
+            value_str = value_str[1:-1]
 
         # try to return it as int or float
         try:
@@ -117,165 +140,196 @@ class ExtractorOutput(object):
         # just return the value as a string
         return value_str
 
-    def _get_value_from_previous_chunk(self, token):
-        chunk = get_noun_chunk_of_token(token, token.doc)
-
-        if chunk:
-            noun_chunks = get_noun_chunks(self.document)
-
-            try:
-                chunk_index = noun_chunks.index(chunk)  # <- can raise ValueError if not in chunk
-                previous_chunk = noun_chunks[chunk_index - 1]   # <- can raise IndexError if no previous chunk
-                previous_propn = get_proper_noun_from_chunk(previous_chunk)
-
-                if get_noun_from_chunk(previous_chunk) is None and previous_propn:
-                    self._output_source = previous_propn
-                    return str(previous_propn)
-            except (IndexError, ValueError):
-                pass
-
-        raise ExtractionError(NO_VALUE_FOUND_CODE)
-
-    def token_to_string_output(self, token):
+    def token_to_python(self, token) -> Tuple[Any, Token]:
         """
-        This function handles the source token if it a Token. It uses the information that is passed from NLP
-        to guess the token that holds the value. It will also turn that token into a value that is used in
-        `guess_output_type` to guess the value.
-        """
-        # in some cases the parent might force that the source is the output
-        if self.source_represents_output:
-            self._output_source = self.source
-            return str(self.source)
+        Transforms a given token to a first string that will/ may be analyzed further later.
+        This base version will try to make assumptions about the python type by checking information about the
+        token.
 
-        # if the token is an adjective or verb, it will most likely be a boolean field
+        This will return a tuple containing the python value and the token that was used to get that python value.
+        """
         if token.pos_ == 'ADJ' or token.pos_ == 'VERB' or token.pos_ == 'ADV':
-
             # it is easier to determine from the verb if the adv is negated
             # `he is big` or `he is not big` - big is the ADV, is the AUX, not corresponds to the AUX
             if token.pos_ == 'ADV' and token.head.pos_ == 'AUX':
                 token = token.head
 
             children_negated = any([token_is_negated(child) for child in get_all_children(token)])
-            self._output_source = token
-            return not token_is_negated(token) and not children_negated
+            boolean_value = not token_is_negated(token) and not children_negated
+            return boolean_value, token
 
         # check if any children is a digit or a proper noun, if yes they are the value
         for child in token.children:
             if child.is_digit or token_is_proper_noun(child):
-                self._output_source = child
-                return str(child)
+                return str(child), child
 
         # as an alternative, if the next token is in quotes it should be the value
         next_token = get_next_token(token)
         if is_quoted(next_token):
-            self._output_source = next_token
-            return str(next_token)
+            return str(next_token)[1:-1], next_token
 
         # if still nothing is found, the value might be in a previous noun chunk
-        try:
-            return self._get_value_from_previous_chunk(token)
-        except ExtractionError:
-            pass
+        previous_token = get_propn_from_previous_chunk(token)
+        if previous_token:
+            return str(previous_token), previous_token
 
         raise ExtractionError(NO_VALUE_FOUND_CODE)
 
-    def get_output(self, token=None):
+    def set_output_token(self, token):
         """
-        The function that returns the output. You can pass a specific token to check
-        the output. If you pass nothing, the source of this class is used.
+        Sets the output token - the one that was actually used to get the python value.
         """
-        if token is None:
-            token = self.source
+        self._output_token = token
 
-        # if the input is not a token, we can only guess its type
-        if not isinstance(token, Token):
-            self._output_source = token
-            return self.guess_output_type(token)
+    def prepare_output(self, output_value):
+        """
+        Is called right before the output is returned. Can used to change the return value.
+        """
+        return output_value
 
-        return self.guess_output_type(self.token_to_string_output(token))
+    def prepare_python_value(self, value):
+        """
+        Is called right before `get_output_from_python_value` is called. It can be used to modify the value.
+        This is useful if the value needs to modified every time.
+        """
+        return str(value)
+
+    def _get_output(self):
+        """
+        This is the private function that gets the output.
+        """
+        token = self.source
+
+        python_value = token
+        output_token = NoToken()
+
+        try:
+            # if the source is a token (is true most of the time)
+            if self.source_is_token:
+                # check if the token represents the output - if yes, set it as output token and convert to python
+                if self.source_represents_output:
+                    output_token = self.source
+                    python_value = str(self.source)
+                else:
+                    # if not use `token_to_python` to get the python value and the output token
+                    python_value, output_token = self.token_to_python(token)
+
+            # set the output token afterwards - if the source holds no token, it will be NoToken
+            self.set_output_token(output_token)
+
+            # if the output represents a variable ('<value'), return that instead
+            if self.supports_variable_source and self.string_represents_variable(python_value):
+                return self.handle_variable_value(python_value)
+
+            # prepare the value before getting the output, this can be useful if a class always needs to change
+            # value before the final output
+            prepared_value = self.prepare_python_value(python_value)
+            output = self.get_output_from_python_value(prepared_value)
+
+            # return the output
+            return self.prepare_output(output)
+        except ExtractionError as e:
+            # if there is any error during the whole process, set the output token to NoToken and raise the error
+            # again
+            self.set_output_token(NoToken())
+            raise e
+
+    def get_output(self):
+        """
+        The public function that returns the output.
+        """
+        if isinstance(self._output, self.NoOutputYet):
+            self._output = self._get_output()
+
+        return self._output
 
 
 class NoneOutput(ExtractorOutput):
     """
     This output will always return None.
     """
-    def get_output(self, token=None):
-        self._output_source = NoToken()
+    def _get_output(self):
+        self.set_output_token(NoToken())
         return None
 
 
 class StringOutput(ExtractorOutput):
-    def get_output(self, token=None):
-        output = super().get_output(token)
-
-        # handle cases where the data was defined as variable
-        if not isinstance(output, Variable):
-            return str(output)
-
-        return output
+    def prepare_output(self, output_value):
+        return str(output_value)
 
 
 class DictOutput(ExtractorOutput):
-    def get_output(self, token=None):
-        output = super().get_output(token)
-
-        if not isinstance(output, dict) and not isinstance(output, Variable):
-            self._output_source = NoToken()
+    def prepare_output(self, output_value):
+        if not isinstance(output_value, dict):
             raise ExtractionError(DICT_AS_STRING)
 
-        return output
+        return output_value
 
 
 class NumberAsStringOutput(ExtractorOutput):
     """
     This output is a base class for several numbers. Numbers can be found in different places than other data.
     """
-    def get_number_cast_fn(self):
-        """A function that can be overwritten to parse the string of a number to a number format."""
-        return lambda a: a
+    def prepare_python_value(self, value):
+        token = self.output_token
 
-    def get_output(self, token=None):
-        """Since there still might be a variable output here, catch that case and simply return the Variable."""
-        output = super().get_output(token)
+        if token and self.token_can_be_parsed_to_int(token):
+            try:
+                return str(self.token_to_integer(token, raise_exception=True))
+            except ValueError:
+                raise ExtractionError(NUMBER_ERROR)
 
-        # this will be the case every time except for variables that are passed by `"<asd>"` values
-        if isinstance(output, str):
-            output = self.get_number_cast_fn()(output)
+        return super().prepare_python_value(value)
 
-        return output
+    def token_to_python(self, token):
+        for child in get_all_children(token):
+            if child.is_digit or self.token_can_be_parsed_to_int(child):
+                return str(child), child
 
-    def guess_output_type(self, input_value):
-        if isinstance(input_value, (int, float, Decimal)):
-            return input_value
+        # as an alternative, if the next token is in quotes it should be the value
+        next_token = get_next_token(token)
+        if is_quoted(next_token):
+            clean_next_token_str = str(next_token)[1:-1]
 
-        value_str = str(input_value)
+            if self.token_can_be_parsed_to_int(next_token) or self.string_represents_variable(clean_next_token_str):
+                return str(next_token), next_token
 
-        # remove any quotations
-        if is_quoted(value_str):
-            value_str = value_str[1:-1]
+            try:
+                float(clean_next_token_str)
+                return clean_next_token_str, next_token
+            except ValueError:
+                pass
 
-            # any values in `<??>` are variables - this is still valid here
-            if self.string_represents_variable(value_str):
-                return Variable(value_str[1:-1], '')
+        if token.is_digit:
+            return str(token), token
+
+        raise ExtractionError(NO_VALUE_FOUND_CODE)
+
+    def get_output_from_python_value(self, python_value):
+        """
+        Only accept values that can become numbers.
+        """
+        if isinstance(python_value, (int, float, Decimal)):
+            return python_value
+
+        value_str = str(python_value)
 
         try:
             float(value_str)
             return value_str
         except ValueError:
-            self._output_source = NoToken()
             raise ExtractionError(NO_VALUE_FOUND_CODE)
 
-    @classmethod
-    def token_to_integer(cls, token, raise_exception=False):
+    def token_to_integer(self, token, raise_exception=False):
         """
         Translates a token to an integer, if it works either an exception is raised or None
         returned.
         """
         try:
-            return num_word_to_integer(str(token), token.lang_)
+            return num_word_to_integer(str(token), self.document.lang_)
         except (ValueError, LanguageNotSupported):
             try:
-                return num_word_to_integer(str(token.lemma_), token.lang_)
+                return num_word_to_integer(str(token.lemma_), self.document.lang_)
             except (ValueError, LanguageNotSupported):
                 if raise_exception:
                     raise ValueError()
@@ -293,110 +347,64 @@ class NumberAsStringOutput(ExtractorOutput):
 
         return token_is_like_num(token)
 
-    def token_to_string_output(self, token):
-        if self.source_represents_output:
-            self._output_source = self.source
-
-            if self.token_can_be_parsed_to_int(self.source):
-                return str(self.token_to_integer(self.source, raise_exception=True))
-
-            return str(self.source)
-
-        for child in get_all_children(token):
-            if child.is_digit:
-                self._output_source = child
-                return str(child)
-
-            if self.token_can_be_parsed_to_int(child):
-                self._output_source = child
-                return str(self.token_to_integer(child, raise_exception=True))
-
-        # as an alternative, if the next token is in quotes it should be the value
-        next_token = get_next_token(token)
-        if is_quoted(next_token):
-            clean_next_token_str = str(next_token)[1:-1]
-
-            if self.string_represents_variable(clean_next_token_str):
-                self._output_source = next_token
-                return str(next_token)
-
-            if self.token_can_be_parsed_to_int(next_token):
-                self._output_source = next_token
-                return str(self.token_to_integer(next_token, raise_exception=True))
-
-            try:
-                float(clean_next_token_str)
-                self._output_source = next_token
-                return clean_next_token_str
-            except ValueError:
-                pass
-
-        if token.is_digit:
-            self._output_source = token
-            return str(token)
-
-        self._output_source = NoToken()
-        raise ExtractionError(NO_VALUE_FOUND_CODE)
-
 
 class IntegerOutput(NumberAsStringOutput):
     """
     This output will return an integer.
     """
-    def get_number_cast_fn(self):
-        return int
+    def prepare_output(self, output_value):
+        output_value = super().prepare_output(output_value)
+
+        # if there is a string that represents a float, try to convert it to a float and to int afterwards
+        try:
+            output_value = float(output_value)
+        except ValueError:
+            pass
+
+        return int(output_value)
 
 
 class FloatOutput(NumberAsStringOutput):
     """
     This output will return a float.
     """
-    def get_number_cast_fn(self):
-        return float
+    def prepare_output(self, output_value):
+        return float(super().prepare_output(output_value))
 
 
 class DecimalOutput(NumberAsStringOutput):
     """
     This output will return a decimal.
     """
-    def get_number_cast_fn(self):
-        return Decimal
+    def prepare_output(self, output_value):
+        return Decimal(super().prepare_output(output_value))
 
 
 class BooleanOutput(ExtractorOutput):
     """
     This output will return a boolean.
     """
-    def guess_output_type(self, input_value):
-        """If only handling a string, check if the value indicates a positive value."""
-        if isinstance(input_value, bool):
-            return input_value
-
-        if is_quoted(input_value):
-            input_value = input_value[1:-1]
-
-            # any values in `<??>` are variables
-            if self.string_represents_variable(input_value):
-                return Variable(input_value[1:-1], '')
-
-        return input_value in POSITIVE_BOOLEAN_INDICATORS[self.document.lang_]
-
-    def token_to_string_output(self, token):
-        """While handling a token, get the verb of the token and determine if the verb and/or the token are negated."""
-        if self.source_represents_output:
-            self._output_source = self.source
-            return str(self.source)
+    def token_to_python(self, token):
+        # while is does not really make sense to represent values as variables when using a boolean (is normally
+        # determined via the verb and its negation), still we catch the case here
+        if self.string_represents_variable(token):
+            return str(token), token
 
         verb = get_verb_for_token(token)
         token_value_true = not token_is_negated(token)
 
         if not verb:
-            self._output_source = token
-            return token_value_true
+            return token_value_true, token
 
         verb_value_true = not token_is_negated(verb)
-        self._output_source = verb
-        return verb_value_true and token_value_true
+        boolean_value = verb_value_true and token_value_true
+        return boolean_value, verb
+
+    def get_output_from_python_value(self, python_value):
+        if isinstance(python_value, bool):
+            return python_value
+
+        return python_value in POSITIVE_BOOLEAN_INDICATORS[self.document.lang_]
 
 
 class VariableOutput(ExtractorOutput):
@@ -428,14 +436,14 @@ class VariableOutput(ExtractorOutput):
         """Can be used to define if a statement should be skipped."""
         return False
 
-    def guess_output_type(self, input_value):
-        output = super().guess_output_type(input_value)
+    def get_output_from_python_value(self, python_value):
+        python_value = super().get_output_from_python_value(python_value)
 
         for statement in self.statements:
             if self.skip_statement(statement):
                 continue
 
-            if self.statement_matches_output(statement, str(output)):
+            if self.statement_matches_output(statement, str(python_value)):
                 return statement.variable.copy()
 
         raise ExtractionError(VARIABLE_NOT_FOUND)
@@ -445,15 +453,9 @@ class FileVariableOutput(VariableOutput):
     """
     A variable output that is related to files.
     """
-    def token_to_string_output(self, token):
+    def _get_output(self):
         try:
-            return super().token_to_string_output(token)
-        except ExtractionError:
-            raise ExtractionError(FILE_NOT_FOUND)
-
-    def guess_output_type(self, input_value):
-        try:
-            return super().guess_output_type(input_value)
+            return super()._get_output()
         except ExtractionError:
             raise ExtractionError(FILE_NOT_FOUND)
 
