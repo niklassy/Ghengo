@@ -7,8 +7,8 @@ def assert_callable_raises(to_call, exception_cls, message=None, args=None, kwar
         kwargs = {}
 
     try:
-        to_call(*args, **kwargs)
-        assert False
+        out = to_call(*args, **kwargs)
+        assert False, 'The call did not raise the provided error. It returned: {}'.format(out)
     except exception_cls as e:
         if message is not None:
             assert message == str(e)
