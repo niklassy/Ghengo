@@ -11,4 +11,4 @@ class ExtractionError(Exception):
         return WARNING_MESSAGES[self.code]
 
     def __repr__(self):
-        return '{}: {}'.format(self.__class__.__class__, self.generation_message)
+        return '{}: {}'.format(self.__class__.__name__, self.generation_message)

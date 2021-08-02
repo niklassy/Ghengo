@@ -94,6 +94,9 @@ def get_proper_noun_of_chunk(token, chunk):
 
 
 def get_propn_from_previous_chunk(token):
+    """
+    Returns a proper noun from a previous noun chunk.
+    """
     document = token.doc
     chunk = get_noun_chunk_of_token(token, document)
 
@@ -107,6 +110,7 @@ def get_propn_from_previous_chunk(token):
         previous_chunk = noun_chunks[chunk_index - 1]  # <- can raise IndexError if no previous chunk
         previous_propn = get_proper_noun_from_chunk(previous_chunk)
 
+        # only return if the previous chunk only contains the propn and no noun
         if get_noun_from_chunk(previous_chunk) is None and previous_propn:
             return previous_propn
     except (IndexError, ValueError):

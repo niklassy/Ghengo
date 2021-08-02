@@ -32,6 +32,7 @@ class ExtractorOutput(object):
         self.source_represents_output = False
 
         self._output_token = self.NoOutputYet()
+        self._output = self.NoOutputYet()
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -235,10 +236,12 @@ class ExtractorOutput(object):
 
     def get_output(self):
         """
-        The function that returns the output. You can pass a specific token to check
-        the output. If you pass nothing, the source of this class is used.
+        The public function that returns the output.
         """
-        return self._get_output()
+        if isinstance(self._output, self.NoOutputYet):
+            self._output = self._get_output()
+
+        return self._output
 
 
 class NoneOutput(ExtractorOutput):
