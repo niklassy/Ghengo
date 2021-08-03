@@ -31,12 +31,9 @@ Funktionalität: Reference
 #    Und ein Auftrag mit dem Namen "Hallo"
 #    Wenn Alice einen Auftrag mit der Datei "asd" erstellt
 
-  Szenariogrundriss: : file
-    Gegeben sei ein Todo mit dem System 2
+  Szenario: file
+    Dann sollte Alice den Namen "Alice" haben
 
-  Beispiele:
-    |system|
-    |   1  |
 #    Wenn Alice ein Dach mit dem System 3 ändert
 
 #  Szenario: Ändern von ToDo - anderer Nutzer

@@ -630,6 +630,9 @@ class QuerysetConverter(ModelConverter):
 
         return ModelQuerysetFilterExpression(self.model.value, [])
 
+    def get_variable_name(self):
+        return 'qs'
+
     def prepare_statements(self, statements):
         """
         Create a queryset statement. If there any extractor, filter for it. If there are none, simply get all.
@@ -637,7 +640,7 @@ class QuerysetConverter(ModelConverter):
         expression = self.get_queryset_expression()
 
         statement = AssignmentStatement(
-            variable=Variable('qs', self.model.value.name),
+            variable=Variable(self.get_variable_name(), self.model.value.name),
             expression=expression,
         )
         statements.append(statement)
@@ -665,6 +668,9 @@ class CountQuerysetConverter(QuerysetConverter):
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
         self.count = ModelCountProperty(self)
+
+    def get_variable_name(self):
+        return 'qs_count'
 
     def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
         """Since the count token is extracted by a IntegerExtractor, remove kwargs that it does not need."""
@@ -734,6 +740,9 @@ class ExistsQuerysetConverter(QuerysetConverter):
     """
     This converter creates a queryset and an assert statement to check if that queryset exists.
     """
+    def get_variable_name(self):
+        return 'qs_exists'
+
     def prepare_statements(self, statements):
         statements = super().prepare_statements(statements)
         qs_statement = statements[0]
@@ -742,6 +751,44 @@ class ExistsQuerysetConverter(QuerysetConverter):
         statements.append(statement)
 
         return statements
+
+
+class AssertPreviousModelConverter(ModelConverter):
+    """
+    This converter can be used to check fields from the variable of a model that was previously created.
+    """
+    def __init__(self, document, related_object, django_project, test_case):
+        super().__init__(document, related_object, django_project, test_case)
+        self.variable = ReferenceModelVariableProperty(self)
+        self.model = ReferenceModelProperty(self)
+
+        # the value of the variable is important for the model
+        self.variable.calculate_value()
+
+    def get_document_compatibility(self):
+        compatibility = super().get_document_compatibility()
+
+        if not self.variable.token:
+            compatibility *= 0.2
+
+        return compatibility
+
+    def prepare_statements(self, statements):
+        # we need to refresh the data before checking the values
+        statements.append(
+            Expression(Attribute(self.variable.value, 'refresh_from_db()')).as_statement()
+        )
+
+        return statements
+
+    def handle_extractor(self, extractor, statements):
+        exp = CompareExpression(
+            Attribute(self.variable.value, extractor.field_name),
+            CompareChar.EQUAL,
+            Argument(extractor.extract_value()),
+        )
+        statement = AssertStatement(exp)
+        statements.append(statement)
 
 
 class ResponseConverterBase(ClassConverter):
