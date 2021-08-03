@@ -18,7 +18,8 @@ from nlp.generate.attribute import Attribute
 from nlp.generate.constants import CompareChar
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression, RequestExpression, APIClientExpression, \
     APIClientAuthenticateExpression, CreateUploadFileExpression, ModelQuerysetAllExpression, \
-    ModelQuerysetFilterExpression, CompareExpression, Expression, FunctionCallExpression, ModelQuerysetBaseExpression
+    ModelQuerysetFilterExpression, CompareExpression, Expression, FunctionCallExpression, ModelQuerysetBaseExpression, \
+    ModelQuerysetGetExpression
 from nlp.generate.index import Index
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement, AssertStatement
 from nlp.generate.variable import Variable
@@ -100,6 +101,9 @@ class ClassConverter(Converter):
         for index, searcher_class in enumerate(self.field_searcher_classes):
             last_searcher_class = index == len(self.field_searcher_classes) - 1
 
+            best_search_result = None
+            highest_similarity = 0
+
             for search_text_index, search_text in enumerate(search_texts):
                 searcher = searcher_class(search_text, src_language=self.language)
 
@@ -108,9 +112,18 @@ class ClassConverter(Converter):
                 raise_exception = not last_search_text or not last_searcher_class
 
                 try:
-                    return searcher.search(**searcher_kwargs, raise_exception=raise_exception)
+                    search_result = searcher.search(**searcher_kwargs, raise_exception=raise_exception)
+                    if best_search_result is None or searcher.highest_similarity > highest_similarity:
+                        best_search_result = search_result
+                        highest_similarity = searcher.highest_similarity
+
+                        if highest_similarity == 1:
+                            break
                 except NoConversionFound:
                     pass
+
+            if best_search_result is not None:
+                return best_search_result
 
         return None
 
@@ -609,6 +622,13 @@ class QuerysetConverter(ModelConverter):
     """
     This converter can be used to translate text into a queryset statement.
     """
+    def __init__(self, document, related_object, django_project, test_case):
+        super().__init__(document, related_object, django_project, test_case)
+        self.assignment_variable = Variable(
+            self.get_variable_name(),
+            self.model.value.name if self.model.value else '',
+        )
+
     def get_document_compatibility(self):
         """
         If the model token is not a noun, it is unlikely that this converter matches.
@@ -631,9 +651,7 @@ class QuerysetConverter(ModelConverter):
         return ModelQuerysetFilterExpression(self.model.value, [])
 
     def get_variable_name(self):
-        qs_statements = [
-            s for s in self.test_case.statements if isinstance(s.expression, ModelQuerysetBaseExpression)
-        ]
+        qs_statements = self.test_case.get_all_statements_with_expression(ModelQuerysetBaseExpression)
 
         return 'qs_{}'.format(len(qs_statements))
 
@@ -642,13 +660,7 @@ class QuerysetConverter(ModelConverter):
         Create a queryset statement. If there any extractor, filter for it. If there are none, simply get all.
         """
         expression = self.get_queryset_expression()
-
-        statement = AssignmentStatement(
-            variable=Variable(self.get_variable_name(), self.model.value.name),
-            expression=expression,
-        )
-        statements.append(statement)
-
+        statements.append(AssignmentStatement(variable=self.assignment_variable, expression=expression))
         return statements
 
     def handle_extractor(self, extractor, statements):
@@ -663,6 +675,56 @@ class QuerysetConverter(ModelConverter):
         extracted_value = self.extract_and_handle_output(extractor)
         kwarg = Kwarg(extractor.field_name, extracted_value)
         factory_kwargs.append(kwarg)
+
+
+class ObjectQuerysetConverter(QuerysetConverter):
+    """This converter can be used to create assert statements on the fields of a database entry."""
+    def get_variable_name(self):
+        other_get_statements = self.test_case.get_all_statements_with_expression(ModelQuerysetGetExpression)
+
+        return '{}_{}'.format(self.model.value.name, len(other_get_statements))
+
+    @property
+    def has_query_kwargs(self):
+        """Only consider the filter extractors for this property."""
+        return len(self.get_filter_extractors()) > 0
+
+    def get_document_compatibility(self):
+        return 1
+
+    def get_queryset_expression(self):
+        """
+        This converter will always create a get queryset.
+        """
+        return ModelQuerysetGetExpression(self.model.value, [])
+
+    def get_assert_extractors(self):
+        """The last extractor will always be the value that is checked/ asserted."""
+        return [self.extractors[-1]]
+
+    def get_filter_extractors(self):
+        """All but the last extractor are used to get the value from the database."""
+        return self.extractors[:-1]
+
+    def handle_extractor(self, extractor, statements):
+        """
+        If we filter for an extractor, handle the extractor normally. If it is used to assert, create an
+        assert statement.
+        """
+        if extractor in self.get_filter_extractors():
+            super().handle_extractor(extractor, statements)
+
+        elif extractor in self.get_assert_extractors():
+            exp = CompareExpression(
+                Attribute(self.assignment_variable, extractor.field_name),
+                CompareChar.EQUAL,
+                Argument(extractor.extract_value()),
+            )
+            statement = AssertStatement(exp)
+            statements.append(statement)
+
+        else:
+            raise ValueError('This should not happen.')
 
 
 class CountQuerysetConverter(QuerysetConverter):

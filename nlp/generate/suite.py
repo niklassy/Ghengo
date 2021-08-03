@@ -90,6 +90,12 @@ class TestCaseBase(Replaceable, TemplateMixin):
 
         return str(index_in_test_suite)
 
+    def get_all_statements_with_expression(self, expression_cls):
+        """
+        Returns all statements that have a certain expression class.
+        """
+        return [s for s in self.statements if isinstance(s.expression, expression_cls)]
+
     @property
     def statements(self):
         """

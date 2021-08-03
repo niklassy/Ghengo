@@ -11,6 +11,7 @@ class NoToken:
     children = []
     is_digit = False
     lang_ = None
+    i = 0
 
     def __eq__(self, other):
         return False
