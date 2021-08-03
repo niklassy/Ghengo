@@ -33,7 +33,7 @@ Funktionalität: Reference
 
   Szenario: file
     Dann sollte der Benutzer mit dem Vornamen "Alice" und dem Nachnamen "Müller" den Wert "Blubb" haben
-    Dann sollte der Benutzer mit dem Vornamen "Alice" den Wert "Blubb" haben
+    Dann sollten Benutzer mit dem Vornamen "Alice" existieren
 
 #    Wenn Alice ein Dach mit dem System 3 ändert
 

@@ -78,7 +78,6 @@ class WhenTiler(Tiler):
 
 class ThenTiler(Tiler):
     converter_classes = [
-        ObjectQuerysetConverter,
         ManyCheckEntryResponseConverter,
         ManyLengthResponseConverter,
         ResponseStatusCodeConverter,
@@ -86,5 +85,6 @@ class ThenTiler(Tiler):
         ResponseConverter,
         CountQuerysetConverter,
         AssertPreviousModelConverter,
+        ObjectQuerysetConverter,
         ExistsQuerysetConverter,
     ]

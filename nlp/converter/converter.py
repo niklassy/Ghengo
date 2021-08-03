@@ -27,7 +27,7 @@ from nlp.locator import FileExtensionLocator, ComparisonLocator, NounLocator
 from nlp.searcher import ModelFieldSearcher, NoConversionFound, UrlSearcher, SerializerFieldSearcher, \
     ClassArgumentSearcher
 from nlp.utils import get_non_stop_tokens, get_noun_chunk_of_token, token_is_noun, get_root_of_token, NoToken, \
-    token_is_verb
+    token_is_verb, get_previous_token, token_is_indefinite, token_is_definite
 
 
 class ClassConverter(Converter):
@@ -117,7 +117,7 @@ class ClassConverter(Converter):
                         best_search_result = search_result
                         highest_similarity = searcher.highest_similarity
 
-                        if highest_similarity == 1:
+                        if highest_similarity > 0.9:
                             break
                 except NoConversionFound:
                     pass
@@ -690,7 +690,24 @@ class ObjectQuerysetConverter(QuerysetConverter):
         return len(self.get_filter_extractors()) > 0
 
     def get_document_compatibility(self):
-        return 1
+        compatibility = super().get_document_compatibility()
+
+        token_before_model = get_previous_token(self.model.token)
+        if not token_before_model:
+            return 0
+
+        # check the token before the model token - since this converter references one exact instance of a model
+        # it will be referenced in a definite way (the order, der Auftrag etc.) and not indefinite
+        # (an order, ein Auftrag)
+        if token_is_indefinite(token_before_model):
+            compatibility *= 0.2
+        elif token_is_definite(token_before_model):
+            pass
+        else:
+            # the token before the model can be something else - these will most likely not fit though
+            compatibility *= 0.5
+
+        return compatibility
 
     def get_queryset_expression(self):
         """
