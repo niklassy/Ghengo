@@ -620,14 +620,21 @@ class QuerysetConverter(ModelConverter):
 
         return compatibility
 
+    @property
+    def has_query_kwargs(self):
+        return len(self.extractors) > 0
+
+    def get_queryset_expression(self):
+        if not self.has_query_kwargs:
+            return ModelQuerysetAllExpression(self.model.value)
+
+        return ModelQuerysetFilterExpression(self.model.value, [])
+
     def prepare_statements(self, statements):
         """
         Create a queryset statement. If there any extractor, filter for it. If there are none, simply get all.
         """
-        if len(self.extractors) == 0:
-            expression = ModelQuerysetAllExpression(self.model.value)
-        else:
-            expression = ModelQuerysetFilterExpression(self.model.value, [])
+        expression = self.get_queryset_expression()
 
         statement = AssignmentStatement(
             variable=Variable('qs', self.model.value.name),
@@ -640,11 +647,10 @@ class QuerysetConverter(ModelConverter):
     def handle_extractor(self, extractor, statements):
         super().handle_extractor(extractor, statements)
 
-        qs_statement = statements[0]
-
-        if isinstance(qs_statement.expression, ModelQuerysetAllExpression):
+        if not self.has_query_kwargs:
             return
 
+        qs_statement = statements[0]
         factory_kwargs = qs_statement.expression.function_kwargs
 
         extracted_value = self.extract_and_handle_output(extractor)
