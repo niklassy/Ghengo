@@ -18,7 +18,7 @@ from nlp.generate.attribute import Attribute
 from nlp.generate.constants import CompareChar
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression, RequestExpression, APIClientExpression, \
     APIClientAuthenticateExpression, CreateUploadFileExpression, ModelQuerysetAllExpression, \
-    ModelQuerysetFilterExpression, CompareExpression, Expression, FunctionCallExpression
+    ModelQuerysetFilterExpression, CompareExpression, Expression, FunctionCallExpression, ModelQuerysetBaseExpression
 from nlp.generate.index import Index
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement, AssertStatement
 from nlp.generate.variable import Variable
@@ -631,7 +631,11 @@ class QuerysetConverter(ModelConverter):
         return ModelQuerysetFilterExpression(self.model.value, [])
 
     def get_variable_name(self):
-        return 'qs'
+        qs_statements = [
+            s for s in self.test_case.statements if isinstance(s.expression, ModelQuerysetBaseExpression)
+        ]
+
+        return 'qs_{}'.format(len(qs_statements))
 
     def prepare_statements(self, statements):
         """
@@ -668,9 +672,6 @@ class CountQuerysetConverter(QuerysetConverter):
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
         self.count = ModelCountProperty(self)
-
-    def get_variable_name(self):
-        return 'qs_count'
 
     def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
         """Since the count token is extracted by a IntegerExtractor, remove kwargs that it does not need."""
@@ -740,9 +741,6 @@ class ExistsQuerysetConverter(QuerysetConverter):
     """
     This converter creates a queryset and an assert statement to check if that queryset exists.
     """
-    def get_variable_name(self):
-        return 'qs_exists'
-
     def prepare_statements(self, statements):
         statements = super().prepare_statements(statements)
         qs_statement = statements[0]
@@ -782,9 +780,14 @@ class AssertPreviousModelConverter(ModelConverter):
         return statements
 
     def handle_extractor(self, extractor, statements):
+        """For each extractor, use the field to create a compare expression."""
+        chunk = get_noun_chunk_of_token(extractor.source, self.document)
+        compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
+        compare_locator.locate()
+
         exp = CompareExpression(
             Attribute(self.variable.value, extractor.field_name),
-            CompareChar.EQUAL,
+            compare_locator.comparison,
             Argument(extractor.extract_value()),
         )
         statement = AssertStatement(exp)

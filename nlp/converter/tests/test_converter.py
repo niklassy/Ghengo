@@ -435,7 +435,11 @@ def test_qs_exists_converter(mocker):
     )
     statements = converter.convert_to_statements()
     assert len(statements) == 2
-    assert str(statements[1]) == 'assert qs.exists()'
+    assert isinstance(statements[0].expression, ModelQuerysetFilterExpression)
+    assert str(statements[1]) == 'assert qs_0.exists()'
+
+    for s in statements:
+        test_case.add_statement(s)
 
     # check that a doc without arguments results in an all expression
     converter = ExistsQuerysetConverter(
@@ -446,7 +450,8 @@ def test_qs_exists_converter(mocker):
     )
     statements = converter.convert_to_statements()
     assert len(statements) == 2
-    assert str(statements[1]) == 'assert qs.exists()'
+    assert isinstance(statements[0].expression, ModelQuerysetAllExpression)
+    assert str(statements[1]) == 'assert qs_1.exists()'
 
 
 def add_request_statement(test_case, doc=None):
