@@ -40,11 +40,26 @@ class ClassConverter(Converter):
         super().__init__(document, related_object, django_project, test_case)
         self._fields = None
         self._blocked_argument_tokens = []
+        self._last_document_word = None
 
     def block_token_as_argument(self, token):
         """Use this function to block a specific token from being taken as an argument."""
         if token and token not in self._blocked_argument_tokens:
             self._blocked_argument_tokens.append(token)
+
+    @property
+    def last_document_word(self):
+        """Returns the last word of the document as a cached property."""
+        if self._last_document_word is None:
+            last_word = NoToken()
+            for i in range(len(self.document)):
+                end_token = self.document[-(i + 1)]
+
+                if not end_token.is_punct:
+                    last_word = end_token
+                    break
+            self._last_document_word = last_word
+        return self._last_document_word
 
     def token_can_be_argument(self, token):
         """Checks if a given token can represent an argument of the __init__ from the class"""
@@ -66,16 +81,8 @@ class ClassConverter(Converter):
         if token.pos_ == 'VERB' and token.head.pos_ != 'AUX':
             return False
 
-        last_word = NoToken()
-        for i in range(len(self.document)):
-            end_token = self.document[-(i + 1)]
-
-            if not end_token.is_punct:
-                last_word = end_token
-                break
-
         # if there is a verb where the parent is a finites Modalverb (e.g. sollte), it should not be an argument
-        if token == last_word and token_is_verb(token) and token.head.tag_ == 'VMFIN':
+        if token == self.last_document_word and token_is_verb(token) and token.head.tag_ == 'VMFIN':
             return False
 
         return True
