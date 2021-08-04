@@ -137,9 +137,7 @@ class RequestConverter(ClassConverter):
         )
 
         # get the variable name by checking how many other request expressions already exist
-        other_request_expressions = [
-            s for s in self.test_case.statements if isinstance(s.expression, RequestExpression)
-        ]
+        other_request_expressions = self.test_case.get_all_statements_with_expression(RequestExpression)
 
         if len(other_request_expressions) == 0:
             variable_name = 'response'

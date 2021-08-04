@@ -1,4 +1,5 @@
 from nlp.converter.wrapper import ConverterInitArgumentWrapper
+from nlp.generate.suite import TestCaseBase
 from nlp.searcher import NoConversionFound
 from nlp.utils import get_noun_chunks, get_non_stop_tokens, get_noun_chunk_of_token, token_is_verb, NoToken
 
@@ -21,7 +22,7 @@ class Converter(object):
         self.django_project = django_project
         self.related_object = related_object
         self.language = document.lang_
-        self.test_case = test_case
+        self.test_case: TestCaseBase = test_case
         self._extractors = None
         self._prepared = False
 
