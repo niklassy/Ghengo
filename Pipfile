@@ -7,8 +7,6 @@ name = "pypi"
 pytest = "==6.2.4"
 django = "==3.2.5"
 djangorestframework = "==3.12.4"
-setuptools = "*"
-wheel = "*"
 spacy = "==3.1.0"
 deep-translator = "==1.4.4"
 unidecode = "==1.2.0"
@@ -17,6 +15,7 @@ python-levenshtein = "==0.12.2"
 uritemplate = "==3.0.1"
 word2number = "==1.1"
 zahlwort2num = "==0.2.1"
+pysimplegui = "==4.45.0"
 
 [dev-packages]
 
