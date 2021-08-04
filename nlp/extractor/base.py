@@ -117,7 +117,11 @@ class ManyExtractorMixin(object):
         return self.get_child_extractor_class().output_class
 
     def get_generated_warnings(self):
-        return [entry for entry in self.extract_value() if isinstance(entry, GenerationWarning)]
+        extracted_value = self.extract_value()
+        if extracted_value is None:
+            return []
+
+        return [entry for entry in extracted_value if isinstance(entry, GenerationWarning)]
 
     def get_child_extractor_kwargs(self):
         """Returns the kwargs that are passed to the child extractor __init__"""

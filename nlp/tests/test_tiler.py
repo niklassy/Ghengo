@@ -35,3 +35,6 @@ def test_tiler_best_converter():
     tiler._best_converter = None
     tiler.converter_classes.append(GoodConverter)
     assert isinstance(tiler.best_converter, GoodConverter)
+
+
+# TODO: check then tiler best converter!
