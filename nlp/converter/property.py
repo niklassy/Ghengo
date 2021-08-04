@@ -2,7 +2,7 @@ from django.apps import apps
 from django.conf.global_settings import AUTH_USER_MODEL
 
 from django_meta.model import ModelAdapter, AbstractModelAdapter
-from nlp.converter.base_property import ConverterProperty
+from nlp.converter.base.property import ConverterProperty
 from nlp.generate.expression import ModelFactoryExpression
 from nlp.generate.variable import Variable
 from nlp.locator import RestActionLocator, FileLocator
