@@ -9,11 +9,12 @@ from gherkin.ast import Given, DataTable, TableRow, TableCell, Then
 from nlp.converter.converter import ModelFactoryConverter, ModelVariableReferenceConverter, RequestConverter, \
     QuerysetConverter, CountQuerysetConverter, ExistsQuerysetConverter, ManyCheckEntryResponseConverter, \
     ResponseConverterBase, ManyLengthResponseConverter, ManyResponseConverter, ResponseConverter, \
-    ResponseErrorConverter, ResponseStatusCodeConverter
+    ResponseErrorConverter, ResponseStatusCodeConverter, ObjectQuerysetConverter, AssertPreviousModelConverter
 from nlp.generate.argument import Kwarg
 from nlp.generate.constants import CompareChar
 from nlp.generate.expression import ModelSaveExpression, APIClientExpression, RequestExpression, \
-    APIClientAuthenticateExpression, ModelQuerysetFilterExpression, ModelQuerysetAllExpression, CompareExpression
+    APIClientAuthenticateExpression, ModelQuerysetFilterExpression, ModelQuerysetAllExpression, CompareExpression, \
+    ModelQuerysetGetExpression
 from nlp.generate.pytest import PyTestModelFactoryExpression
 from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement
@@ -435,7 +436,11 @@ def test_qs_exists_converter(mocker):
     )
     statements = converter.convert_to_statements()
     assert len(statements) == 2
-    assert str(statements[1]) == 'assert qs.exists()'
+    assert isinstance(statements[0].expression, ModelQuerysetFilterExpression)
+    assert str(statements[1]) == 'assert qs_0.exists()'
+
+    for s in statements:
+        test_case.add_statement(s)
 
     # check that a doc without arguments results in an all expression
     converter = ExistsQuerysetConverter(
@@ -446,7 +451,8 @@ def test_qs_exists_converter(mocker):
     )
     statements = converter.convert_to_statements()
     assert len(statements) == 2
-    assert str(statements[1]) == 'assert qs.exists()'
+    assert isinstance(statements[0].expression, ModelQuerysetAllExpression)
+    assert str(statements[1]) == 'assert qs_1.exists()'
 
 
 def add_request_statement(test_case, doc=None):
@@ -682,6 +688,33 @@ def test_many_response_converter_compatibility(doc, min_compatibility, max_compa
 
 
 @pytest.mark.parametrize(
+    'doc, min_compatibility, max_compatibility', [
+        (nlp('Dann sollte die Antwort den Namen "Alice" enthalten.'), 0.7, 1),
+        (nlp('Dann sollte der Auftrag den Namen "Alice" enthalten.'), 0.7, 1),
+        (nlp('Dann sollte in der Auftrag der Namen "Alice" sein.'), 0.7, 1),
+        (nlp('Dann sollte der Benutzer den Namen "Alice" haben.'), 0, 0.5),
+    ]
+)
+def test_response_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
+    """Check that the ResponseConverter detects the compatibility of different documents correctly."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    add_request_statement(test_case)
+    assert len(test_case.statements) > 0
+
+    converter = ResponseConverter(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    assert converter.get_document_compatibility() >= min_compatibility
+    assert converter.get_document_compatibility() <= max_compatibility
+
+
+@pytest.mark.parametrize(
     'doc, field_names', [
         (nlp('Dann sollte die Antwort existieren'), []),
         (nlp('Dann sollte die Antwort den Namen "Alice" enthalten.'), ['name']),
@@ -836,3 +869,156 @@ def test_response_converter_output(doc, mocker, error_str):
         assert statements[0].expression.value_2.function_kwargs[0].attribute_name == 'data'
     else:
         assert len(statements) == 0
+
+
+@pytest.mark.parametrize(
+    'doc, min_compatibility, max_compatibility', [
+        (nlp('Dann sollte der Auftrag mit der ID 1 den Namen "Alice" haben.'), 0.7, 1),
+        (nlp('Dann sollte das ToDo mit dem Namen "Asd" den Titel "Blubb" haben.'), 0.7, 1),
+        (nlp('Dann sollte ein Auftrag existieren.'), 0, 0.3),
+        (nlp('Dann sollten Aufträge mit dem Namen "QWE" existieren.'), 0, 0.3),
+        (nlp('Dann sollte es einen Fehler "error" geben.'), 0, 0.3),
+    ]
+)
+def test_object_qs_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
+    """Check that the ObjectQuerysetConverter detects the compatibility of different documents correctly."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    converter = ObjectQuerysetConverter(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    assert converter.get_document_compatibility() >= min_compatibility
+    assert converter.get_document_compatibility() <= max_compatibility
+
+
+@pytest.mark.parametrize(
+    'doc, filter_fields, assert_field', [
+        (nlp('Dann sollte der Auftrag mit der ID 1 den Namen "Alice" haben.'), ['id'], 'name'),
+        (nlp('Dann sollte das ToDo mit dem System 1 den Titel "Blubb" haben.'), ['system'], 'title'),
+        (
+            nlp('Dann sollte der Auftrag mit der ID 1 und dem Namen "Alice" den Wert "Test" haben.'),
+            ['id', 'name'],
+            'worth'
+        ),
+    ]
+)
+def test_object_qs_converter_output(doc, mocker, filter_fields, assert_field):
+    """Check that the output of ObjectQuerysetConverter is correct."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    converter = ObjectQuerysetConverter(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    statements = converter.convert_to_statements()
+    assert len(statements) == 2
+
+    # check the filter statement
+    assert isinstance(statements[0].expression, ModelQuerysetGetExpression)
+    for i, filter_field_name in enumerate(filter_fields):
+        assert statements[0].expression.function_kwargs[i].name == filter_field_name
+
+    # check the assert statement
+    assert isinstance(statements[1].expression, CompareExpression)
+    assert statements[1].expression.value_1.attribute_name == assert_field
+
+
+@pytest.mark.parametrize(
+    'doc, min_compatibility, max_compatibility', [
+        (nlp('Dann sollte Alice den Nachnamen "Alice" und den Vornamen "Alice" haben.'), 0.7, 1),
+        (nlp('Dann sollte der Auftrag 1 den Namen "Alice" haben.'), 0.7, 1),
+        (nlp('Dann sollte Alice den Nachnamen "Alice" haben.'), 0.7, 1),
+        (nlp('Dann sollte Bob den Nachnamen "Alice" haben.'), 0, 0.3),
+        (nlp('Dann sollte das ToDo mit dem Namen "Asd" den Titel "Blubb" haben.'), 0, 0.3),
+        (nlp('Dann sollte die Antwort existieren'), 0, 0.3),
+    ]
+)
+def test_object_qs_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
+    """Check that the AssertPreviousModelConverter detects the compatibility of different documents correctly."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    # add two statements: a user `alice` and an `order_1`
+    test_case.add_statement(AssignmentStatement(
+        expression=PyTestModelFactoryExpression(ModelAdapter(User, None), [Kwarg('bar', 123)]),
+        variable=Variable('Alice', 'User'),     # <- variable name is Alice
+    ))
+    test_case.add_statement(AssignmentStatement(
+        expression=PyTestModelFactoryExpression(ModelAdapter(Order, None), [Kwarg('bar', 123)]),
+        variable=Variable('1', 'Order'),
+    ))
+
+    converter = AssertPreviousModelConverter(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    assert converter.get_document_compatibility() >= min_compatibility
+    assert converter.get_document_compatibility() <= max_compatibility
+
+
+@pytest.mark.parametrize(
+    'doc, filter_fields, variable_type', [
+        (nlp('Dann sollte Alice den Namen "Alice" haben.'), ['first_name'], 'user'),
+        (nlp('Dann sollte der Auftrag 1 den Namen "Alice" haben.'), ['name'], 'order'),
+        (nlp('Dann sollte der Auftrag 1 den Namen "Alice" und den Wert "Test" haben.'), ['name', 'worth'], 'order'),
+    ]
+)
+def test_object_qs_converter_output(doc, mocker, filter_fields, variable_type):
+    """Check that the output of AssertPreviousModelConverter is correct."""
+    assert variable_type in ['order', 'user', None]
+
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    # add two statements: a user `alice` and an `order_1`
+    user_variable = Variable('Alice', 'User')
+    order_variable = Variable('1', 'Order')
+
+    if variable_type == 'user':
+        referenced_variable = user_variable
+    elif variable_type == 'order':
+        referenced_variable = order_variable
+    else:
+        referenced_variable = None
+
+    test_case.add_statement(AssignmentStatement(
+        expression=PyTestModelFactoryExpression(ModelAdapter(User, None), [Kwarg('bar', 123)]),
+        variable=user_variable,
+    ))
+    test_case.add_statement(AssignmentStatement(
+        expression=PyTestModelFactoryExpression(ModelAdapter(Order, None), [Kwarg('bar', 123)]),
+        variable=order_variable,
+    ))
+
+    converter = AssertPreviousModelConverter(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    statements = converter.convert_to_statements()
+    assert len(statements) == len(filter_fields) + 1
+    assert 'refresh_from_db' in statements[0].expression.to_template()
+
+    for i, filter_field_name in enumerate(filter_fields):
+        statement = statements[i + 1]
+        exp = statement.expression
+
+        assert exp.value_1.attribute_name == filter_field_name
+
+        if referenced_variable:
+            assert exp.value_1.variable == referenced_variable
+

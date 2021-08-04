@@ -26,6 +26,7 @@ class Searcher(object):
         self._translator_to_src = None
         self._doc_src_language = None
         self._doc_en = None
+        self._highest_similarity = 0
 
     @property
     def translator_to_en(self):
@@ -101,16 +102,19 @@ class Searcher(object):
     def get_similarity(self, input_doc, target_doc):
         """Returns the similarity between two docs/ tokens in a range from 0 - 1."""
         cos_similarity = CosineSimilarity(input_doc, target_doc).get_similarity()
+        contains_similarity = ContainsSimilarity(input_doc, target_doc).get_similarity()
 
         # if cos is very sure, just use it
         if cos_similarity > 0.8:
             return cos_similarity
 
+        if contains_similarity == 1:
+            return contains_similarity
+
         cos_weight = 0.5
         levenshtein_weight = 0.3
         contains_weight = 0.2
 
-        contains_similarity = ContainsSimilarity(input_doc, target_doc).get_similarity()
         levenshtein_similarity = LevenshteinSimilarity(input_doc, target_doc).get_similarity()
         total_similarity = (
             cos_similarity * cos_weight
@@ -130,13 +134,17 @@ class Searcher(object):
         """Returns a fallback in case no match has been found."""
         return self.text
 
+    @property
+    def highest_similarity(self):
+        return self._highest_similarity
+
     def search(self, *args, raise_exception=False, **kwargs):
         """
         Search an object that represents the text that was given on init.  If none is found,
         this will either return a fallback (see `get_convert_fallback`) or raises an exception if `raise_exception`
         is true.
         """
-        highest_similarity = 0
+        self._highest_similarity = 0
         fittest_conversion = None
 
         for conversion in self.get_possible_results(*args, **kwargs):
@@ -145,11 +153,11 @@ class Searcher(object):
             for input_doc, target_doc in comparisons:
                 similarity = self.get_similarity(input_doc, target_doc)
 
-                if similarity > highest_similarity:
+                if similarity > self._highest_similarity:
                     fittest_conversion = conversion
-                    highest_similarity = similarity
+                    self._highest_similarity = similarity
 
-        if highest_similarity <= self.SIMILARITY_BENCHMARK or fittest_conversion is None:
+        if self._highest_similarity <= self.SIMILARITY_BENCHMARK or fittest_conversion is None:
             if raise_exception:
                 raise NoConversionFound()
 

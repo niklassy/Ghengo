@@ -94,6 +94,11 @@ class ModelQuerysetFilterExpression(ModelQuerysetBaseExpression):
         super().__init__(model_adapter, 'filter', function_kwargs)
 
 
+class ModelQuerysetGetExpression(ModelQuerysetBaseExpression):
+    def __init__(self, model_adapter, function_kwargs):
+        super().__init__(model_adapter, 'get', function_kwargs)
+
+
 class ModelQuerysetAllExpression(ModelQuerysetBaseExpression):
     def __init__(self, model_adapter):
         super().__init__(model_adapter, 'all', [])

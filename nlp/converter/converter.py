@@ -18,7 +18,8 @@ from nlp.generate.attribute import Attribute
 from nlp.generate.constants import CompareChar
 from nlp.generate.expression import ModelFactoryExpression, ModelSaveExpression, RequestExpression, APIClientExpression, \
     APIClientAuthenticateExpression, CreateUploadFileExpression, ModelQuerysetAllExpression, \
-    ModelQuerysetFilterExpression, CompareExpression, Expression, FunctionCallExpression
+    ModelQuerysetFilterExpression, CompareExpression, Expression, FunctionCallExpression, ModelQuerysetBaseExpression, \
+    ModelQuerysetGetExpression
 from nlp.generate.index import Index
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement, AssertStatement
 from nlp.generate.variable import Variable
@@ -26,7 +27,7 @@ from nlp.locator import FileExtensionLocator, ComparisonLocator, NounLocator
 from nlp.searcher import ModelFieldSearcher, NoConversionFound, UrlSearcher, SerializerFieldSearcher, \
     ClassArgumentSearcher
 from nlp.utils import get_non_stop_tokens, get_noun_chunk_of_token, token_is_noun, get_root_of_token, NoToken, \
-    token_is_verb
+    token_is_verb, get_previous_token, token_is_indefinite, token_is_definite, token_is_plural
 
 
 class ClassConverter(Converter):
@@ -39,11 +40,26 @@ class ClassConverter(Converter):
         super().__init__(document, related_object, django_project, test_case)
         self._fields = None
         self._blocked_argument_tokens = []
+        self._last_document_word = None
 
     def block_token_as_argument(self, token):
         """Use this function to block a specific token from being taken as an argument."""
         if token and token not in self._blocked_argument_tokens:
             self._blocked_argument_tokens.append(token)
+
+    @property
+    def last_document_word(self):
+        """Returns the last word of the document as a cached property."""
+        if self._last_document_word is None:
+            last_word = NoToken()
+            for i in range(len(self.document)):
+                end_token = self.document[-(i + 1)]
+
+                if not end_token.is_punct:
+                    last_word = end_token
+                    break
+            self._last_document_word = last_word
+        return self._last_document_word
 
     def token_can_be_argument(self, token):
         """Checks if a given token can represent an argument of the __init__ from the class"""
@@ -65,16 +81,8 @@ class ClassConverter(Converter):
         if token.pos_ == 'VERB' and token.head.pos_ != 'AUX':
             return False
 
-        last_word = NoToken()
-        for i in range(len(self.document)):
-            end_token = self.document[-(i + 1)]
-
-            if not end_token.is_punct:
-                last_word = end_token
-                break
-
         # if there is a verb where the parent is a finites Modalverb (e.g. sollte), it should not be an argument
-        if token == last_word and token_is_verb(token) and token.head.tag_ == 'VMFIN':
+        if token == self.last_document_word and token_is_verb(token) and token.head.tag_ == 'VMFIN':
             return False
 
         return True
@@ -100,6 +108,9 @@ class ClassConverter(Converter):
         for index, searcher_class in enumerate(self.field_searcher_classes):
             last_searcher_class = index == len(self.field_searcher_classes) - 1
 
+            best_search_result = None
+            highest_similarity = 0
+
             for search_text_index, search_text in enumerate(search_texts):
                 searcher = searcher_class(search_text, src_language=self.language)
 
@@ -108,9 +119,18 @@ class ClassConverter(Converter):
                 raise_exception = not last_search_text or not last_searcher_class
 
                 try:
-                    return searcher.search(**searcher_kwargs, raise_exception=raise_exception)
+                    search_result = searcher.search(**searcher_kwargs, raise_exception=raise_exception)
+                    if best_search_result is None or searcher.highest_similarity > highest_similarity:
+                        best_search_result = search_result
+                        highest_similarity = searcher.highest_similarity
+
+                        if highest_similarity > 0.9:
+                            break
                 except NoConversionFound:
                     pass
+
+            if best_search_result is not None:
+                return best_search_result
 
         return None
 
@@ -609,6 +629,13 @@ class QuerysetConverter(ModelConverter):
     """
     This converter can be used to translate text into a queryset statement.
     """
+    def __init__(self, document, related_object, django_project, test_case):
+        super().__init__(document, related_object, django_project, test_case)
+        self.assignment_variable = Variable(
+            self.get_variable_name(),
+            self.model.value.name if self.model.value else '',
+        )
+
     def get_document_compatibility(self):
         """
         If the model token is not a noun, it is unlikely that this converter matches.
@@ -620,36 +647,113 @@ class QuerysetConverter(ModelConverter):
 
         return compatibility
 
+    @property
+    def has_query_kwargs(self):
+        return len(self.extractors) > 0
+
+    def get_queryset_expression(self):
+        if not self.has_query_kwargs:
+            return ModelQuerysetAllExpression(self.model.value)
+
+        return ModelQuerysetFilterExpression(self.model.value, [])
+
+    def get_variable_name(self):
+        qs_statements = self.test_case.get_all_statements_with_expression(ModelQuerysetBaseExpression)
+
+        return 'qs_{}'.format(len(qs_statements))
+
     def prepare_statements(self, statements):
         """
         Create a queryset statement. If there any extractor, filter for it. If there are none, simply get all.
         """
-        if len(self.extractors) == 0:
-            expression = ModelQuerysetAllExpression(self.model.value)
-        else:
-            expression = ModelQuerysetFilterExpression(self.model.value, [])
-
-        statement = AssignmentStatement(
-            variable=Variable('qs', self.model.value.name),
-            expression=expression,
-        )
-        statements.append(statement)
-
+        expression = self.get_queryset_expression()
+        statements.append(AssignmentStatement(variable=self.assignment_variable, expression=expression))
         return statements
 
     def handle_extractor(self, extractor, statements):
         super().handle_extractor(extractor, statements)
 
-        qs_statement = statements[0]
-
-        if isinstance(qs_statement.expression, ModelQuerysetAllExpression):
+        if not self.has_query_kwargs:
             return
 
+        qs_statement = statements[0]
         factory_kwargs = qs_statement.expression.function_kwargs
 
         extracted_value = self.extract_and_handle_output(extractor)
         kwarg = Kwarg(extractor.field_name, extracted_value)
         factory_kwargs.append(kwarg)
+
+
+class ObjectQuerysetConverter(QuerysetConverter):
+    """This converter can be used to create assert statements on the fields of a database entry."""
+    def get_variable_name(self):
+        other_get_statements = self.test_case.get_all_statements_with_expression(ModelQuerysetGetExpression)
+
+        return '{}_{}'.format(self.model.value.name, len(other_get_statements))
+
+    @property
+    def has_query_kwargs(self):
+        """Only consider the filter extractors for this property."""
+        return len(self.get_filter_extractors()) > 0
+
+    def get_document_compatibility(self):
+        compatibility = super().get_document_compatibility()
+
+        token_before_model = get_previous_token(self.model.token)
+        if not token_before_model:
+            return 0
+
+        # check the token before the model token - since this converter references one exact instance of a model
+        # it will be referenced in a definite way (the order, der Auftrag etc.) and not indefinite
+        # (an order, ein Auftrag)
+        if token_is_indefinite(token_before_model):
+            compatibility *= 0.2
+        elif token_is_definite(token_before_model):
+            pass
+        else:
+            # the token before the model can be something else - these will most likely not fit though
+            compatibility *= 0.5
+
+        # since this will reference a single model entry, it is rather unlikely that this converter fits if the model
+        # token is in plural
+        if self.model.token and token_is_plural(self.model.token):
+            compatibility *= 0.5
+
+        return compatibility
+
+    def get_queryset_expression(self):
+        """
+        This converter will always create a get queryset.
+        """
+        return ModelQuerysetGetExpression(self.model.value, [])
+
+    def get_assert_extractors(self):
+        """The last extractor will always be the value that is checked/ asserted."""
+        return [self.extractors[-1]]
+
+    def get_filter_extractors(self):
+        """All but the last extractor are used to get the value from the database."""
+        return self.extractors[:-1]
+
+    def handle_extractor(self, extractor, statements):
+        """
+        If we filter for an extractor, handle the extractor normally. If it is used to assert, create an
+        assert statement.
+        """
+        if extractor in self.get_filter_extractors():
+            super().handle_extractor(extractor, statements)
+
+        elif extractor in self.get_assert_extractors():
+            exp = CompareExpression(
+                Attribute(self.assignment_variable, extractor.field_name),
+                CompareChar.EQUAL,
+                Argument(extractor.extract_value()),
+            )
+            statement = AssertStatement(exp)
+            statements.append(statement)
+
+        else:
+            raise ValueError('This should not happen.')
 
 
 class CountQuerysetConverter(QuerysetConverter):
@@ -736,6 +840,53 @@ class ExistsQuerysetConverter(QuerysetConverter):
         statements.append(statement)
 
         return statements
+
+
+class AssertPreviousModelConverter(ModelConverter):
+    """
+    This converter can be used to check fields from the variable of a model that was previously created.
+    """
+    def __init__(self, document, related_object, django_project, test_case):
+        super().__init__(document, related_object, django_project, test_case)
+        self.variable = ReferenceModelVariableProperty(self)
+        self.model = ReferenceModelProperty(self)
+
+        # the value of the variable is important for the model
+        self.variable.calculate_value()
+
+    def get_document_compatibility(self):
+        compatibility = super().get_document_compatibility()
+
+        if not self.variable.token:
+            compatibility *= 0.2
+
+        # since this references a single entry, it is unlikely that this fits if multiple model entries are mentioned
+        if token_is_plural(self.model.token):
+            compatibility *= 0.5
+
+        return compatibility
+
+    def prepare_statements(self, statements):
+        # we need to refresh the data before checking the values
+        statements.append(
+            Expression(Attribute(self.variable.value, 'refresh_from_db()')).as_statement()
+        )
+
+        return statements
+
+    def handle_extractor(self, extractor, statements):
+        """For each extractor, use the field to create a compare expression."""
+        chunk = get_noun_chunk_of_token(extractor.source, self.document)
+        compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
+        compare_locator.locate()
+
+        exp = CompareExpression(
+            Attribute(self.variable.value, extractor.field_name),
+            compare_locator.comparison,
+            Argument(extractor.extract_value()),
+        )
+        statement = AssertStatement(exp)
+        statements.append(statement)
 
 
 class ResponseConverterBase(ClassConverter):
@@ -977,6 +1128,25 @@ class ResponseConverter(ResponseConverterBase):
         super().__init__(document, related_object, django_project, test_case)
 
         self._response_data_variable = None
+
+    def get_document_compatibility(self):
+        compatibility = super().get_document_compatibility()
+
+        # if the response is not explicitly named
+        if not self.response_locator.fittest_token:
+
+            # check if there is a model in the text, if not it is very unlikely to fit
+            if self.model_in_text.token:
+
+                # if there is a model token and it fits the request model, this is likely to fit though
+                if self.model_in_text_fits_request:
+                    compatibility *= 1
+                else:
+                    compatibility *= 0.5
+            else:
+                compatibility *= 0.2
+
+        return compatibility
 
     @property
     def response_data_variable(self):

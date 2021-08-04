@@ -1,7 +1,7 @@
 # language: de
 Funktionalität: Reference
-  Grundlage:
-   Gegeben sei ein Benutzer Alice mit dem Namen "alice", der Email "a@local.local"
+#  Grundlage:
+#   Gegeben sei ein Benutzer Alice mit dem Nachnamen "alice", der Email "a@local.local"
 
 #  Szenario: Permission in Text
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "Auftrag hinzufügen"
@@ -31,12 +31,10 @@ Funktionalität: Reference
 #    Und ein Auftrag mit dem Namen "Hallo"
 #    Wenn Alice einen Auftrag mit der Datei "asd" erstellt
 
-  Szenariogrundriss: : file
-    Gegeben sei ein Todo mit dem System 2
+  Szenario: file
+    Dann sollten zwei Aufträge mit dem Namen "Alice" existieren
+#    Dann sollten Benutzer mit dem Vornamen "Alice" existieren
 
-  Beispiele:
-    |system|
-    |   1  |
 #    Wenn Alice ein Dach mit dem System 3 ändert
 
 #  Szenario: Ändern von ToDo - anderer Nutzer

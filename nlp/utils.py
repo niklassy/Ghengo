@@ -11,6 +11,10 @@ class NoToken:
     children = []
     is_digit = False
     lang_ = None
+    tag_ = None
+    pos_ = None
+    morph = ''
+    i = 0
 
     def __eq__(self, other):
         return False
@@ -169,6 +173,16 @@ def is_quoted(token):
 def token_is_negated(token):
     """Check if a token is negated."""
     return any([child for child in token.children if child.lemma_ in NEGATIONS[token.lang_]])
+
+
+def token_is_indefinite(token):
+    """Check if a token is indefinite (unbestimmt => ein, einen etc.)."""
+    return 'Definite=Ind' in token.morph
+
+
+def token_is_definite(token):
+    """Check if a token is definite (bestimmt => der, das etc.)."""
+    return 'Definite=Def' in token.morph
 
 
 def token_is_verb(token, include_aux=True):
