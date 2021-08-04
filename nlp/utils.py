@@ -12,6 +12,7 @@ class NoToken:
     is_digit = False
     lang_ = None
     tag_ = None
+    pos_ = None
     morph = ''
     i = 0
 

@@ -27,7 +27,7 @@ from nlp.locator import FileExtensionLocator, ComparisonLocator, NounLocator
 from nlp.searcher import ModelFieldSearcher, NoConversionFound, UrlSearcher, SerializerFieldSearcher, \
     ClassArgumentSearcher
 from nlp.utils import get_non_stop_tokens, get_noun_chunk_of_token, token_is_noun, get_root_of_token, NoToken, \
-    token_is_verb, get_previous_token, token_is_indefinite, token_is_definite
+    token_is_verb, get_previous_token, token_is_indefinite, token_is_definite, token_is_plural
 
 
 class ClassConverter(Converter):
@@ -705,6 +705,11 @@ class ObjectQuerysetConverter(QuerysetConverter):
             pass
         else:
             # the token before the model can be something else - these will most likely not fit though
+            compatibility *= 0.5
+
+        # since this will reference a single model entry, it is rather unlikely that this converter fits if the model
+        # token is in plural
+        if self.model.token and token_is_plural(self.model.token):
             compatibility *= 0.5
 
         return compatibility

@@ -102,16 +102,19 @@ class Searcher(object):
     def get_similarity(self, input_doc, target_doc):
         """Returns the similarity between two docs/ tokens in a range from 0 - 1."""
         cos_similarity = CosineSimilarity(input_doc, target_doc).get_similarity()
+        contains_similarity = ContainsSimilarity(input_doc, target_doc).get_similarity()
 
         # if cos is very sure, just use it
         if cos_similarity > 0.8:
             return cos_similarity
 
+        if contains_similarity == 1:
+            return contains_similarity
+
         cos_weight = 0.5
         levenshtein_weight = 0.3
         contains_weight = 0.2
 
-        contains_similarity = ContainsSimilarity(input_doc, target_doc).get_similarity()
         levenshtein_similarity = LevenshteinSimilarity(input_doc, target_doc).get_similarity()
         total_similarity = (
             cos_similarity * cos_weight

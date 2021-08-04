@@ -9,11 +9,12 @@ from gherkin.ast import Given, DataTable, TableRow, TableCell, Then
 from nlp.converter.converter import ModelFactoryConverter, ModelVariableReferenceConverter, RequestConverter, \
     QuerysetConverter, CountQuerysetConverter, ExistsQuerysetConverter, ManyCheckEntryResponseConverter, \
     ResponseConverterBase, ManyLengthResponseConverter, ManyResponseConverter, ResponseConverter, \
-    ResponseErrorConverter, ResponseStatusCodeConverter
+    ResponseErrorConverter, ResponseStatusCodeConverter, ObjectQuerysetConverter
 from nlp.generate.argument import Kwarg
 from nlp.generate.constants import CompareChar
 from nlp.generate.expression import ModelSaveExpression, APIClientExpression, RequestExpression, \
-    APIClientAuthenticateExpression, ModelQuerysetFilterExpression, ModelQuerysetAllExpression, CompareExpression
+    APIClientAuthenticateExpression, ModelQuerysetFilterExpression, ModelQuerysetAllExpression, CompareExpression, \
+    ModelQuerysetGetExpression
 from nlp.generate.pytest import PyTestModelFactoryExpression
 from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.generate.statement import AssignmentStatement, ModelFieldAssignmentStatement
@@ -841,3 +842,64 @@ def test_response_converter_output(doc, mocker, error_str):
         assert statements[0].expression.value_2.function_kwargs[0].attribute_name == 'data'
     else:
         assert len(statements) == 0
+
+
+@pytest.mark.parametrize(
+    'doc, min_compatibility, max_compatibility', [
+        (nlp('Dann sollte der Auftrag mit der ID 1 den Namen "Alice" haben.'), 0.7, 1),
+        (nlp('Dann sollte das ToDo mit dem Namen "Asd" den Titel "Blubb" haben.'), 0.7, 1),
+        (nlp('Dann sollte ein Auftrag existieren.'), 0, 0.3),
+        (nlp('Dann sollten Aufträge mit dem Namen "QWE" existieren.'), 0, 0.3),
+        (nlp('Dann sollte es einen Fehler "error" geben.'), 0, 0.3),
+    ]
+)
+def test_object_qs_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
+    """Check that the ObjectQuerysetConverter detects the compatibility of different documents correctly."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    converter = ObjectQuerysetConverter(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    assert converter.get_document_compatibility() >= min_compatibility
+    assert converter.get_document_compatibility() <= max_compatibility
+
+
+@pytest.mark.parametrize(
+    'doc, filter_fields, assert_field', [
+        (nlp('Dann sollte der Auftrag mit der ID 1 den Namen "Alice" haben.'), ['id'], 'name'),
+        (nlp('Dann sollte das ToDo mit dem System 1 den Titel "Blubb" haben.'), ['system'], 'title'),
+        (
+            nlp('Dann sollte der Auftrag mit der ID 1 und dem Namen "Alice" den Wert "Test" haben.'),
+            ['id', 'name'],
+            'worth'
+        ),
+    ]
+)
+def test_object_qs_converter_output(doc, mocker, filter_fields, assert_field):
+    """Check that the output of ObjectQuerysetConverter is correct."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    converter = ObjectQuerysetConverter(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    statements = converter.convert_to_statements()
+    assert len(statements) == 2
+
+    # check the filter statement
+    assert isinstance(statements[0].expression, ModelQuerysetGetExpression)
+    for i, filter_field_name in enumerate(filter_fields):
+        assert statements[0].expression.function_kwargs[i].name == filter_field_name
+
+    # check the assert statement
+    assert isinstance(statements[1].expression, CompareExpression)
+    assert statements[1].expression.value_1.attribute_name == assert_field
