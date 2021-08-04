@@ -860,6 +860,10 @@ class AssertPreviousModelConverter(ModelConverter):
         if not self.variable.token:
             compatibility *= 0.2
 
+        # since this references a single entry, it is unlikely that this fits if multiple model entries are mentioned
+        if token_is_plural(self.model.token):
+            compatibility *= 0.5
+
         return compatibility
 
     def prepare_statements(self, statements):
@@ -1124,6 +1128,25 @@ class ResponseConverter(ResponseConverterBase):
         super().__init__(document, related_object, django_project, test_case)
 
         self._response_data_variable = None
+
+    def get_document_compatibility(self):
+        compatibility = super().get_document_compatibility()
+
+        # if the response is not explicitly named
+        if not self.response_locator.fittest_token:
+
+            # check if there is a model in the text, if not it is very unlikely to fit
+            if self.model_in_text.token:
+
+                # if there is a model token and it fits the request model, this is likely to fit though
+                if self.model_in_text_fits_request:
+                    compatibility *= 1
+                else:
+                    compatibility *= 0.5
+            else:
+                compatibility *= 0.2
+
+        return compatibility
 
     @property
     def response_data_variable(self):

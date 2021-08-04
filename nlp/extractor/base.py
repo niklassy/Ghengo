@@ -117,7 +117,7 @@ class ManyExtractorMixin(object):
         return self.get_child_extractor_class().output_class
 
     def get_generated_warnings(self):
-        extracted_value = self.extract_value()
+        extracted_value = self._extract_many(token=self.source)
         if extracted_value is None:
             return []
 

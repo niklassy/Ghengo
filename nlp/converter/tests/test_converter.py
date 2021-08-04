@@ -688,6 +688,33 @@ def test_many_response_converter_compatibility(doc, min_compatibility, max_compa
 
 
 @pytest.mark.parametrize(
+    'doc, min_compatibility, max_compatibility', [
+        (nlp('Dann sollte die Antwort den Namen "Alice" enthalten.'), 0.7, 1),
+        (nlp('Dann sollte der Auftrag den Namen "Alice" enthalten.'), 0.7, 1),
+        (nlp('Dann sollte in der Auftrag der Namen "Alice" sein.'), 0.7, 1),
+        (nlp('Dann sollte der Benutzer den Namen "Alice" haben.'), 0, 0.5),
+    ]
+)
+def test_response_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
+    """Check that the ResponseConverter detects the compatibility of different documents correctly."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+
+    add_request_statement(test_case)
+    assert len(test_case.statements) > 0
+
+    converter = ResponseConverter(
+        doc,
+        Given(keyword='Gegeben sei', text='ein Auftrag mit der Nummer 3'),
+        django_project,
+        test_case,
+    )
+    assert converter.get_document_compatibility() >= min_compatibility
+    assert converter.get_document_compatibility() <= max_compatibility
+
+
+@pytest.mark.parametrize(
     'doc, field_names', [
         (nlp('Dann sollte die Antwort existieren'), []),
         (nlp('Dann sollte die Antwort den Namen "Alice" enthalten.'), ['name']),

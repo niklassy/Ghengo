@@ -32,8 +32,8 @@ Funktionalität: Reference
 #    Wenn Alice einen Auftrag mit der Datei "asd" erstellt
 
   Szenario: file
-    Dann sollte der Benutzer mit dem Vornamen "Alice" und dem Nachnamen "Müller" den Wert "Blubb" haben
-    Dann sollten Benutzer mit dem Vornamen "Alice" existieren
+    Dann sollten zwei Aufträge mit dem Namen "Alice" existieren
+#    Dann sollten Benutzer mit dem Vornamen "Alice" existieren
 
 #    Wenn Alice ein Dach mit dem System 3 ändert
 
