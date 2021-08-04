@@ -6,8 +6,9 @@ from django_meta.api import AbstractUrlPatternAdapter
 from django_meta.model import ModelAdapter
 from django_meta.project import DjangoProject
 from gherkin.ast import Then
-from nlp.converter.converter import ExistsQuerysetConverter, AssertPreviousModelConverter, ObjectQuerysetConverter, \
-    CountQuerysetConverter, ResponseConverter, ResponseErrorConverter, ResponseStatusCodeConverter, \
+from nlp.converter.model import AssertPreviousModelConverter
+from nlp.converter.queryset import ExistsQuerysetConverter, CountQuerysetConverter, ObjectQuerysetConverter
+from nlp.converter.response import ResponseConverter, ResponseErrorConverter, ResponseStatusCodeConverter, \
     ManyLengthResponseConverter, ManyCheckEntryResponseConverter
 from nlp.generate.argument import Kwarg
 from nlp.generate.expression import RequestExpression

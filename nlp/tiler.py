@@ -1,8 +1,10 @@
-from nlp.converter.base_converter import Converter
-from nlp.converter.converter import ModelVariableReferenceConverter, ModelFactoryConverter, RequestConverter, \
-    FileConverter, CountQuerysetConverter, ExistsQuerysetConverter, ResponseConverter, \
-    ManyLengthResponseConverter, ResponseStatusCodeConverter, ResponseErrorConverter, ManyCheckEntryResponseConverter, \
-    AssertPreviousModelConverter, ObjectQuerysetConverter
+from nlp.converter.base.converter import Converter
+from nlp.converter.file import FileConverter
+from nlp.converter.model import ModelVariableReferenceConverter, ModelFactoryConverter, AssertPreviousModelConverter
+from nlp.converter.queryset import CountQuerysetConverter, ObjectQuerysetConverter, ExistsQuerysetConverter
+from nlp.converter.request import RequestConverter
+from nlp.converter.response import ManyCheckEntryResponseConverter, ManyLengthResponseConverter, \
+    ResponseStatusCodeConverter, ResponseErrorConverter, ResponseConverter
 from nlp.setup import Nlp
 
 
