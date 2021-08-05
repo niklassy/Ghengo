@@ -11,7 +11,7 @@ from gherkin.ast import Comment as ASTComment, Scenario, ScenarioOutline, Rule, 
 from gherkin.compiler_base.exception import RuleNotFulfilled, GrammarInvalid, GrammarNotUsed
 from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
-from gherkin.grammar import GherkinDocumentGrammar
+from gherkin.grammar import GherkinDocumentGrammar, LanguageGrammar
 from gherkin.token import FeatureToken, RuleToken, DescriptionToken, EOFToken, BackgroundToken, ScenarioToken, \
     CommentToken, GivenToken, ThenToken, WhenToken, EmptyToken, AndToken, ButToken, TagsToken, LanguageToken, \
     EndOfLineToken, ScenarioOutlineToken, DocStringToken, DataTableToken, ExamplesToken
@@ -51,7 +51,10 @@ class GherkinLexer(Lexer):
         # the first line may contain the language, so if it is found, set it
         if isinstance(token, LanguageToken):
             if not token.at_valid_position:
-                raise GherkinInvalid('You may only set the language in the first line of the document')
+                raise GherkinInvalid(
+                    'You may only set the language in the first line of the document',
+                    grammar=LanguageGrammar(),
+                )
 
             Settings.language = token.locale
 
@@ -213,5 +216,5 @@ class GherkinToPyTestCompiler(Compiler):
     def use_parser(self, tokens):
         try:
             return super().use_parser(tokens)
-        except (RuleNotFulfilled, GrammarInvalid, GrammarNotUsed) as e:
-            raise GherkinInvalid(str(e))
+        except (GrammarInvalid, GrammarNotUsed) as e:
+            raise GherkinInvalid(str(e), grammar=e.grammar)

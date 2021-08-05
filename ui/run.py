@@ -37,17 +37,6 @@ def run_ui():
 
     window.finalize()
 
-    # def handle_enter(*args):
-    #     widget = window['GHERKIN_EDITOR'].Widget
-    #     token_list = c.use_lexer(text)
-    #     cursor_y_pos, cursor_x_pos = widget.index('insert').split('.')
-    #     suggested = get_suggested_intend_after_line(token_list, int(cursor_y_pos) - 1)
-    #     widget.insert('insert', suggested)
-    #
-    # window['GHERKIN_EDITOR'].Widget.bind('<Return>', func=handle_enter)
-
-    auto_intend_set = False
-
     while True:
         event, values = window.read(timeout=20)
         if event == sg.WIN_CLOSED or event == 'Cancel':  # if user closes window or clicks cancel
@@ -94,6 +83,14 @@ def run_ui():
             window['GHERKIN_EDITOR'].update(str(token), text_color_for_value=color, append=True)
 
         editor_widget.mark_set("insert", "%d.%d" % (float(cursor_y), float(cursor_x)))
+
+        # highlighting
+        try:
+            c.use_parser(tokens)
+        except GherkinInvalid as e:
+            next_valid_tokens = e.grammar.get_next_valid_tokens()
+            print('Suggested: ', [t.get_keywords() for t in next_valid_tokens])
+            continue
 
         if event == '__TIMEOUT__':
             continue

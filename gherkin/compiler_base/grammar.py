@@ -95,11 +95,13 @@ class Grammar(SequenceToObjectMixin):
 
             for t in next_valid_tokens:
                 valid_keywords += t.get_keywords()
-
-            error_token = sequence[e.sequence_index]
-            message = 'Expected one of {}. Got {} instead. {}'.format(
-                ', '.join(valid_keywords), error_token.get_text(), error_token.get_place_to_search()
-            )
+            try:
+                error_token = sequence[e.sequence_index]
+                message = 'Expected one of {}. Got {} instead. {}'.format(
+                    ', '.join(valid_keywords), error_token.get_text(), error_token.get_place_to_search()
+                )
+            except IndexError:
+                message = str(e)
 
             if not self.used_by_sequence_area(sequence, index, e.sequence_index):
                 raise GrammarNotUsed(
