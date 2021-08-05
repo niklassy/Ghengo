@@ -533,7 +533,7 @@ class LanguageGrammar(Grammar):
 class GherkinDocumentGrammar(Grammar):
     rule = Chain([
         Optional(LanguageGrammar()),
-        Optional(FeatureGrammar()),
+        Optional(FeatureGrammar(), important=True),
         RuleAlias(EOFToken),
     ])
     name = 'Gherkin document'

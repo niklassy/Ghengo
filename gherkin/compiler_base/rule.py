@@ -23,6 +23,9 @@ class Rule(SequenceToObjectMixin, ABC):
         else:
             self._validate_init_child(child_rule)
 
+    def get_next_valid_tokens(self):
+        raise NotImplementedError()
+
     def _validate_init_child(self, child):
         """Validation on __init__"""
         if not isinstance(child, Rule) and not isinstance(child, RuleAlias) and not isinstance(child, Grammar):
@@ -135,6 +138,19 @@ class Optional(Rule):
     """
     Can be used to mark something a token as optional.
     """
+    def __init__(self, child, important=False):
+        super().__init__(child)
+        self.important = important
+
+    def get_next_valid_tokens(self):
+        if not self.important:
+            return []
+
+        tokens = self.child_rule.get_next_valid_tokens()
+        if not isinstance(tokens, list):
+            tokens = [tokens]
+        return tokens
+
     def _validate_init_child(self, child):
         super()._validate_init_child(child)
 
@@ -178,6 +194,9 @@ class OneOf(Rule):
 
         if not isinstance(child, list):
             raise ValueError('You must use a list for OneOf')
+
+    def get_next_valid_tokens(self):
+        return [child_rule.get_next_valid_tokens() for child_rule in self.child_rule]
 
     def sequence_to_object(self, sequence, index=0):
         """
@@ -224,9 +243,20 @@ class OneOf(Rule):
 class Repeatable(Rule):
     """Allows any amount of repetition of the passed child. If it is optional, minimum=0 can be passed."""
 
-    def __init__(self, child, minimum=1):
+    def __init__(self, child, minimum=1, important=False):
         super().__init__(child)
         self.minimum = minimum
+        self.important = important
+
+    def get_next_valid_tokens(self):
+        if self.minimum == 0 and not self.important:
+            return []
+
+        tokens = self.child_rule.get_next_valid_tokens()
+        if not isinstance(tokens, list):
+            tokens = [tokens]
+
+        return tokens
 
     def _validate_init_child(self, child):
         super()._validate_init_child(child)
@@ -285,6 +315,19 @@ class Chain(Rule):
 
         if not isinstance(child, list):
             raise ValueError('You must use a list for a Chain')
+
+    def get_next_valid_tokens(self):
+        if len(self.child_rule) == 0:
+            return []
+
+        for child_rule in self.child_rule:
+            valid_tokens = child_rule.get_next_valid_tokens()
+            if valid_tokens:
+                if isinstance(valid_tokens, list):
+                    return valid_tokens
+                return [valid_tokens]
+
+        return []
 
     def sequence_to_object(self, sequence, index=0):
         """

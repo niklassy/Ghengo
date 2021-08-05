@@ -44,6 +44,9 @@ class Grammar(SequenceToObjectMixin):
 
         self.validated_sequence = None
 
+    def get_next_valid_tokens(self):
+        return self.get_rule().get_next_valid_tokens()
+
     def get_rule(self):
         """Returns the rule of this grammar."""
         return self.rule
@@ -87,11 +90,22 @@ class Grammar(SequenceToObjectMixin):
             # noinspection PyProtectedMember
             return self.get_rule()._validate_sequence(sequence, index)
         except (RuleNotFulfilled, SequenceEnded) as e:
+            next_valid_tokens = self.get_next_valid_tokens()
+            valid_keywords = []
+
+            for t in next_valid_tokens:
+                valid_keywords += t.get_keywords()
+
+            error_token = sequence[e.sequence_index]
+            message = 'Expected one of {}. Got {} instead. {}'.format(
+                ', '.join(valid_keywords), error_token.get_text(), error_token.get_place_to_search()
+            )
+
             if not self.used_by_sequence_area(sequence, index, e.sequence_index):
                 raise GrammarNotUsed(
-                    str(e), rule_alias=e.rule_alias, sequence_index=e.sequence_index, rule=e.rule, grammar=self)
+                    message, rule_alias=e.rule_alias, sequence_index=e.sequence_index, rule=e.rule, grammar=self)
 
-            raise GrammarInvalid('Invalid syntax for {} - {}'.format(self.get_name(), str(e)), grammar=self)
+            raise GrammarInvalid(message, grammar=self)
 
     def validate_sequence(self, sequence: [TokenWrapper]):
         """
