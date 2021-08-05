@@ -4,7 +4,7 @@ from typing import Optional
 from gherkin.compiler_base.token import Token
 from gherkin.config import GHERKIN_CONFIG
 from gherkin.compiler_base.line import Line
-from settings import Settings, GHERKIN_INDENT_SPACES
+from settings import Settings
 
 
 class GherkinToken(Token):
@@ -35,35 +35,35 @@ class TokenContainsWholeLineMixin(object):
 
 
 class FeatureToken(GherkinToken):
-    color = 'orange'
+    color = '#d35400'
     _json_id = 'feature'
     keyword_with_colon = True
     children_intended = True
 
 
 class RuleToken(GherkinToken):
-    color = 'orange'
+    color = '#d35400'
     _json_id = 'rule'
     keyword_with_colon = True
     children_intended = True
 
 
 class ScenarioToken(GherkinToken):
-    color = 'orange'
+    color = '#d35400'
     _json_id = 'scenario'
     keyword_with_colon = True
     children_intended = True
 
 
 class ScenarioOutlineToken(GherkinToken):
-    color = 'orange'
+    color = '#d35400'
     _json_id = 'scenarioOutline'
     keyword_with_colon = True
     children_intended = True
 
 
 class ExamplesToken(GherkinToken):
-    color = 'orange'
+    color = '#d35400'
     _json_id = 'examples'
     keyword_with_colon = True
     children_intended = True
@@ -90,34 +90,34 @@ class DocStringToken(TokenContainsWholeLineMixin, GherkinToken):
 
 
 class BackgroundToken(GherkinToken):
-    color = 'orange'
+    color = '#d35400'
     _json_id = 'background'
     keyword_with_colon = True
     children_intended = True
 
 
 class GivenToken(GherkinToken):
-    color = 'orange'
+    color = '#d35400'
     _json_id = 'given'
 
 
 class WhenToken(GherkinToken):
-    color = 'orange'
+    color = '#d35400'
     _json_id = 'when'
 
 
 class ThenToken(GherkinToken):
-    color = 'orange'
+    color = '#d35400'
     _json_id = 'then'
 
 
 class AndToken(GherkinToken):
-    color = 'orange'
+    color = '#d35400'
     _json_id = 'and'
 
 
 class ButToken(GherkinToken):
-    color = 'orange'
+    color = '#d35400'
     _json_id = 'but'
 
 
