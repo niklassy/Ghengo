@@ -61,12 +61,19 @@ class Rule(SequenceToObjectMixin, ABC):
         :raises RuleNotFulfilled: if the token_wrapper in the sequence does not match the rule_alias
         """
         keywords = rule_alias.get_keywords()
+        suggested_tokens = rule_alias.get_next_valid_tokens()
 
         try:
             token_wrapper = sequence[index]
         except IndexError:
             message = self._build_error_message(keywords, message='Input ended abruptely. ')
-            raise SequenceEnded(message, rule_alias=rule_alias, sequence_index=index, rule=self)
+            raise SequenceEnded(
+                message,
+                rule_alias=rule_alias,
+                sequence_index=index,
+                rule=self,
+                suggested_tokens=suggested_tokens,
+            )
 
         assert isinstance(token_wrapper, TokenWrapper)
         assert isinstance(rule_alias, RuleAlias)
@@ -74,7 +81,13 @@ class Rule(SequenceToObjectMixin, ABC):
         if not rule_alias.token_wrapper_is_valid(token_wrapper):
             message = self._build_error_message(keywords, token_wrapper)
 
-            raise RuleNotFulfilled(message, rule_alias=rule_alias, sequence_index=index, rule=self)
+            raise RuleNotFulfilled(
+                message,
+                rule_alias=rule_alias,
+                sequence_index=index,
+                rule=self,
+                suggested_tokens=suggested_tokens,
+            )
 
     def _get_valid_index_for_child(self, child: Union['Rule', 'RuleAlias', 'Grammar'], sequence: ['TokenWrapper'], index: int) -> int:
         """
@@ -123,7 +136,13 @@ class Rule(SequenceToObjectMixin, ABC):
         try:
             result_index = self._validate_sequence(sequence, index)
         except SequenceEnded as e:
-            raise RuleNotFulfilled(str(e), sequence_index=e.sequence_index, rule_alias=e.rule_alias, rule=e.rule)
+            raise RuleNotFulfilled(
+                str(e),
+                sequence_index=e.sequence_index,
+                rule_alias=e.rule_alias,
+                rule=e.rule,
+                suggested_tokens=e.suggested_tokens,
+            )
 
         if result_index < len(sequence):
             raise SequenceNotFinished()
@@ -196,7 +215,18 @@ class OneOf(Rule):
             raise ValueError('You must use a list for OneOf')
 
     def get_next_valid_tokens(self):
-        return [child_rule.get_next_valid_tokens() for child_rule in self.child_rule]
+        output = []
+
+        for child in self.child_rule:
+            tokens = child.get_next_valid_tokens()
+            if not tokens:
+                continue
+
+            if not isinstance(tokens, list):
+                tokens = [tokens]
+            output += tokens
+
+        return output
 
     def sequence_to_object(self, sequence, index=0):
         """
@@ -237,7 +267,15 @@ class OneOf(Rule):
                 errors.append((e, child))
 
         # if each child has thrown an error, this is invalid
-        raise RuleNotFulfilled(str(errors[0][0]), sequence_index=index, rule_alias=errors[0][1], rule=self)
+        suggested_tokens = [e.suggested_tokens for e, token in errors]
+        raise RuleNotFulfilled(
+            str(errors[0][0]),
+            sequence_index=index,
+            rule_alias=errors[0][1],
+            rule=self,
+            # flatten the list
+            suggested_tokens=[item for sublist in suggested_tokens for item in sublist],
+        )
 
 
 class Repeatable(Rule):
@@ -273,7 +311,13 @@ class Repeatable(Rule):
                 index = self._get_valid_index_for_child(self.child_rule, sequence, index)
             except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded) as e:
                 if isinstance(e, GrammarNotUsed):
-                    break_error = RuleNotFulfilled(str(e), sequence_index=index, rule_alias=e.rule_alias, rule=e.rule)
+                    break_error = RuleNotFulfilled(
+                        str(e),
+                        sequence_index=index,
+                        rule_alias=e.rule_alias,
+                        rule=e.rule,
+                        suggested_tokens=e.suggested_tokens,
+                    )
                 else:
                     break_error = e
                 break
@@ -320,14 +364,20 @@ class Chain(Rule):
         if len(self.child_rule) == 0:
             return []
 
+        output = []
         for child_rule in self.child_rule:
             valid_tokens = child_rule.get_next_valid_tokens()
-            if valid_tokens:
-                if isinstance(valid_tokens, list):
-                    return valid_tokens
-                return [valid_tokens]
 
-        return []
+            if valid_tokens:
+                if not isinstance(valid_tokens, list):
+                    valid_tokens = [valid_tokens]
+
+                output += valid_tokens
+
+            if not isinstance(child_rule, (Optional, Repeatable)):
+                break
+
+        return output
 
     def sequence_to_object(self, sequence, index=0):
         """
@@ -358,6 +408,12 @@ class Chain(Rule):
             try:
                 index = self._get_valid_index_for_child(child, sequence, index)
             except GrammarNotUsed as e:
-                raise RuleNotFulfilled(str(e), rule_alias=e.rule_alias, sequence_index=e.sequence_index, rule=e.rule)
+                raise RuleNotFulfilled(
+                    str(e),
+                    rule_alias=e.rule_alias,
+                    sequence_index=e.sequence_index,
+                    rule=e.rule,
+                    suggested_tokens=e.suggested_tokens,
+                )
 
         return index

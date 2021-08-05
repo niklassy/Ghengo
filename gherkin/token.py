@@ -122,7 +122,7 @@ class ButToken(GherkinToken):
 
 
 class TagToken(TokenContainsWholeLineMixin, GherkinToken):
-    color = 'yellow'
+    color = '#c0392b'
     REG_EX = '@[a-zA-Z0-9_.-]+'
 
     @classmethod

@@ -54,6 +54,7 @@ class GherkinLexer(Lexer):
                 raise GherkinInvalid(
                     'You may only set the language in the first line of the document',
                     grammar=LanguageGrammar(),
+                    suggested_tokens=[],
                 )
 
             Settings.language = token.locale
@@ -217,4 +218,4 @@ class GherkinToPyTestCompiler(Compiler):
         try:
             return super().use_parser(tokens)
         except (GrammarInvalid, GrammarNotUsed) as e:
-            raise GherkinInvalid(str(e), grammar=e.grammar)
+            raise GherkinInvalid(str(e), grammar=e.grammar, suggested_tokens=e.suggested_tokens)

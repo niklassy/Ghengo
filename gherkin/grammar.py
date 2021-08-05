@@ -132,7 +132,8 @@ class DataTableGrammar(Grammar):
                 place_to_search = token_wrapper.get_place_to_search()
                 raise GrammarInvalid(
                     'All rows in a data table must have the same amount of columns. {}'.format(place_to_search),
-                    grammar=self
+                    grammar=self,
+                    suggested_tokens=[],
                 )
 
         return new_index
@@ -289,9 +290,9 @@ class ThenGrammar(GivenWhenThenBase):
 
 class StepsGrammar(Grammar):
     rule = Chain([
-        Repeatable(GivenGrammar(), minimum=0),
-        Repeatable(WhenGrammar(), minimum=0),
-        Repeatable(ThenGrammar(), minimum=0),
+        Repeatable(GivenGrammar(), minimum=0, important=True),
+        Repeatable(WhenGrammar(), minimum=0, important=True),
+        Repeatable(ThenGrammar(), minimum=0, important=True),
     ])
     name = 'Steps'
 
@@ -308,7 +309,8 @@ class StepsGrammar(Grammar):
             place_to_search = token_wrapper.get_place_to_search()
             raise GrammarInvalid(
                 'You must use at least one Given, When or Then. {}'.format(place_to_search),
-                grammar=self
+                grammar=self,
+                suggested_tokens=[GivenToken, WhenToken, ThenToken]
             )
 
         return new_index
@@ -358,7 +360,10 @@ class ScenarioDefinitionGrammar(Grammar):
             if texts.index(text) < i:
                 place_to_search = descriptions[i].get_place_to_search()
                 raise GrammarInvalid(
-                    'You must not use two different steps with the same text. {}'.format(place_to_search), grammar=self)
+                    'You must not use two different steps with the same text. {}'.format(place_to_search),
+                    grammar=self,
+                    suggested_tokens=[],
+                )
 
         return new_index
 

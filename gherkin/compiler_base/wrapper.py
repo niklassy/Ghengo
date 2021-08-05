@@ -10,7 +10,7 @@ class RuleAlias(SequenceToObjectMixin):
         self.token_cls = token_cls
 
     def get_next_valid_tokens(self):
-        return self.token_cls
+        return [self.token_cls]
 
     def sequence_to_object(self, sequence, index=0):
         """This alias represents a simple token - so just return at the index that we are at."""

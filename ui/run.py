@@ -83,21 +83,19 @@ def run_ui():
             window['GHERKIN_EDITOR'].update(str(token), text_color_for_value=color, append=True)
 
         editor_widget.mark_set("insert", "%d.%d" % (float(cursor_y), float(cursor_x)))
-
-        # highlighting
-        try:
-            c.use_parser(tokens)
-        except GherkinInvalid as e:
-            next_valid_tokens = e.grammar.get_next_valid_tokens()
-            print('Suggested: ', [t.get_keywords() for t in next_valid_tokens])
-            continue
+        window['ERROR_MESSAGE'].update('')
 
         if event == '__TIMEOUT__':
+            # autocomplete
+            try:
+                c.use_parser(tokens)
+            except GherkinInvalid as e:
+                next_valid_tokens = e.suggested_tokens
+                print('Suggested: ', [t.get_keywords() for t in next_valid_tokens])
             continue
 
         try:
             c.compile_text(text)
-            window['ERROR_MESSAGE'].update('')
         except GherkinInvalid as e:
             window['ERROR_MESSAGE'].update(str(e))
             continue

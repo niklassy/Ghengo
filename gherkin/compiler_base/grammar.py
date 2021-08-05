@@ -45,7 +45,10 @@ class Grammar(SequenceToObjectMixin):
         self.validated_sequence = None
 
     def get_next_valid_tokens(self):
-        return self.get_rule().get_next_valid_tokens()
+        tokens = self.get_rule().get_next_valid_tokens()
+        if not isinstance(tokens, list):
+            tokens = [tokens]
+        return tokens
 
     def get_rule(self):
         """Returns the rule of this grammar."""
@@ -90,7 +93,7 @@ class Grammar(SequenceToObjectMixin):
             # noinspection PyProtectedMember
             return self.get_rule()._validate_sequence(sequence, index)
         except (RuleNotFulfilled, SequenceEnded) as e:
-            next_valid_tokens = self.get_next_valid_tokens()
+            next_valid_tokens = e.suggested_tokens
             valid_keywords = []
 
             for t in next_valid_tokens:
@@ -107,7 +110,7 @@ class Grammar(SequenceToObjectMixin):
                 raise GrammarNotUsed(
                     message, rule_alias=e.rule_alias, sequence_index=e.sequence_index, rule=e.rule, grammar=self)
 
-            raise GrammarInvalid(message, grammar=self)
+            raise GrammarInvalid(message, grammar=self, suggested_tokens=e.suggested_tokens)
 
     def validate_sequence(self, sequence: [TokenWrapper]):
         """
