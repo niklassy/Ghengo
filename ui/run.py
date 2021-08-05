@@ -12,16 +12,21 @@ def run_ui():
     from gherkin.compiler import GherkinToPyTestCompiler
     from gherkin.utils import get_suggested_intend_after_line, get_token_suggestion_after_line, get_sequence_as_lines
 
-    Nlp.setup_languages(['de', 'en'])
+    # Nlp.setup_languages(['de', 'en'])
+
+    multi_line_size = 70
 
     layout = [
+        # [sg.Canvas(size=(100, 100), background_color="white", key='canvas')],
         [
-            sg.Text('Enter your Gherkin here:', size=(150, 1)),
-            sg.Text('The output will be here:', size=(150, 1)),
+            sg.Text('Enter your Gherkin here:', size=(int(multi_line_size * 1.5), 1)),
+            sg.Text('The output will be here:', size=(int(multi_line_size * 1.5), 1)),
         ],
         [
-            sg.Multiline(size=(100, 40), font=('Courier', 15), autoscroll=True, key='GHERKIN_EDITOR'),
-            sg.Multiline('This will contain the output...', size=(100, 40), font=('Courier', 15), key='OUTPUT_FIELD'),
+            sg.Multiline(size=(multi_line_size, 40), font=('Courier', 15), autoscroll=True, key='GHERKIN_EDITOR'),
+            sg.Multiline('This will contain the output...', size=(multi_line_size, 40), font=('Courier', 15),
+                         key='OUTPUT_FIELD'),
+            sg.Multiline('A\nB', key='AUTOCOMPLETE'),
         ],
         [
             sg.Text('', size=(150, 1), key='ERROR_MESSAGE'),
@@ -36,6 +41,7 @@ def run_ui():
     last_gherkin_text = ''
 
     window.finalize()
+    # window['AUTOCOMPLETE'].Widget.place(x=10, y=15) DAS GEHT!!!!
 
     while True:
         event, values = window.read(timeout=20)
@@ -58,6 +64,7 @@ def run_ui():
         editor_widget = window['GHERKIN_EDITOR'].Widget
         cursor_y, cursor_x = editor_widget.index('insert').split('.')
         window['GHERKIN_EDITOR'].update('')
+        window['AUTOCOMPLETE'].Widget.place(x=int(cursor_x) * 5 + 10, y=int(cursor_y) * 16 + 20)
 
         for i, token in enumerate(tokens):
             if i >= len(tokens) - 2:
@@ -87,14 +94,16 @@ def run_ui():
 
         # autocomplete
         if event == '__TIMEOUT__':
-            autocomplete_suggestions = get_token_suggestion_after_line(tokens, int(cursor_y) - 1)
+            raw_autocomplete_suggestions = get_token_suggestion_after_line(tokens, int(cursor_y) - 1)
             try:
                 current_line = get_sequence_as_lines(tokens)[int(cursor_y) - 1]
             except IndexError:
                 pass
             else:
                 line_text = current_line[0].line.trimmed_text
-                print([s for s in autocomplete_suggestions if line_text in s])
+                clean_suggestions = [s for s in raw_autocomplete_suggestions if line_text in s]
+                window['AUTOCOMPLETE'].update('\n'.join(clean_suggestions))
+                window['AUTOCOMPLETE'].set_size((30, len(clean_suggestions)))
             continue
 
         try:
