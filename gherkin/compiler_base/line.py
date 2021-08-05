@@ -9,6 +9,10 @@ class Line(object):
         self.trimmed_text = text.lstrip()
         self.intend = len(self.text) - len(self.trimmed_text)
 
+    @property
+    def intend_as_string(self):
+        return ' ' * self.intend
+
     def is_empty(self):
         return len(self.trimmed_text) == 0
 

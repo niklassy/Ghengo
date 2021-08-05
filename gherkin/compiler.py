@@ -107,9 +107,16 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
     file_extension = 'py'
 
     def scenario_to_test_case(self, scenario, suite, project):
-        test_case = suite.create_and_add_test_case(
-            CacheTranslator(src_language=Settings.language, target_language=Languages.EN).translate(scenario.name.lstrip())
-        )
+        if not scenario.name:
+            test_case_name = str(len(suite.test_cases))
+        else:
+            test_case_name = CacheTranslator(
+                src_language=Settings.language,
+                target_language=Languages.EN
+            ).translate(
+                scenario.name.lstrip(),
+            )
+        test_case = suite.create_and_add_test_case(test_case_name)
 
         for tag in scenario.tags:
             try:

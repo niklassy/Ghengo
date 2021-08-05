@@ -57,5 +57,11 @@ class Token(object):
         """Returns all the keywords that identify a token."""
         raise NotImplementedError()
 
+    def get_meta_data_for_sequence(self, sequence):
+        return {}
+
     def __repr__(self):
         return '{}: "{}" in {} (keyword: {})'.format(self.__class__.__name__, self.text, self.line, self.matched_keyword)
+
+    def __str__(self):
+        return self.text or ''

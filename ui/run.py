@@ -2,6 +2,7 @@ from django_meta.setup import setup_django
 import PySimpleGUI as sg
 
 from gherkin.exception import GherkinInvalid
+from gherkin.token import EndOfLineToken
 from nlp.setup import Nlp
 
 
@@ -37,7 +38,22 @@ def run_ui():
             break
 
         text = values['GHERKIN_EDITOR']
-        window['GHERKIN_EDITOR'].update(text, text_color_for_value='blue')
+
+        tokens = c.use_lexer(text)
+
+        # add simple styling
+        # reset the value and go through each token
+        window['GHERKIN_EDITOR'].update('')
+        for i, token in enumerate(tokens):
+            try:
+                previous_token = tokens[i - 1]
+            except IndexError:
+                previous_token = None
+
+            if previous_token and isinstance(previous_token, EndOfLineToken):
+                window['GHERKIN_EDITOR'].update(token.line.intend_as_string, append=True)
+            color = token.get_meta_data_for_sequence(tokens).get('color')
+            window['GHERKIN_EDITOR'].update(str(token), text_color_for_value=color, append=True)
 
         try:
             c.compile_text(text)
