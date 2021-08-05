@@ -32,19 +32,34 @@ def run_ui():
     window = sg.Window('Window Title', layout)
 
     c = GherkinToPyTestCompiler()
+    last_gherkin_text = ''
+
     while True:
-        event, values = window.read()
+        event, values = window.read(timeout=20)
         if event == sg.WIN_CLOSED or event == 'Cancel':  # if user closes window or clicks cancel
             break
 
         text = values['GHERKIN_EDITOR']
+        gherkin_text = ''.join(text.split())
+        if not gherkin_text or (gherkin_text == last_gherkin_text and event == '__TIMEOUT__'):
+            last_gherkin_text = gherkin_text
+            continue
+
+        last_gherkin_text = gherkin_text
 
         tokens = c.use_lexer(text)
 
         # add simple styling
         # reset the value and go through each token
+        # save the cursor position
+        editor_widget = window['GHERKIN_EDITOR'].Widget
+        cursor_x, cursor_y = editor_widget.index('insert').split('.')
         window['GHERKIN_EDITOR'].update('')
+
         for i, token in enumerate(tokens):
+            if i >= len(tokens) - 2:
+                continue
+
             try:
                 previous_token = tokens[i - 1]
             except IndexError:
@@ -54,6 +69,11 @@ def run_ui():
                 window['GHERKIN_EDITOR'].update(token.line.intend_as_string, append=True)
             color = token.get_meta_data_for_sequence(tokens).get('color')
             window['GHERKIN_EDITOR'].update(str(token), text_color_for_value=color, append=True)
+
+        editor_widget.mark_set("insert", "%d.%d" % (float(cursor_x), float(cursor_y)))
+
+        if event == '__TIMEOUT__':
+            continue
 
         try:
             c.compile_text(text)
