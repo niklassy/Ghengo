@@ -26,6 +26,9 @@ class Token(object):
         else:
             self.text_without_keyword = self.text
 
+    def copy(self):
+        return self.__class__(text=self.text, line=Line(text=self.line.text, line_index=self.line.line_index))
+
     @classmethod
     def string_matches_keyword(cls, string, keyword):
         """Check if a given keyword that was returned by `get_keywords` matches a string."""

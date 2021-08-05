@@ -104,6 +104,10 @@ class DataTableGrammar(Grammar):
     ])
     convert_cls = DataTable
 
+    @classmethod
+    def get_minimal_sequence(cls):
+        return [DataTableToken, EndOfLineToken, DataTableToken, EndOfLineToken]
+
     def _validate_sequence(self, sequence, index):
         """Make sure that every row has the same amount of columns."""
         old_index = index
@@ -215,6 +219,10 @@ class ExamplesGrammar(TagsGrammarMixin, Grammar):
     ])
     convert_cls = Examples
 
+    @classmethod
+    def get_minimal_sequence(cls):
+        return [ExamplesToken, EndOfLineToken] + DataTableGrammar.get_minimal_sequence()
+
     def get_convert_kwargs(self, rule_output):
         name, description = DescriptionGrammar.get_name_and_description(rule_output[2])
 
@@ -257,6 +265,10 @@ class GivenGrammar(GivenWhenThenBase):
     ])
     convert_cls = Given
 
+    @classmethod
+    def get_minimal_sequence(cls):
+        return [GivenToken, DescriptionToken, EndOfLineToken]
+
 
 class WhenGrammar(GivenWhenThenBase):
     criterion_rule_alias = RuleAlias(WhenToken)
@@ -272,6 +284,10 @@ class WhenGrammar(GivenWhenThenBase):
     ])
     convert_cls = When
 
+    @classmethod
+    def get_minimal_sequence(cls):
+        return [WhenToken, DescriptionToken, EndOfLineToken]
+
 
 class ThenGrammar(GivenWhenThenBase):
     criterion_rule_alias = RuleAlias(ThenToken)
@@ -286,6 +302,10 @@ class ThenGrammar(GivenWhenThenBase):
         Repeatable(OneOf([AndGrammar(), ButGrammar()]), minimum=0),
     ])
     convert_cls = Then
+
+    @classmethod
+    def get_minimal_sequence(cls):
+        return [ThenToken, DescriptionToken, EndOfLineToken]
 
 
 class StepsGrammar(Grammar):
@@ -400,6 +420,11 @@ class ScenarioOutlineGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
     ])
     convert_cls = ScenarioOutline
 
+    @classmethod
+    def get_minimal_sequence(cls):
+        outline_sequence = [ScenarioOutlineToken, EndOfLineToken]
+        return outline_sequence + GivenGrammar.get_minimal_sequence() + ExamplesGrammar.get_minimal_sequence()
+
     def prepare_converted_object(self, rule_convert_obj, grammar_obj: ScenarioOutline):
         """In addition to the steps, we need to add the argument of the Examples here."""
         grammar_obj = super().prepare_converted_object(rule_convert_obj, grammar_obj)
@@ -425,6 +450,10 @@ class ScenarioGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
     ])
     convert_cls = Scenario
 
+    @classmethod
+    def get_minimal_sequence(cls):
+        return [ScenarioToken, EndOfLineToken] + GivenGrammar.get_minimal_sequence()
+
 
 class BackgroundGrammar(ScenarioDefinitionGrammar):
     description_index = 1
@@ -439,6 +468,10 @@ class BackgroundGrammar(ScenarioDefinitionGrammar):
         Repeatable(GivenGrammar()),
     ])
     convert_cls = Background
+
+    @classmethod
+    def get_minimal_sequence(cls):
+        return [BackgroundToken, EndOfLineToken] + GivenGrammar.get_minimal_sequence()
 
 
 class RuleGrammar(TagsGrammarMixin, Grammar):
@@ -457,6 +490,10 @@ class RuleGrammar(TagsGrammarMixin, Grammar):
         ]))
     ])
     convert_cls = Rule
+
+    @classmethod
+    def get_minimal_sequence(cls):
+        return [RuleToken, EndOfLineToken] + ScenarioGrammar.get_minimal_sequence()
 
     def get_convert_kwargs(self, rule_output):
         name, description = DescriptionGrammar.get_name_and_description(rule_output[2])
@@ -499,6 +536,10 @@ class FeatureGrammar(TagsGrammarMixin, Grammar):
         ]),
     ])
     convert_cls = Feature
+
+    @classmethod
+    def get_minimal_sequence(cls):
+        return [FeatureToken, EndOfLineToken] + RuleGrammar.get_minimal_sequence()
 
     def get_convert_kwargs(self, rule_output):
         name, description = DescriptionGrammar.get_name_and_description(rule_output[2])

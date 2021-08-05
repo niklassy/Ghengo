@@ -7,8 +7,8 @@ from settings import GenerationType
 from nlp.generate.utils import to_function_name
 from gherkin.compiler_base.compiler import Lexer, Compiler, Parser, CodeGenerator
 
-from gherkin.ast import Comment as ASTComment, Scenario, ScenarioOutline, Rule, Given, Then, When
-from gherkin.compiler_base.exception import RuleNotFulfilled, GrammarInvalid, GrammarNotUsed
+from gherkin.ast import Comment as ASTComment, ScenarioOutline, Then, When
+from gherkin.compiler_base.exception import GrammarInvalid, GrammarNotUsed
 from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
 from gherkin.grammar import GherkinDocumentGrammar, LanguageGrammar

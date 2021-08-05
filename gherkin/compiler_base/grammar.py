@@ -44,6 +44,10 @@ class Grammar(SequenceToObjectMixin):
 
         self.validated_sequence = None
 
+    @classmethod
+    def get_minimal_sequence(cls):
+        return []
+
     def get_next_valid_tokens(self):
         tokens = self.get_rule().get_next_valid_tokens()
         if not isinstance(tokens, list):

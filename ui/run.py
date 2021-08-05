@@ -3,7 +3,6 @@ import PySimpleGUI as sg
 
 from gherkin.exception import GherkinInvalid
 from gherkin.token import EndOfLineToken, EmptyToken
-from gherkin.utils import get_suggested_intend_after_line
 from nlp.setup import Nlp
 
 
@@ -11,6 +10,7 @@ def run_ui():
     setup_django('django_sample_project.apps.config.settings')
     # all imports must follow the setup!!
     from gherkin.compiler import GherkinToPyTestCompiler
+    from gherkin.utils import get_suggested_intend_after_line, get_token_suggestion_after_line, get_sequence_as_lines
 
     Nlp.setup_languages(['de', 'en'])
 
@@ -85,13 +85,16 @@ def run_ui():
         editor_widget.mark_set("insert", "%d.%d" % (float(cursor_y), float(cursor_x)))
         window['ERROR_MESSAGE'].update('')
 
+        # autocomplete
         if event == '__TIMEOUT__':
-            # # autocomplete
-            # try:
-            #     c.use_parser(tokens)
-            # except GherkinInvalid as e:
-            #     # next_valid_tokens = e.suggested_tokens
-            #     # print('Suggested: ', [t.get_keywords() for t in next_valid_tokens])
+            autocomplete_suggestions = get_token_suggestion_after_line(tokens, int(cursor_y) - 1)
+            try:
+                current_line = get_sequence_as_lines(tokens)[int(cursor_y) - 1]
+            except IndexError:
+                pass
+            else:
+                line_text = current_line[0].line.trimmed_text
+                print([s for s in autocomplete_suggestions if line_text in s])
             continue
 
         try:
