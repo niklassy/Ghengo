@@ -151,7 +151,7 @@ class TagsToken(TokenContainsWholeLineMixin, GherkinToken):
 
 
 class CommentToken(TokenContainsWholeLineMixin, GherkinToken):
-    color = 'grey'
+    color = '#444'
 
     @classmethod
     def get_keywords(cls):
@@ -159,7 +159,7 @@ class CommentToken(TokenContainsWholeLineMixin, GherkinToken):
 
 
 class LanguageToken(TokenContainsWholeLineMixin, GherkinToken):
-    color = 'grey'
+    color = '#444'
 
     def __init__(self, text, line):
         super().__init__(line=line, text=text)
