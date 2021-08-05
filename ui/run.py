@@ -2,7 +2,8 @@ from django_meta.setup import setup_django
 import PySimpleGUI as sg
 
 from gherkin.exception import GherkinInvalid
-from gherkin.token import EndOfLineToken
+from gherkin.token import EndOfLineToken, EmptyToken
+from gherkin.utils import get_suggested_intend_after_line
 from nlp.setup import Nlp
 
 
@@ -34,13 +35,26 @@ def run_ui():
     c = GherkinToPyTestCompiler()
     last_gherkin_text = ''
 
+    window.finalize()
+
+    # def handle_enter(*args):
+    #     widget = window['GHERKIN_EDITOR'].Widget
+    #     token_list = c.use_lexer(text)
+    #     cursor_y_pos, cursor_x_pos = widget.index('insert').split('.')
+    #     suggested = get_suggested_intend_after_line(token_list, int(cursor_y_pos) - 1)
+    #     widget.insert('insert', suggested)
+    #
+    # window['GHERKIN_EDITOR'].Widget.bind('<Return>', func=handle_enter)
+
+    auto_intend_set = False
+
     while True:
         event, values = window.read(timeout=20)
         if event == sg.WIN_CLOSED or event == 'Cancel':  # if user closes window or clicks cancel
             break
 
         text = values['GHERKIN_EDITOR']
-        gherkin_text = ''.join(text.split())
+        gherkin_text = text.replace(' ', '')
         if not gherkin_text or (gherkin_text == last_gherkin_text and event == '__TIMEOUT__'):
             last_gherkin_text = gherkin_text
             continue
@@ -53,7 +67,7 @@ def run_ui():
         # reset the value and go through each token
         # save the cursor position
         editor_widget = window['GHERKIN_EDITOR'].Widget
-        cursor_x, cursor_y = editor_widget.index('insert').split('.')
+        cursor_y, cursor_x = editor_widget.index('insert').split('.')
         window['GHERKIN_EDITOR'].update('')
 
         for i, token in enumerate(tokens):
@@ -65,12 +79,21 @@ def run_ui():
             except IndexError:
                 previous_token = None
 
+            next_token = tokens[i + 1]
+
             if previous_token and isinstance(previous_token, EndOfLineToken):
                 window['GHERKIN_EDITOR'].update(token.line.intend_as_string, append=True)
+
+            if isinstance(token, EmptyToken) and isinstance(previous_token, EndOfLineToken) and isinstance(next_token, EndOfLineToken):
+                if int(cursor_y) - 1 == token.line.line_index:
+                    indent_str = get_suggested_intend_after_line(tokens, token.line.line_index - 1)
+                    window['GHERKIN_EDITOR'].update(indent_str, append=True)
+                    cursor_x = int(cursor_x) + len(indent_str)
+
             color = token.get_meta_data_for_sequence(tokens).get('color')
             window['GHERKIN_EDITOR'].update(str(token), text_color_for_value=color, append=True)
 
-        editor_widget.mark_set("insert", "%d.%d" % (float(cursor_x), float(cursor_y)))
+        editor_widget.mark_set("insert", "%d.%d" % (float(cursor_y), float(cursor_x)))
 
         if event == '__TIMEOUT__':
             continue

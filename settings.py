@@ -2,6 +2,7 @@
 from core.constants import Languages
 
 PYTHON_INDENT_SPACES = 4
+GHERKIN_INDENT_SPACES = 2
 
 
 class GenerationType:
