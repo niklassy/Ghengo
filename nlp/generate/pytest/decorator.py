@@ -1,7 +1,7 @@
 from nlp.generate.argument import Argument
 from nlp.generate.decorator import Decorator
 from nlp.generate.parameter import Parameter
-from settings import INDENT_SPACES
+from settings import PYTHON_INDENT_SPACES
 from nlp.generate.suite import Import
 
 
@@ -42,7 +42,7 @@ class PyTestParametrizeDecorator(PyTestMarkDecorator):
         context = super().get_template_context(line_indent, indent)
         # since parametrize decorators can be quite long, add some line breaks here
         if len(self.arguments) > 0:
-            new_indent = line_indent + INDENT_SPACES
+            new_indent = line_indent + PYTHON_INDENT_SPACES
             argument_values = [argument.to_template(new_indent, new_indent) for argument in self.arguments]
             arguments = '(\n{}\n)'.format(',\n'.join(argument_values))
         else:

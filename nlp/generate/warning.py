@@ -1,5 +1,5 @@
 from nlp.generate.mixin import TemplateMixin
-from settings import INDENT_SPACES
+from settings import PYTHON_INDENT_SPACES
 
 
 NO_VALUE_FOUND_CODE = '001'
@@ -35,8 +35,8 @@ class GenerationWarningDescription(TemplateMixin):
         self.code = code
 
     def get_template_context(self, line_indent, indent):
-        one_indent = self.get_indent_string(line_indent + INDENT_SPACES)
-        two_indents = self.get_indent_string(line_indent + (INDENT_SPACES * 2))
+        one_indent = self.get_indent_string(line_indent + PYTHON_INDENT_SPACES)
+        two_indents = self.get_indent_string(line_indent + (PYTHON_INDENT_SPACES * 2))
 
         message = WARNING_MESSAGES[self.code]
 
@@ -46,7 +46,7 @@ class GenerationWarningDescription(TemplateMixin):
                 message_lines[-1] += '{} '.format(word)
                 if len(message_lines[-1]) > 90:
                     message_lines.append('')
-            join_str = ' \\\n{}'.format(self.get_indent_string(line_indent + INDENT_SPACES + 7))
+            join_str = ' \\\n{}'.format(self.get_indent_string(line_indent + PYTHON_INDENT_SPACES + 7))
             message = join_str.join('\'{}\''.format(line) for line in message_lines)
         else:
             message = '\'{}\''.format(message)

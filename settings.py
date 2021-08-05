@@ -1,7 +1,7 @@
 # number of spaces for an indent in Python
 from core.constants import Languages
 
-INDENT_SPACES = 4
+PYTHON_INDENT_SPACES = 4
 
 
 class GenerationType:

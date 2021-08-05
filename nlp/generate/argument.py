@@ -1,6 +1,6 @@
 from nlp.generate.mixin import TemplateMixin
 from nlp.generate.replaceable import Replaceable
-from settings import INDENT_SPACES
+from settings import PYTHON_INDENT_SPACES
 
 
 class Argument(Replaceable, TemplateMixin):
@@ -52,7 +52,7 @@ class _NestedArgument(Argument):
         else:
             children = [Argument(value) for value in self.value]
             child_template = ',\n'.join(argument.to_template(
-                line_indent + INDENT_SPACES, line_indent + INDENT_SPACES) for argument in children)
+                line_indent + PYTHON_INDENT_SPACES, line_indent + PYTHON_INDENT_SPACES) for argument in children)
 
             value = '{start_symbol}\n{child}\n{base_indent}{end_symbol}'.format(
                 start_symbol=self.start_symbol,
