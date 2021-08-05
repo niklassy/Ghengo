@@ -74,7 +74,7 @@ def run_ui():
                 window['GHERKIN_EDITOR'].update(token.line.intend_as_string, append=True)
 
             if isinstance(token, EmptyToken) and isinstance(previous_token, EndOfLineToken) and isinstance(next_token, EndOfLineToken):
-                if int(cursor_y) - 1 == token.line.line_index:
+                if int(cursor_y) - 1 == token.line.line_index and int(cursor_x) == 0:
                     indent_str = get_suggested_intend_after_line(tokens, token.line.line_index - 1)
                     window['GHERKIN_EDITOR'].update(indent_str, append=True)
                     cursor_x = int(cursor_x) + len(indent_str)
@@ -86,12 +86,12 @@ def run_ui():
         window['ERROR_MESSAGE'].update('')
 
         if event == '__TIMEOUT__':
-            # autocomplete
-            try:
-                c.use_parser(tokens)
-            except GherkinInvalid as e:
-                next_valid_tokens = e.suggested_tokens
-                print('Suggested: ', [t.get_keywords() for t in next_valid_tokens])
+            # # autocomplete
+            # try:
+            #     c.use_parser(tokens)
+            # except GherkinInvalid as e:
+            #     # next_valid_tokens = e.suggested_tokens
+            #     # print('Suggested: ', [t.get_keywords() for t in next_valid_tokens])
             continue
 
         try:
