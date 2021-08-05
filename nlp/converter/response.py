@@ -116,8 +116,10 @@ class ResponseConverterBase(ClassConverter):
         return kwargs
 
     def get_searcher_kwargs(self):
+        serializer_class = self.get_referenced_response_variable().value.serializer_class
+
         return {
-            'serializer': self.get_referenced_response_variable().value.serializer_class(),
+            'serializer': serializer_class() if serializer_class else None,
             'model_adapter': self.model_adapter_from_request,
         }
 
