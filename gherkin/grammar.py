@@ -487,7 +487,7 @@ class BackgroundGrammar(ScenarioDefinitionGrammar):
     convert_cls = Background
 
     def get_steps_from_convert_obj(self, rule_convert_obj):
-        return rule_convert_obj[3]
+        return rule_convert_obj[2]
 
     @classmethod
     def get_minimal_sequence(cls):
