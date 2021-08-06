@@ -4,6 +4,7 @@ import PySimpleGUI as sg
 from gherkin.exception import GherkinInvalid
 from gherkin.token import EndOfLineToken, EmptyToken
 from nlp.setup import Nlp
+from ui.autocomplete import AutoComplete
 
 
 def run_ui():
@@ -17,7 +18,6 @@ def run_ui():
     multi_line_size = 70
 
     layout = [
-        # [sg.Canvas(size=(100, 100), background_color="white", key='canvas')],
         [
             sg.Text('Enter your Gherkin here:', size=(int(multi_line_size * 1.5), 1)),
             sg.Text('The output will be here:', size=(int(multi_line_size * 1.5), 1)),
@@ -26,7 +26,7 @@ def run_ui():
             sg.Multiline(size=(multi_line_size, 40), font=('Courier', 15), autoscroll=True, key='GHERKIN_EDITOR'),
             sg.Multiline('This will contain the output...', size=(multi_line_size, 40), font=('Courier', 15),
                          key='OUTPUT_FIELD'),
-            sg.Multiline('A\nB', key='AUTOCOMPLETE'),
+            AutoComplete.as_ui(),
         ],
         [
             sg.Text('', size=(150, 1), key='ERROR_MESSAGE'),
@@ -41,10 +41,12 @@ def run_ui():
     last_gherkin_text = ''
 
     window.finalize()
+    # TODO: add control s to convert!
+    window['GHERKIN_EDITOR'].Widget.bind('<Control-S>')
     # window['AUTOCOMPLETE'].Widget.place(x=10, y=15) DAS GEHT!!!!
 
     while True:
-        event, values = window.read(timeout=20)
+        event, values = window.read(timeout=5)
         if event == sg.WIN_CLOSED or event == 'Cancel':  # if user closes window or clicks cancel
             break
 
@@ -64,7 +66,6 @@ def run_ui():
         editor_widget = window['GHERKIN_EDITOR'].Widget
         cursor_y, cursor_x = editor_widget.index('insert').split('.')
         window['GHERKIN_EDITOR'].update('')
-        window['AUTOCOMPLETE'].Widget.place(x=int(cursor_x) * 5 + 10, y=int(cursor_y) * 16 + 20)
 
         for i, token in enumerate(tokens):
             if i >= len(tokens) - 2:
@@ -75,16 +76,10 @@ def run_ui():
             except IndexError:
                 previous_token = None
 
-            next_token = tokens[i + 1]
-
             if previous_token and isinstance(previous_token, EndOfLineToken):
-                window['GHERKIN_EDITOR'].update(token.line.intend_as_string, append=True)
-
-            if isinstance(token, EmptyToken) and isinstance(previous_token, EndOfLineToken) and isinstance(next_token, EndOfLineToken):
-                if int(cursor_y) - 1 == token.line.line_index and int(cursor_x) == 0:
-                    indent_str = get_suggested_intend_after_line(tokens, token.line.line_index - 1)
-                    window['GHERKIN_EDITOR'].update(indent_str, append=True)
-                    cursor_x = int(cursor_x) + len(indent_str)
+                indent_str = get_suggested_intend_after_line(tokens, token.line.line_index - 1)
+                window['GHERKIN_EDITOR'].update(indent_str, append=True)
+                cursor_x = int(cursor_x) + len(indent_str)
 
             color = token.get_meta_data_for_sequence(tokens).get('color')
             window['GHERKIN_EDITOR'].update(str(token), text_color_for_value=color, append=True)
@@ -101,9 +96,20 @@ def run_ui():
                 pass
             else:
                 line_text = current_line[0].line.trimmed_text
-                clean_suggestions = [s for s in raw_autocomplete_suggestions if line_text in s]
-                window['AUTOCOMPLETE'].update('\n'.join(clean_suggestions))
-                window['AUTOCOMPLETE'].set_size((30, len(clean_suggestions)))
+                clean_suggestions = [s for s in raw_autocomplete_suggestions if line_text in s and line_text != s]
+                auto_complete = AutoComplete(
+                    window=window,
+                    editor=window['GHERKIN_EDITOR'],
+                    values=values,
+                    text_to_replace=line_text,
+                )
+                auto_complete.set_values(clean_suggestions)
+
+                # hide the autocomplete window if there are no suggestions
+                if len(clean_suggestions) == 0:
+                    auto_complete.hide()
+                else:
+                    auto_complete.show_at(x=int(cursor_x) * 5 + 10, y=int(cursor_y) * 16 + 20)
             continue
 
         try:
