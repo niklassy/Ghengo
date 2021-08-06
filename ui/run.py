@@ -4,6 +4,7 @@ import PySimpleGUI as sg
 from gherkin.exception import GherkinInvalid
 from gherkin.token import EndOfLineToken, EmptyToken
 from nlp.setup import Nlp
+from ui.window import WindowValues
 
 
 def run_ui():
@@ -47,6 +48,9 @@ def run_ui():
 
     while True:
         event, values = window.read(timeout=5)
+        # do this always first
+        WindowValues.set_values(values)
+
         if event == sg.WIN_CLOSED or event == 'Cancel':  # if user closes window or clicks cancel
             break
 

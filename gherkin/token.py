@@ -27,6 +27,9 @@ class GherkinToken(Token):
     def get_meta_data_for_sequence(self, sequence):
         return {'color': self.color}
 
+    def __str__(self):
+        return '{}{}'.format(self.line.intend_as_string, self.text)
+
 
 class TokenContainsWholeLineMixin(object):
     @classmethod
@@ -238,6 +241,9 @@ class DescriptionToken(TokenContainsWholeLineMixin, GherkinToken):
     @classmethod
     def string_contains_token(cls, string: str) -> bool:
         return True
+
+    def __str__(self):
+        return self.text
 
 
 class EndOfLineToken(GherkinToken):

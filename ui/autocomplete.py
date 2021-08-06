@@ -113,7 +113,6 @@ class AutoCompleteMultiLine(object):
         from ui.renderer import GherkinEditorRenderer
         renderer = GherkinEditorRenderer(window=self.window, editor=self.editor)
         renderer.update_text('\n'.join(lines))
-        # self.editor.update('\n'.join(lines))
         # focus editor again
         self.focus_editor()
 
