@@ -26,6 +26,11 @@ class Token(object):
         else:
             self.text_without_keyword = self.text
 
+        self._grammar_meta = {}
+
+    def copy(self):
+        return self.__class__(text=self.text, line=Line(text=self.line.text, line_index=self.line.line_index))
+
     @classmethod
     def string_matches_keyword(cls, string, keyword):
         """Check if a given keyword that was returned by `get_keywords` matches a string."""
@@ -57,5 +62,18 @@ class Token(object):
         """Returns all the keywords that identify a token."""
         raise NotImplementedError()
 
+    def get_meta_data_for_sequence(self, sequence):
+        return {}
+
+    @property
+    def grammar_meta(self):
+        return self._grammar_meta
+
+    def set_grammar_meta_value(self, key, value):
+        self._grammar_meta[key] = value
+
     def __repr__(self):
         return '{}: "{}" in {} (keyword: {})'.format(self.__class__.__name__, self.text, self.line, self.matched_keyword)
+
+    def __str__(self):
+        return self.text or ''

@@ -3,14 +3,15 @@ from typing import Union
 
 from gherkin.compiler_base.exception import SequenceEnded, RuleNotFulfilled, SequenceNotFinished, GrammarNotUsed
 from gherkin.compiler_base.grammar import Grammar
-from gherkin.compiler_base.mixin import SequenceToObjectMixin
+from gherkin.compiler_base.mixin import SequenceToObjectMixin, IndentMixin
 from gherkin.compiler_base.wrapper import RuleAlias, TokenWrapper
 
 
-class Rule(SequenceToObjectMixin, ABC):
+class Rule(IndentMixin, SequenceToObjectMixin, ABC):
     supports_list_as_children = False
 
     def __init__(self, child_rule):
+        super().__init__()
         self.child_rule = child_rule
 
         if isinstance(child_rule, list) and not self.supports_list_as_children:
@@ -22,6 +23,9 @@ class Rule(SequenceToObjectMixin, ABC):
                 self._validate_init_child(c)
         else:
             self._validate_init_child(child_rule)
+
+    def get_next_valid_tokens(self):
+        raise NotImplementedError()
 
     def _validate_init_child(self, child):
         """Validation on __init__"""
@@ -58,12 +62,19 @@ class Rule(SequenceToObjectMixin, ABC):
         :raises RuleNotFulfilled: if the token_wrapper in the sequence does not match the rule_alias
         """
         keywords = rule_alias.get_keywords()
+        suggested_tokens = rule_alias.get_next_valid_tokens()
 
         try:
             token_wrapper = sequence[index]
         except IndexError:
             message = self._build_error_message(keywords, message='Input ended abruptely. ')
-            raise SequenceEnded(message, rule_alias=rule_alias, sequence_index=index, rule=self)
+            raise SequenceEnded(
+                message,
+                rule_alias=rule_alias,
+                sequence_index=index,
+                rule=self,
+                suggested_tokens=suggested_tokens,
+            )
 
         assert isinstance(token_wrapper, TokenWrapper)
         assert isinstance(rule_alias, RuleAlias)
@@ -71,7 +82,18 @@ class Rule(SequenceToObjectMixin, ABC):
         if not rule_alias.token_wrapper_is_valid(token_wrapper):
             message = self._build_error_message(keywords, token_wrapper)
 
-            raise RuleNotFulfilled(message, rule_alias=rule_alias, sequence_index=index, rule=self)
+            raise RuleNotFulfilled(
+                message,
+                rule_alias=rule_alias,
+                sequence_index=index,
+                rule=self,
+                suggested_tokens=suggested_tokens,
+            )
+
+        self.on_token_wrapper_valid(token_wrapper)
+
+    def on_token_wrapper_valid(self, token_wrapper: TokenWrapper):
+        token_wrapper.token.set_grammar_meta_value('suggested_indent_level', self.get_suggested_indent_level())
 
     def _get_valid_index_for_child(self, child: Union['Rule', 'RuleAlias', 'Grammar'], sequence: ['TokenWrapper'], index: int) -> int:
         """
@@ -120,7 +142,13 @@ class Rule(SequenceToObjectMixin, ABC):
         try:
             result_index = self._validate_sequence(sequence, index)
         except SequenceEnded as e:
-            raise RuleNotFulfilled(str(e), sequence_index=e.sequence_index, rule_alias=e.rule_alias, rule=e.rule)
+            raise RuleNotFulfilled(
+                str(e),
+                sequence_index=e.sequence_index,
+                rule_alias=e.rule_alias,
+                rule=e.rule,
+                suggested_tokens=e.suggested_tokens,
+            )
 
         if result_index < len(sequence):
             raise SequenceNotFinished()
@@ -135,6 +163,21 @@ class Optional(Rule):
     """
     Can be used to mark something a token as optional.
     """
+    def __init__(self, child, important=False):
+        super().__init__(child)
+        self.important = important
+
+        self.child_rule.set_parent(self)
+
+    def get_next_valid_tokens(self):
+        if not self.important:
+            return []
+
+        tokens = self.child_rule.get_next_valid_tokens()
+        if not isinstance(tokens, list):
+            tokens = [tokens]
+        return tokens
+
     def _validate_init_child(self, child):
         super()._validate_init_child(child)
 
@@ -179,6 +222,23 @@ class OneOf(Rule):
         if not isinstance(child, list):
             raise ValueError('You must use a list for OneOf')
 
+        for child in self.child_rule:
+            child.set_parent(self)
+
+    def get_next_valid_tokens(self):
+        output = []
+
+        for child in self.child_rule:
+            tokens = child.get_next_valid_tokens()
+            if not tokens:
+                continue
+
+            if not isinstance(tokens, list):
+                tokens = [tokens]
+            output += tokens
+
+        return output
+
     def sequence_to_object(self, sequence, index=0):
         """
         Returns an object for an entry in a sequence at a given index. This will return:
@@ -218,15 +278,36 @@ class OneOf(Rule):
                 errors.append((e, child))
 
         # if each child has thrown an error, this is invalid
-        raise RuleNotFulfilled(str(errors[0][0]), sequence_index=index, rule_alias=errors[0][1], rule=self)
+        suggested_tokens = [e.suggested_tokens for e, token in errors]
+        raise RuleNotFulfilled(
+            str(errors[0][0]),
+            sequence_index=index,
+            rule_alias=errors[0][1],
+            rule=self,
+            # flatten the list
+            suggested_tokens=[item for sublist in suggested_tokens for item in sublist],
+        )
 
 
 class Repeatable(Rule):
     """Allows any amount of repetition of the passed child. If it is optional, minimum=0 can be passed."""
 
-    def __init__(self, child, minimum=1):
+    def __init__(self, child, minimum=1, important=False):
         super().__init__(child)
         self.minimum = minimum
+        self.important = important
+
+        self.child_rule.set_parent(self)
+
+    def get_next_valid_tokens(self):
+        if self.minimum == 0 and not self.important:
+            return []
+
+        tokens = self.child_rule.get_next_valid_tokens()
+        if not isinstance(tokens, list):
+            tokens = [tokens]
+
+        return tokens
 
     def _validate_init_child(self, child):
         super()._validate_init_child(child)
@@ -243,7 +324,13 @@ class Repeatable(Rule):
                 index = self._get_valid_index_for_child(self.child_rule, sequence, index)
             except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded) as e:
                 if isinstance(e, GrammarNotUsed):
-                    break_error = RuleNotFulfilled(str(e), sequence_index=index, rule_alias=e.rule_alias, rule=e.rule)
+                    break_error = RuleNotFulfilled(
+                        str(e),
+                        sequence_index=index,
+                        rule_alias=e.rule_alias,
+                        rule=e.rule,
+                        suggested_tokens=e.suggested_tokens,
+                    )
                 else:
                     break_error = e
                 break
@@ -286,6 +373,28 @@ class Chain(Rule):
         if not isinstance(child, list):
             raise ValueError('You must use a list for a Chain')
 
+        for child in self.child_rule:
+            child.set_parent(self)
+
+    def get_next_valid_tokens(self):
+        if len(self.child_rule) == 0:
+            return []
+
+        output = []
+        for child_rule in self.child_rule:
+            valid_tokens = child_rule.get_next_valid_tokens()
+
+            if valid_tokens:
+                if not isinstance(valid_tokens, list):
+                    valid_tokens = [valid_tokens]
+
+                output += valid_tokens
+
+            if not isinstance(child_rule, (Optional, Repeatable)):
+                break
+
+        return output
+
     def sequence_to_object(self, sequence, index=0):
         """
         Returns a list of objects that represent an area at a starting index of a given sequence. The list will
@@ -315,6 +424,37 @@ class Chain(Rule):
             try:
                 index = self._get_valid_index_for_child(child, sequence, index)
             except GrammarNotUsed as e:
-                raise RuleNotFulfilled(str(e), rule_alias=e.rule_alias, sequence_index=e.sequence_index, rule=e.rule)
+                raise RuleNotFulfilled(
+                    str(e),
+                    rule_alias=e.rule_alias,
+                    sequence_index=e.sequence_index,
+                    rule=e.rule,
+                    suggested_tokens=e.suggested_tokens,
+                )
 
         return index
+
+
+class IndentBlock(Rule):
+    supports_list_as_children = True
+
+    def __init__(self, child):
+        if isinstance(child, list):
+            child = Chain(child)
+
+        super().__init__(child)
+        self.child_rule.set_parent(self)
+
+    def get_suggested_indent_level(self):
+        level = super().get_suggested_indent_level()
+
+        return level + 1
+
+    def _validate_sequence(self, sequence, index):
+        return self.child_rule._validate_sequence(sequence, index)
+
+    def sequence_to_object(self, sequence, index=0):
+        return self.child_rule.sequence_to_object(sequence, index)
+
+    def get_next_valid_tokens(self):
+        return self.child_rule.get_next_valid_tokens()

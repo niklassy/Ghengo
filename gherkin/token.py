@@ -8,6 +8,7 @@ from settings import Settings
 
 
 class GherkinToken(Token):
+    color = None
     _json_id = None
 
     @classmethod
@@ -22,6 +23,17 @@ class GherkinToken(Token):
         except KeyError:
             return []
 
+    def get_meta_data_for_sequence(self, sequence):
+        return {'color': self.color}
+
+    def to_string(self, with_indent=False):
+        if with_indent:
+            indent = self.line.get_indent_as_string()
+        else:
+            indent = ''
+
+        return '{}{}'.format(indent, self.__str__())
+
 
 class TokenContainsWholeLineMixin(object):
     @classmethod
@@ -30,26 +42,31 @@ class TokenContainsWholeLineMixin(object):
 
 
 class FeatureToken(GherkinToken):
+    color = '#d35400'
     _json_id = 'feature'
     keyword_with_colon = True
 
 
 class RuleToken(GherkinToken):
+    color = '#d35400'
     _json_id = 'rule'
     keyword_with_colon = True
 
 
 class ScenarioToken(GherkinToken):
+    color = '#d35400'
     _json_id = 'scenario'
     keyword_with_colon = True
 
 
 class ScenarioOutlineToken(GherkinToken):
+    color = '#d35400'
     _json_id = 'scenarioOutline'
     keyword_with_colon = True
 
 
 class ExamplesToken(GherkinToken):
+    color = '#d35400'
     _json_id = 'examples'
     keyword_with_colon = True
 
@@ -67,37 +84,46 @@ class DataTableToken(TokenContainsWholeLineMixin, GherkinToken):
 
 
 class DocStringToken(TokenContainsWholeLineMixin, GherkinToken):
+    color = '#006400'
+
     @classmethod
     def get_keywords(cls):
         return ['"""', '```']
 
 
 class BackgroundToken(GherkinToken):
+    color = '#d35400'
     _json_id = 'background'
     keyword_with_colon = True
 
 
 class GivenToken(GherkinToken):
+    color = '#d35400'
     _json_id = 'given'
 
 
 class WhenToken(GherkinToken):
+    color = '#d35400'
     _json_id = 'when'
 
 
 class ThenToken(GherkinToken):
+    color = '#d35400'
     _json_id = 'then'
 
 
 class AndToken(GherkinToken):
+    color = '#d35400'
     _json_id = 'and'
 
 
 class ButToken(GherkinToken):
+    color = '#d35400'
     _json_id = 'but'
 
 
 class TagToken(TokenContainsWholeLineMixin, GherkinToken):
+    color = '#c0392b'
     REG_EX = '@[a-zA-Z0-9_.-]+'
 
     @classmethod
@@ -133,12 +159,16 @@ class TagsToken(TokenContainsWholeLineMixin, GherkinToken):
 
 
 class CommentToken(TokenContainsWholeLineMixin, GherkinToken):
+    color = '#444'
+
     @classmethod
     def get_keywords(cls):
         return ['#']
 
 
 class LanguageToken(TokenContainsWholeLineMixin, GherkinToken):
+    color = '#444'
+
     def __init__(self, text, line):
         super().__init__(line=line, text=text)
         self.locale = self.get_locale_from_line(line.trimmed_text)
@@ -184,9 +214,34 @@ class DescriptionToken(TokenContainsWholeLineMixin, GherkinToken):
     def get_keywords(cls):
         return ['Any string with no keywords']
 
+    def get_meta_data_for_sequence(self, sequence):
+        me_entries = [(i, t) for i, t in enumerate(sequence) if t == self]
+
+        if len(me_entries) == 0:
+            return super().get_meta_data_for_sequence(sequence)
+
+        my_index, me = me_entries[0]
+        doc_strings = [(i, t) for i, t in enumerate(sequence) if isinstance(t, DocStringToken)]
+        doc_string_pair_indexes = []
+        for i, doc_string in enumerate(doc_strings):
+            if i % 2 == 0:
+                continue
+
+            doc_string_pair_indexes.append((doc_strings[i - 1][0], doc_string[0]))
+
+        if any([doc_start < my_index < doc_end for doc_start, doc_end in doc_string_pair_indexes]):
+            color = '#006400'
+        else:
+            color = None
+
+        return {'color': color}
+
     @classmethod
     def string_contains_token(cls, string: str) -> bool:
         return True
+
+    def __str__(self):
+        return self.text
 
 
 class EndOfLineToken(GherkinToken):
@@ -200,6 +255,9 @@ class EndOfLineToken(GherkinToken):
     @classmethod
     def get_keywords(cls):
         return ['End of line']
+
+    def __str__(self):
+        return '\n'
 
 
 class EOFToken(GherkinToken):

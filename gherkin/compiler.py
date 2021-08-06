@@ -7,11 +7,11 @@ from settings import GenerationType
 from nlp.generate.utils import to_function_name
 from gherkin.compiler_base.compiler import Lexer, Compiler, Parser, CodeGenerator
 
-from gherkin.ast import Comment as ASTComment, Scenario, ScenarioOutline, Rule, Given, Then, When
-from gherkin.compiler_base.exception import RuleNotFulfilled, GrammarInvalid, GrammarNotUsed
+from gherkin.ast import Comment as ASTComment, ScenarioOutline, Then, When
+from gherkin.compiler_base.exception import GrammarInvalid, GrammarNotUsed
 from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
-from gherkin.grammar import GherkinDocumentGrammar
+from gherkin.grammar import GherkinDocumentGrammar, LanguageGrammar
 from gherkin.token import FeatureToken, RuleToken, DescriptionToken, EOFToken, BackgroundToken, ScenarioToken, \
     CommentToken, GivenToken, ThenToken, WhenToken, EmptyToken, AndToken, ButToken, TagsToken, LanguageToken, \
     EndOfLineToken, ScenarioOutlineToken, DocStringToken, DataTableToken, ExamplesToken
@@ -51,7 +51,11 @@ class GherkinLexer(Lexer):
         # the first line may contain the language, so if it is found, set it
         if isinstance(token, LanguageToken):
             if not token.at_valid_position:
-                raise GherkinInvalid('You may only set the language in the first line of the document')
+                raise GherkinInvalid(
+                    'You may only set the language in the first line of the document',
+                    grammar=LanguageGrammar(),
+                    suggested_tokens=[],
+                )
 
             Settings.language = token.locale
 
@@ -107,9 +111,16 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
     file_extension = 'py'
 
     def scenario_to_test_case(self, scenario, suite, project):
-        test_case = suite.create_and_add_test_case(
-            CacheTranslator(src_language=Settings.language, target_language=Languages.EN).translate(scenario.name.lstrip())
-        )
+        if not scenario.name:
+            test_case_name = str(len(suite.test_cases))
+        else:
+            test_case_name = CacheTranslator(
+                src_language=Settings.language,
+                target_language=Languages.EN
+            ).translate(
+                scenario.name.lstrip(),
+            )
+        test_case = suite.create_and_add_test_case(test_case_name)
 
         for tag in scenario.tags:
             try:
@@ -206,5 +217,5 @@ class GherkinToPyTestCompiler(Compiler):
     def use_parser(self, tokens):
         try:
             return super().use_parser(tokens)
-        except (RuleNotFulfilled, GrammarInvalid, GrammarNotUsed) as e:
-            raise GherkinInvalid(str(e))
+        except (GrammarInvalid, GrammarNotUsed) as e:
+            raise GherkinInvalid(str(e), grammar=e.grammar, suggested_tokens=e.suggested_tokens)

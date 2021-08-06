@@ -5,7 +5,7 @@ from nlp.generate.argument import Argument, Kwarg
 from nlp.generate.constants import CompareChar
 from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
 from nlp.generate.replaceable import Replaceable
-from settings import INDENT_SPACES
+from settings import PYTHON_INDENT_SPACES
 from nlp.generate.statement import Statement
 from nlp.generate.suite import Import, ImportPlaceholder
 from nlp.generate.utils import camel_to_snake_case
@@ -40,7 +40,7 @@ class FunctionCallExpression(Expression):
             long_content_start = '\n'
             long_content_end = '\n' + self.get_indent_string(line_indent)
             kwargs_template = ',\n'.join([kwarg.to_template(
-                line_indent, line_indent + INDENT_SPACES) for kwarg in self.function_kwargs])
+                line_indent, line_indent + PYTHON_INDENT_SPACES) for kwarg in self.function_kwargs])
         else:
             long_content_start = ''
             long_content_end = ''

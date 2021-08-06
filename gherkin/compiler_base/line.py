@@ -7,7 +7,10 @@ class Line(object):
         self.text = text
         self.line_index = line_index
         self.trimmed_text = text.lstrip()
-        self.intend = len(self.text) - len(self.trimmed_text)
+        self.indent = len(self.text) - len(self.trimmed_text)
+
+    def get_indent_as_string(self):
+        return ' ' * self.indent
 
     def is_empty(self):
         return len(self.trimmed_text) == 0

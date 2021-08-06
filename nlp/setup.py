@@ -120,5 +120,10 @@ class _Nlp(object):
 
         raise LanguageNotSupported()
 
+    def setup_languages(self, languages):
+        """Setups NLP for all the given languages."""
+        for language in languages:
+            self.for_language(language)
+
 
 Nlp = _Nlp()

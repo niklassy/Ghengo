@@ -1,10 +1,10 @@
 from gherkin.compiler_base.exception import RuleNotFulfilled, SequenceEnded, GrammarNotUsed, GrammarInvalid, \
     SequenceNotFinished
-from gherkin.compiler_base.mixin import SequenceToObjectMixin
+from gherkin.compiler_base.mixin import SequenceToObjectMixin, IndentMixin
 from gherkin.compiler_base.wrapper import RuleAlias, TokenWrapper
 
 
-class Grammar(SequenceToObjectMixin):
+class Grammar(IndentMixin, SequenceToObjectMixin):
     """
     A grammar represents a combination of rules that has a special criterion to recognize it with.
     This criterion is a RuleAlias. If there is an error while validating a grammar object,
@@ -32,6 +32,8 @@ class Grammar(SequenceToObjectMixin):
     convert_cls = None
 
     def __init__(self):
+        super().__init__()
+
         if self.get_rule() is None:
             raise ValueError('You must provide a rule')
 
@@ -43,6 +45,18 @@ class Grammar(SequenceToObjectMixin):
             raise ValueError('You must either use None or a RuleAlias instance for criterion_rule_alias.')
 
         self.validated_sequence = None
+
+        self.get_rule().set_parent(self)
+
+    @classmethod
+    def get_minimal_sequence(cls):
+        return []
+
+    def get_next_valid_tokens(self):
+        tokens = self.get_rule().get_next_valid_tokens()
+        if not isinstance(tokens, list):
+            tokens = [tokens]
+        return tokens
 
     def get_rule(self):
         """Returns the rule of this grammar."""
@@ -87,11 +101,24 @@ class Grammar(SequenceToObjectMixin):
             # noinspection PyProtectedMember
             return self.get_rule()._validate_sequence(sequence, index)
         except (RuleNotFulfilled, SequenceEnded) as e:
+            next_valid_tokens = e.suggested_tokens
+            valid_keywords = []
+
+            for t in next_valid_tokens:
+                valid_keywords += t.get_keywords()
+            try:
+                error_token = sequence[e.sequence_index]
+                message = 'Expected one of {}. Got {} instead. {}'.format(
+                    ', '.join(valid_keywords), error_token.get_text(), error_token.get_place_to_search()
+                )
+            except IndexError:
+                message = str(e)
+
             if not self.used_by_sequence_area(sequence, index, e.sequence_index):
                 raise GrammarNotUsed(
-                    str(e), rule_alias=e.rule_alias, sequence_index=e.sequence_index, rule=e.rule, grammar=self)
+                    message, rule_alias=e.rule_alias, sequence_index=e.sequence_index, rule=e.rule, grammar=self)
 
-            raise GrammarInvalid('Invalid syntax for {} - {}'.format(self.get_name(), str(e)), grammar=self)
+            raise GrammarInvalid(message, grammar=self, suggested_tokens=e.suggested_tokens)
 
     def validate_sequence(self, sequence: [TokenWrapper]):
         """

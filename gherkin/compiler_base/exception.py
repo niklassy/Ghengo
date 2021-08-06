@@ -7,20 +7,22 @@ class RuleNotFulfilled(Exception):
     `sequence_index` -> the index in the sequence where the rule was broken
     `rule` -> the rule that was broken
     """
-    def __init__(self, msg, rule_alias, sequence_index, rule):
+    def __init__(self, msg, rule_alias, sequence_index, rule, suggested_tokens):
         super().__init__(msg)
         self.rule_alias = rule_alias
         self.sequence_index = sequence_index
         self.rule = rule
+        self.suggested_tokens = suggested_tokens
 
 
 class GrammarInvalid(Exception):
     """
     An exception that is raised when a Grammar was detected but is not valid.
     """
-    def __init__(self, msg, grammar):
+    def __init__(self, msg, grammar, suggested_tokens):
         super().__init__(msg)
         self.grammar = grammar
+        self.suggested_tokens = suggested_tokens
 
 
 class SequenceEnded(Exception):
@@ -29,11 +31,12 @@ class SequenceEnded(Exception):
     the size of the sequence. This exception is only used internally.
     """
 
-    def __init__(self, msg, rule_alias, sequence_index, rule):
+    def __init__(self, msg, rule_alias, sequence_index, rule, suggested_tokens):
         super().__init__(msg)
         self.rule_alias = rule_alias
         self.sequence_index = sequence_index
         self.rule = rule
+        self.suggested_tokens = suggested_tokens
 
 
 class GrammarNotUsed(Exception):
@@ -47,6 +50,7 @@ class GrammarNotUsed(Exception):
         self.sequence_index = sequence_index
         self.rule = rule
         self.grammar = grammar
+        self.suggested_tokens = grammar.get_next_valid_tokens()
 
 
 class SequenceNotFinished(Exception):

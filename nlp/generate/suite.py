@@ -2,7 +2,7 @@ from nlp.generate.decorator import Decorator
 from nlp.generate.mixin import TemplateMixin
 from nlp.generate.parameter import Parameter
 from nlp.generate.replaceable import Replaceable
-from settings import INDENT_SPACES
+from settings import PYTHON_INDENT_SPACES
 from nlp.generate.statement import PassStatement, Statement
 from nlp.generate.utils import to_function_name
 from nlp.generate.warning import GenerationWarningCollection
@@ -113,7 +113,7 @@ class TestCaseBase(Replaceable, TemplateMixin):
             'name': to_function_name('test_{}'.format(self.name.replace(' ', '_'))),
             'parameters': ', '.join(para.to_template() for para in self.parameters),
             'statements': '\n'.join(statement.to_template(
-                line_indent + INDENT_SPACES, line_indent + INDENT_SPACES) for statement in self.statements),
+                line_indent + PYTHON_INDENT_SPACES, line_indent + PYTHON_INDENT_SPACES) for statement in self.statements),
         }
 
     def get_variable_by_string(self, string, reference_string):

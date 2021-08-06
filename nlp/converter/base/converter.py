@@ -185,7 +185,7 @@ class ClassConverter(Converter):
                 return False
 
         # verbs with aux are fine (is done, ist abgeschlossen)
-        if token.pos_ == 'VERB' and token.head.pos_ != 'AUX':
+        if (token.pos_ == 'VERB' or token.pos_ == 'ADV') and token.head.pos_ != 'AUX':
             return False
 
         # if there is a verb where the parent is a finites Modalverb (e.g. sollte), it should not be an argument
