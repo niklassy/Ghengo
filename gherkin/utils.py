@@ -93,7 +93,7 @@ def get_indent_level_for_next_line(tokens, line_index, filter_token):
             break
 
         if first_token.line.line_index == line_index and fitting_token is None:
-            fitting_token = token_sequence[0]
+            fitting_token = first_token
 
     if fitting_token is not None:
         return fitting_token.grammar_meta.get('suggested_indent_level')

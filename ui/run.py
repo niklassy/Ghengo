@@ -2,7 +2,7 @@ from django_meta.setup import setup_django
 import PySimpleGUI as sg
 
 from gherkin.exception import GherkinInvalid
-from gherkin.token import EndOfLineToken, EmptyToken
+from gherkin.token import CommentToken
 from nlp.setup import Nlp
 from ui.window import WindowValues
 
@@ -12,9 +12,9 @@ def run_ui():
     # all imports must follow the setup!!
     from gherkin.compiler import GherkinToPyTestCompiler
     from ui.autocomplete import AutoCompleteMultiLine
-    from gherkin.utils import get_suggested_intend_after_line, get_token_suggestion_after_line, get_sequence_as_lines
+    from gherkin.utils import get_token_suggestion_after_line, get_sequence_as_lines
 
-    # Nlp.setup_languages(['de', 'en'])
+    Nlp.setup_languages(['de', 'en'])
 
     multi_line_size = 70
 
@@ -42,12 +42,9 @@ def run_ui():
     last_gherkin_text = ''
 
     window.finalize()
-    # TODO: add control s to convert!
-    # window['GHERKIN_EDITOR'].Widget.bind('<Control-S>')
-    # window['AUTOCOMPLETE'].Widget.place(x=10, y=15) DAS GEHT!!!!
 
     while True:
-        event, values = window.read(timeout=10)
+        event, values = window.read(timeout=25)
         # do this always first
         WindowValues.set_values(values)
 
@@ -68,14 +65,23 @@ def run_ui():
         editor_renderer = GherkinEditorRenderer(window=window, editor=window['GHERKIN_EDITOR'])
         editor_renderer.update_text(text)
 
-        # add simple styling
-        # reset the value and go through each token
-        # save the cursor position
+        lines = get_sequence_as_lines(tokens)
         cursor_y, cursor_x = editor_renderer.get_cursor_position()
-        window['ERROR_MESSAGE'].update('')
+        tokens_in_line_of_cursor = lines[int(cursor_y) - 1]
+        length_first_token = len(tokens_in_line_of_cursor[0].to_string(True))
 
         # autocomplete
         if event == '__TIMEOUT__':
+            if int(cursor_x) > length_first_token and not isinstance(tokens_in_line_of_cursor[0], CommentToken) or text == '\n':
+                auto_complete = AutoCompleteMultiLine(
+                    window=window,
+                    editor=window['GHERKIN_EDITOR'],
+                    values=values,
+                    text_to_replace='',
+                )
+                auto_complete.set_values([])
+                continue
+
             suggested_tokens = get_token_suggestion_after_line(tokens, int(cursor_y) - 1)
 
             raw_autocomplete_suggestions = [keyword for token in suggested_tokens for keyword in token.get_keywords()]

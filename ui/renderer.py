@@ -1,7 +1,5 @@
 from gherkin.compiler import GherkinToPyTestCompiler
-from gherkin.token import EndOfLineToken
-from gherkin.utils import get_suggested_intend_after_line, get_sequence_as_lines, get_intend_level_for_line, \
-    get_indent_level_for_next_line
+from gherkin.utils import get_sequence_as_lines, get_indent_level_for_next_line
 from settings import GHERKIN_INDENT_SPACES
 from ui.window import WindowValues
 
@@ -87,6 +85,11 @@ class GherkinEditorRenderer(object):
 
     def update_text(self, text):
         tokens = self.compiler.use_lexer(text)
+        last_tokens = RenderHistory.last_render_meta.get('last_token_classes', [])
+
+        # no need to re-render if all tokens stayed the same
+        if len(tokens) == len(last_tokens) and all([isinstance(t, last_tokens[i]) for i, t in enumerate(tokens)]):
+            return
 
         cursor_y, cursor_x = self.get_cursor_position()
         self.editor.update('')
@@ -100,7 +103,7 @@ class GherkinEditorRenderer(object):
             # # intend
             token_line_index = token.line.line_index
             try:
-                last_time_class = RenderHistory.last_render_meta.get('last_token_classes', [])[i]
+                last_time_class = last_tokens[i]
             except IndexError:
                 last_time_class = None
 
@@ -108,6 +111,7 @@ class GherkinEditorRenderer(object):
             first_token_in_line = token == lines[token_line_index][0]
             token_at_cursor_line = int(cursor_y) - 1 == token.line.line_index
 
+            with_indent = first_token_in_line
             if token_at_cursor_line and first_token_in_line and token_has_changed:
                 indent_lvl = get_indent_level_for_next_line(
                     tokens=tokens,
@@ -120,10 +124,10 @@ class GherkinEditorRenderer(object):
                 if indent_lvl >= 0:
                     token.line.text = indent_str + token.line.text.lstrip()
                     token.line.indent = indent
-                    cursor_x = int(cursor_x) + len(indent_str)
+                    cursor_x = len(token.line.text)
 
             color = token.get_meta_data_for_sequence(tokens).get('color')
-            self.editor.update(str(token), text_color_for_value=color, append=True)
+            self.editor.update(token.to_string(with_indent), text_color_for_value=color, append=True)
 
         RenderHistory.add_render_information('last_token_classes', [token.__class__ for token in tokens])
         self.set_cursor_position(y=cursor_y, x=cursor_x)

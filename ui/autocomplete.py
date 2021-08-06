@@ -102,7 +102,10 @@ class AutoCompleteMultiLine(object):
 
         for i, line in enumerate(lines):
             if i == int(relevant_line_index) and self.text_to_replace in line:
-                replaced_line = line.replace(self.text_to_replace, selected_value)
+                if not line.replace(' ', ''):
+                    replaced_line = selected_value
+                else:
+                    replaced_line = line.replace(self.text_to_replace, selected_value)
                 cursor_x = int(self._old_cursor_position_x)
 
                 # set the cursor position to be at the end of the replacement
@@ -143,6 +146,7 @@ class AutoCompleteMultiLine(object):
     def hide(self, *args):
         """Hides the auto complete box."""
         self.widget.place(x=-100, y=-100)
+        self.ui.update(visible=False)
         self.widget.unbind('<Return>')
         self.widget.unbind('<Up>')
         self.widget.unbind('<Down>')
@@ -153,6 +157,7 @@ class AutoCompleteMultiLine(object):
 
     def show_at(self, x, y):
         """Shows the auto complete box at given x and y."""
+        self.ui.update(visible=True)
         self.widget.place(x=x, y=y)
         self.widget.bind('<Return>', func=self.on_enter)
         self.widget.bind('<Up>', func=self.on_up)
@@ -179,6 +184,10 @@ class AutoCompleteMultiLine(object):
 
     def set_values(self, values):
         """Set the values/ options of the auto complete."""
+        self.focused_value_index = 0
         self.values = values
-        self._draw_options()
+        if not values:
+            self.hide()
+        else:
+            self._draw_options()
         self.ui.set_size((30, len(self.values)))

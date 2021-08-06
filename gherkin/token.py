@@ -27,8 +27,13 @@ class GherkinToken(Token):
     def get_meta_data_for_sequence(self, sequence):
         return {'color': self.color}
 
-    def __str__(self):
-        return '{}{}'.format(self.line.get_indent_as_string(), self.text)
+    def to_string(self, with_indent=False):
+        if with_indent:
+            indent = self.line.get_indent_as_string()
+        else:
+            indent = ''
+
+        return '{}{}'.format(indent, self.__str__())
 
 
 class TokenContainsWholeLineMixin(object):
