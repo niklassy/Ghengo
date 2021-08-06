@@ -1,7 +1,7 @@
 import PySimpleGUI as sg
 
 
-class AutoComplete(object):
+class AutoCompleteMultiLine(object):
     """
     This class can be used to display an auto complete in the gherkin editor.
     """
@@ -110,7 +110,10 @@ class AutoComplete(object):
                 lines[i] = replaced_line
 
         # update the window with new text
-        self.editor.update('\n'.join(lines))
+        from ui.renderer import GherkinEditorRenderer
+        renderer = GherkinEditorRenderer(window=self.window, editor=self.editor)
+        renderer.update_text('\n'.join(lines))
+        # self.editor.update('\n'.join(lines))
         # focus editor again
         self.focus_editor()
 
@@ -173,13 +176,6 @@ class AutoComplete(object):
                 background_color = 'yellow'
 
             self.ui.update(value, background_color_for_value=background_color, append=True)
-
-            try:
-                next_exists = bool(self.values[i + 1])
-            except IndexError:
-                next_exists = False
-
-            # TODO: last line is not highlighted until the end
             self.ui.update('\n', background_color_for_value=background_color, append=True)
 
     def set_values(self, values):

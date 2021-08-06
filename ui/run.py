@@ -4,13 +4,13 @@ import PySimpleGUI as sg
 from gherkin.exception import GherkinInvalid
 from gherkin.token import EndOfLineToken, EmptyToken
 from nlp.setup import Nlp
-from ui.autocomplete import AutoComplete
 
 
 def run_ui():
     setup_django('django_sample_project.apps.config.settings')
     # all imports must follow the setup!!
     from gherkin.compiler import GherkinToPyTestCompiler
+    from ui.autocomplete import AutoCompleteMultiLine
     from gherkin.utils import get_suggested_intend_after_line, get_token_suggestion_after_line, get_sequence_as_lines
 
     # Nlp.setup_languages(['de', 'en'])
@@ -26,7 +26,7 @@ def run_ui():
             sg.Multiline(size=(multi_line_size, 40), font=('Courier', 15), autoscroll=True, key='GHERKIN_EDITOR'),
             sg.Multiline('This will contain the output...', size=(multi_line_size, 40), font=('Courier', 15),
                          key='OUTPUT_FIELD'),
-            AutoComplete.as_ui(),
+            AutoCompleteMultiLine.as_ui(),
         ],
         [
             sg.Text('', size=(150, 1), key='ERROR_MESSAGE'),
@@ -42,7 +42,7 @@ def run_ui():
 
     window.finalize()
     # TODO: add control s to convert!
-    window['GHERKIN_EDITOR'].Widget.bind('<Control-S>')
+    # window['GHERKIN_EDITOR'].Widget.bind('<Control-S>')
     # window['AUTOCOMPLETE'].Widget.place(x=10, y=15) DAS GEHT!!!!
 
     while True:
@@ -60,31 +60,14 @@ def run_ui():
 
         tokens = c.use_lexer(text)
 
+        from ui.renderer import GherkinEditorRenderer
+        editor_renderer = GherkinEditorRenderer(window=window, editor=window['GHERKIN_EDITOR'])
+        editor_renderer.update_text(text)
+
         # add simple styling
         # reset the value and go through each token
         # save the cursor position
-        editor_widget = window['GHERKIN_EDITOR'].Widget
-        cursor_y, cursor_x = editor_widget.index('insert').split('.')
-        window['GHERKIN_EDITOR'].update('')
-
-        for i, token in enumerate(tokens):
-            if i >= len(tokens) - 2:
-                continue
-
-            try:
-                previous_token = tokens[i - 1]
-            except IndexError:
-                previous_token = None
-
-            if previous_token and isinstance(previous_token, EndOfLineToken):
-                indent_str = get_suggested_intend_after_line(tokens, token.line.line_index - 1)
-                window['GHERKIN_EDITOR'].update(indent_str, append=True)
-                cursor_x = int(cursor_x) + len(indent_str)
-
-            color = token.get_meta_data_for_sequence(tokens).get('color')
-            window['GHERKIN_EDITOR'].update(str(token), text_color_for_value=color, append=True)
-
-        editor_widget.mark_set("insert", "%d.%d" % (float(cursor_y), float(cursor_x)))
+        cursor_y, cursor_x = editor_renderer.get_cursor_position()
         window['ERROR_MESSAGE'].update('')
 
         # autocomplete
@@ -97,7 +80,7 @@ def run_ui():
             else:
                 line_text = current_line[0].line.trimmed_text
                 clean_suggestions = [s for s in raw_autocomplete_suggestions if line_text in s and line_text != s]
-                auto_complete = AutoComplete(
+                auto_complete = AutoCompleteMultiLine(
                     window=window,
                     editor=window['GHERKIN_EDITOR'],
                     values=values,

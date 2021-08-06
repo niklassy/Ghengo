@@ -27,12 +27,12 @@ def get_token_suggestion_after_line(sequence, line_index):
     sequence = [token.copy() for token in sequence]
 
     suggested_grammars = [
-        ExamplesGrammar,
         GivenGrammar,
         WhenGrammar,
         ThenGrammar,
-        ScenarioOutlineGrammar,
         ScenarioGrammar,
+        ExamplesGrammar,
+        ScenarioOutlineGrammar,
         BackgroundGrammar,
         RuleGrammar,
         FeatureGrammar,
