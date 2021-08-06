@@ -1,5 +1,15 @@
 # Django-Gherkin Test Generator
 
+## What is this?
+With this project you are able to generate code with natural language. In this case Gherkin can be
+used to create test cases. Right now this project is only able to generate pytest for Python.
+It is fully tested for German but it also works in English. But it does not work as well in English as in German.
+
+Here you can see it in action. The UI for this was not the main part of the project and it is somewhat wonky and
+slow. You can still use it to try some stuff.
+
+![alt text](img/ui_demo.gif)
+
 ## Setup
 You need to install Pipenv first.
 

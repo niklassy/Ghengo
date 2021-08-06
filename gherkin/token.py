@@ -10,7 +10,6 @@ from settings import Settings
 class GherkinToken(Token):
     color = None
     _json_id = None
-    children_intended = False
 
     @classmethod
     def get_keywords(cls):
@@ -46,35 +45,30 @@ class FeatureToken(GherkinToken):
     color = '#d35400'
     _json_id = 'feature'
     keyword_with_colon = True
-    children_intended = True
 
 
 class RuleToken(GherkinToken):
     color = '#d35400'
     _json_id = 'rule'
     keyword_with_colon = True
-    children_intended = True
 
 
 class ScenarioToken(GherkinToken):
     color = '#d35400'
     _json_id = 'scenario'
     keyword_with_colon = True
-    children_intended = True
 
 
 class ScenarioOutlineToken(GherkinToken):
     color = '#d35400'
     _json_id = 'scenarioOutline'
     keyword_with_colon = True
-    children_intended = True
 
 
 class ExamplesToken(GherkinToken):
     color = '#d35400'
     _json_id = 'examples'
     keyword_with_colon = True
-    children_intended = True
 
 
 class DataTableToken(TokenContainsWholeLineMixin, GherkinToken):
@@ -101,7 +95,6 @@ class BackgroundToken(GherkinToken):
     color = '#d35400'
     _json_id = 'background'
     keyword_with_colon = True
-    children_intended = True
 
 
 class GivenToken(GherkinToken):
