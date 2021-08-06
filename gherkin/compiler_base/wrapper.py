@@ -1,12 +1,13 @@
-from gherkin.compiler_base.mixin import SequenceToObjectMixin
+from gherkin.compiler_base.mixin import SequenceToObjectMixin, IndentMixin
 
 
-class RuleAlias(SequenceToObjectMixin):
+class RuleAlias(IndentMixin, SequenceToObjectMixin):
     """
     This is a wrapper for defining rules. It is a wrapper around any custom class that is used while defining
     rules. For this project, the class could be removed, but it is a nice wrapper for future usage.
     """
     def __init__(self, token_cls):
+        super().__init__()
         self.token_cls = token_cls
 
     def get_next_valid_tokens(self):

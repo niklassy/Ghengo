@@ -1,6 +1,7 @@
 from gherkin.compiler import GherkinParser
 from gherkin.compiler_base.exception import GrammarInvalid, GrammarNotUsed
 from gherkin.compiler_base.line import Line
+from gherkin.exception import GherkinInvalid
 from gherkin.grammar import ExamplesGrammar, GivenGrammar, WhenGrammar, ThenGrammar, ScenarioOutlineGrammar, \
     ScenarioGrammar, BackgroundGrammar, RuleGrammar, FeatureGrammar
 from gherkin.token import EndOfLineToken, EOFToken
@@ -23,7 +24,7 @@ def get_sequence_as_lines(sequence):
     return sequence_by_line
 
 
-def get_token_suggestion_after_line(sequence, line_index):
+def get_token_suggestion_after_line(sequence, line_index, return_full_sequence=False):
     sequence = [token.copy() for token in sequence]
 
     suggested_grammars = [
@@ -68,18 +69,59 @@ def get_token_suggestion_after_line(sequence, line_index):
         else:
             criterion_token_cls = suggested_grammar.criterion_rule_alias.token_cls
 
-            for keyword in criterion_token_cls.get_keywords():
-                if '*' not in keyword:
-                    valid_suggestions.append(keyword)
+            if not return_full_sequence:
+                valid_suggestions.append(criterion_token_cls)
+            else:
+                valid_suggestions.append(token_sequence)
 
     return valid_suggestions
+
+
+def get_indent_level_for_next_line(tokens, line_index, filter_token):
+    token_sequence_suggestions = get_token_suggestion_after_line(
+        sequence=tokens,
+        line_index=line_index,
+        return_full_sequence=True,
+    )
+
+    fitting_token = None
+    for token_sequence in token_sequence_suggestions:
+        first_token = token_sequence[0]
+
+        if first_token.__class__ == filter_token.__class__:
+            fitting_token = first_token
+            break
+
+        if first_token.line.line_index == line_index and fitting_token is None:
+            fitting_token = token_sequence[0]
+
+    if fitting_token is not None:
+        return fitting_token.grammar_meta.get('suggested_indent_level')
+
+    return 0
+
+
+def get_intend_level_for_line(compiler, text, line_index):
+    try:
+        compiler.compile_text(text)
+        tokens = compiler.parser.tokens
+
+        for token in tokens:
+            if token.line.line_index != line_index:
+                continue
+
+            return token.grammar_meta.get('suggested_indent_level', 0)
+
+        return 0
+    except GherkinInvalid:
+        return -1
 
 
 def get_suggested_intend_after_line(sequence, line_index):
     sequences_lines = get_sequence_as_lines(sequence)
 
     line_tokens = sequences_lines[line_index]
-    intend_level = int(line_tokens[0].line.intend / GHERKIN_INDENT_SPACES)
+    intend_level = int(line_tokens[0].line.indent / GHERKIN_INDENT_SPACES)
 
     children_more_indented = any([token.children_intended for token in line_tokens])
     if children_more_indented:

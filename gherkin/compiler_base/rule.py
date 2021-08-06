@@ -3,14 +3,15 @@ from typing import Union
 
 from gherkin.compiler_base.exception import SequenceEnded, RuleNotFulfilled, SequenceNotFinished, GrammarNotUsed
 from gherkin.compiler_base.grammar import Grammar
-from gherkin.compiler_base.mixin import SequenceToObjectMixin
+from gherkin.compiler_base.mixin import SequenceToObjectMixin, IndentMixin
 from gherkin.compiler_base.wrapper import RuleAlias, TokenWrapper
 
 
-class Rule(SequenceToObjectMixin, ABC):
+class Rule(IndentMixin, SequenceToObjectMixin, ABC):
     supports_list_as_children = False
 
     def __init__(self, child_rule):
+        super().__init__()
         self.child_rule = child_rule
 
         if isinstance(child_rule, list) and not self.supports_list_as_children:
@@ -89,6 +90,11 @@ class Rule(SequenceToObjectMixin, ABC):
                 suggested_tokens=suggested_tokens,
             )
 
+        self.on_token_wrapper_valid(token_wrapper)
+
+    def on_token_wrapper_valid(self, token_wrapper: TokenWrapper):
+        token_wrapper.token.set_grammar_meta_value('suggested_indent_level', self.get_suggested_indent_level())
+
     def _get_valid_index_for_child(self, child: Union['Rule', 'RuleAlias', 'Grammar'], sequence: ['TokenWrapper'], index: int) -> int:
         """
         This function is used in the validation. It will return the next valid index in the sequence for the
@@ -161,6 +167,8 @@ class Optional(Rule):
         super().__init__(child)
         self.important = important
 
+        self.child_rule.set_parent(self)
+
     def get_next_valid_tokens(self):
         if not self.important:
             return []
@@ -213,6 +221,9 @@ class OneOf(Rule):
 
         if not isinstance(child, list):
             raise ValueError('You must use a list for OneOf')
+
+        for child in self.child_rule:
+            child.set_parent(self)
 
     def get_next_valid_tokens(self):
         output = []
@@ -285,6 +296,8 @@ class Repeatable(Rule):
         super().__init__(child)
         self.minimum = minimum
         self.important = important
+
+        self.child_rule.set_parent(self)
 
     def get_next_valid_tokens(self):
         if self.minimum == 0 and not self.important:
@@ -360,6 +373,9 @@ class Chain(Rule):
         if not isinstance(child, list):
             raise ValueError('You must use a list for a Chain')
 
+        for child in self.child_rule:
+            child.set_parent(self)
+
     def get_next_valid_tokens(self):
         if len(self.child_rule) == 0:
             return []
@@ -417,3 +433,28 @@ class Chain(Rule):
                 )
 
         return index
+
+
+class IndentBlock(Rule):
+    supports_list_as_children = True
+
+    def __init__(self, child):
+        if isinstance(child, list):
+            child = Chain(child)
+
+        super().__init__(child)
+        self.child_rule.set_parent(self)
+
+    def get_suggested_indent_level(self):
+        level = super().get_suggested_indent_level()
+
+        return level + 1
+
+    def _validate_sequence(self, sequence, index):
+        return self.child_rule._validate_sequence(sequence, index)
+
+    def sequence_to_object(self, sequence, index=0):
+        return self.child_rule.sequence_to_object(sequence, index)
+
+    def get_next_valid_tokens(self):
+        return self.child_rule.get_next_valid_tokens()

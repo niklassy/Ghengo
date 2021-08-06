@@ -47,7 +47,7 @@ def run_ui():
     # window['AUTOCOMPLETE'].Widget.place(x=10, y=15) DAS GEHT!!!!
 
     while True:
-        event, values = window.read(timeout=5)
+        event, values = window.read(timeout=10)
         # do this always first
         WindowValues.set_values(values)
 
@@ -76,7 +76,9 @@ def run_ui():
 
         # autocomplete
         if event == '__TIMEOUT__':
-            raw_autocomplete_suggestions = get_token_suggestion_after_line(tokens, int(cursor_y) - 1)
+            suggested_tokens = get_token_suggestion_after_line(tokens, int(cursor_y) - 1)
+
+            raw_autocomplete_suggestions = [keyword for token in suggested_tokens for keyword in token.get_keywords()]
             try:
                 current_line = get_sequence_as_lines(tokens)[int(cursor_y) - 1]
             except IndexError:

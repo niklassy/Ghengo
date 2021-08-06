@@ -1,5 +1,5 @@
 from gherkin.compiler_base.exception import GrammarInvalid
-from gherkin.compiler_base.rule import Chain, OneOf, Repeatable, Optional, RuleAlias, Grammar, TokenWrapper
+from gherkin.compiler_base.rule import Chain, OneOf, Repeatable, Optional, RuleAlias, Grammar, TokenWrapper, IndentBlock
 from gherkin.token import LanguageToken, FeatureToken, EOFToken, DescriptionToken, RuleToken, ScenarioToken, \
     EndOfLineToken, TagToken, GivenToken, AndToken, ButToken, WhenToken, ThenToken, BackgroundToken, \
     DocStringToken, DataTableToken, ExamplesToken, ScenarioOutlineToken
@@ -170,10 +170,12 @@ class AndButGrammarBase(Grammar):
             self.criterion_rule_alias,
             RuleAlias(DescriptionToken),
             RuleAlias(EndOfLineToken),
-            Optional(OneOf([
-                DocStringGrammar(),
-                DataTableGrammar(),
-            ])),
+            IndentBlock(
+                Optional(OneOf([
+                    DocStringGrammar(),
+                    DataTableGrammar(),
+                ])),
+            ),
         ])
 
     def get_convert_kwargs(self, rule_output):
@@ -215,7 +217,9 @@ class ExamplesGrammar(TagsGrammarMixin, Grammar):
             Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
-        DataTableGrammar(),
+        IndentBlock(
+            DataTableGrammar(),
+        ),
     ])
     convert_cls = Examples
 
@@ -354,7 +358,6 @@ class StepsGrammar(Grammar):
 
 class ScenarioDefinitionGrammar(Grammar):
     description_index = 2
-    steps_index = 3
 
     def _validate_sequence(self, sequence, index):
         """
@@ -396,8 +399,11 @@ class ScenarioDefinitionGrammar(Grammar):
             'name': name,
         }
 
+    def get_steps_from_convert_obj(self, rule_convert_obj):
+        raise NotImplementedError()
+
     def prepare_converted_object(self, rule_convert_obj, grammar_obj):
-        steps = rule_convert_obj[self.steps_index]
+        steps = self.get_steps_from_convert_obj(rule_convert_obj)
 
         # add each step to the definition
         for step in steps:
@@ -415,8 +421,10 @@ class ScenarioOutlineGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
             Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
-        StepsGrammar(),
-        Repeatable(ExamplesGrammar()),
+        IndentBlock([
+            StepsGrammar(),
+            Repeatable(ExamplesGrammar()),
+        ]),
     ])
     convert_cls = ScenarioOutline
 
@@ -425,10 +433,13 @@ class ScenarioOutlineGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
         outline_sequence = [ScenarioOutlineToken, EndOfLineToken]
         return outline_sequence + GivenGrammar.get_minimal_sequence() + ExamplesGrammar.get_minimal_sequence()
 
+    def get_steps_from_convert_obj(self, rule_convert_obj):
+        return rule_convert_obj[3][0]
+
     def prepare_converted_object(self, rule_convert_obj, grammar_obj: ScenarioOutline):
         """In addition to the steps, we need to add the argument of the Examples here."""
         grammar_obj = super().prepare_converted_object(rule_convert_obj, grammar_obj)
-        examples = rule_convert_obj[4]
+        examples = rule_convert_obj[3][1]
 
         for example in examples:
             example.parent = grammar_obj
@@ -446,7 +457,9 @@ class ScenarioGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
             Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
-        StepsGrammar(),
+        IndentBlock(
+            StepsGrammar(),
+        ),
     ])
     convert_cls = Scenario
 
@@ -454,10 +467,12 @@ class ScenarioGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
     def get_minimal_sequence(cls):
         return [ScenarioToken, EndOfLineToken] + GivenGrammar.get_minimal_sequence()
 
+    def get_steps_from_convert_obj(self, rule_convert_obj):
+        return rule_convert_obj[3]
+
 
 class BackgroundGrammar(ScenarioDefinitionGrammar):
     description_index = 1
-    steps_index = 2
     criterion_rule_alias = RuleAlias(BackgroundToken)
     rule = Chain([
         criterion_rule_alias,
@@ -465,9 +480,14 @@ class BackgroundGrammar(ScenarioDefinitionGrammar):
             Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
-        Repeatable(GivenGrammar()),
+        IndentBlock(
+            Repeatable(GivenGrammar()),
+        ),
     ])
     convert_cls = Background
+
+    def get_steps_from_convert_obj(self, rule_convert_obj):
+        return rule_convert_obj[3]
 
     @classmethod
     def get_minimal_sequence(cls):
@@ -483,11 +503,13 @@ class RuleGrammar(TagsGrammarMixin, Grammar):
             Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
-        Optional(BackgroundGrammar()),
-        Repeatable(OneOf([
-            ScenarioGrammar(),
-            ScenarioOutlineGrammar(),
-        ]))
+        IndentBlock([
+            Optional(BackgroundGrammar()),
+            Repeatable(OneOf([
+                ScenarioGrammar(),
+                ScenarioOutlineGrammar(),
+            ]))
+        ]),
     ])
     convert_cls = Rule
 
@@ -502,7 +524,7 @@ class RuleGrammar(TagsGrammarMixin, Grammar):
             'description': description,
             'keyword': rule_output[1].token.matched_keyword,
             'name': name,
-            'background': rule_output[3],
+            'background': rule_output[3][0],
         }
 
     def prepare_converted_object(self, rule_convert_obj, grammar_obj: Rule):
@@ -510,7 +532,7 @@ class RuleGrammar(TagsGrammarMixin, Grammar):
         grammar_obj = super().prepare_converted_object(rule_convert_obj, grammar_obj)
 
         # set all the children/ scenario definitions
-        for sr in rule_convert_obj[4]:
+        for sr in rule_convert_obj[3][1]:
             sr.parent = grammar_obj
             grammar_obj.add_scenario_definition(sr)
 
@@ -526,13 +548,15 @@ class FeatureGrammar(TagsGrammarMixin, Grammar):
             Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
-        Optional(BackgroundGrammar()),
-        OneOf([
-            Repeatable(RuleGrammar()),
-            Repeatable(OneOf([
-                ScenarioGrammar(),
-                ScenarioOutlineGrammar(),
-            ])),
+        IndentBlock([
+            Optional(BackgroundGrammar()),
+            OneOf([
+                Repeatable(RuleGrammar()),
+                Repeatable(OneOf([
+                    ScenarioGrammar(),
+                    ScenarioOutlineGrammar(),
+                ])),
+            ]),
         ]),
     ])
     convert_cls = Feature
@@ -549,12 +573,12 @@ class FeatureGrammar(TagsGrammarMixin, Grammar):
             'keyword': rule_output[1].token.matched_keyword,
             'name': name,
             'language': Settings.language,
-            'background': rule_output[3],
+            'background': rule_output[3][0],
         }
 
     def prepare_converted_object(self, rule_convert_obj: [TokenWrapper], grammar_obj: Feature):
         grammar_obj = super().prepare_converted_object(rule_convert_obj, grammar_obj)
-        scenario_rules = rule_convert_obj[4]
+        scenario_rules = rule_convert_obj[3][1]
 
         # add all the rules/ scenario definitions
         for sr in scenario_rules:

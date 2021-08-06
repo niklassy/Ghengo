@@ -1,10 +1,10 @@
 from gherkin.compiler_base.exception import RuleNotFulfilled, SequenceEnded, GrammarNotUsed, GrammarInvalid, \
     SequenceNotFinished
-from gherkin.compiler_base.mixin import SequenceToObjectMixin
+from gherkin.compiler_base.mixin import SequenceToObjectMixin, IndentMixin
 from gherkin.compiler_base.wrapper import RuleAlias, TokenWrapper
 
 
-class Grammar(SequenceToObjectMixin):
+class Grammar(IndentMixin, SequenceToObjectMixin):
     """
     A grammar represents a combination of rules that has a special criterion to recognize it with.
     This criterion is a RuleAlias. If there is an error while validating a grammar object,
@@ -32,6 +32,8 @@ class Grammar(SequenceToObjectMixin):
     convert_cls = None
 
     def __init__(self):
+        super().__init__()
+
         if self.get_rule() is None:
             raise ValueError('You must provide a rule')
 
@@ -43,6 +45,8 @@ class Grammar(SequenceToObjectMixin):
             raise ValueError('You must either use None or a RuleAlias instance for criterion_rule_alias.')
 
         self.validated_sequence = None
+
+        self.get_rule().set_parent(self)
 
     @classmethod
     def get_minimal_sequence(cls):

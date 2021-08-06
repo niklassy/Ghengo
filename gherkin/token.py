@@ -28,7 +28,7 @@ class GherkinToken(Token):
         return {'color': self.color}
 
     def __str__(self):
-        return '{}{}'.format(self.line.intend_as_string, self.text)
+        return '{}{}'.format(self.line.get_indent_as_string(), self.text)
 
 
 class TokenContainsWholeLineMixin(object):

@@ -3,9 +3,9 @@ from gherkin.compiler_base.line import Line
 
 def test_line_intend():
     line = Line('123', 2)
-    assert line.intend == 0
+    assert line.indent == 0
     line = Line('    123', 2)
-    assert line.intend == 4
+    assert line.indent == 4
 
 
 def test_line_trimmed_text():
