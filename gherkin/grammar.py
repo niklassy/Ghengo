@@ -11,6 +11,12 @@ from gherkin.ast import GherkinDocument, Language, \
 from settings import Settings
 
 
+"""
+Können leider nicht die Library verwenden, weil sie scheinbar Probleme hat und weil wir sämtliche Informationen
+wie Kommentare behalten wollen, für weitere Informationen in der Zukunft.
+"""
+
+
 class DescriptionGrammar(Grammar):
     criterion_rule_alias = RuleAlias(DescriptionToken)
     rule = Chain([

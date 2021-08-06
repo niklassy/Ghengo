@@ -1,9 +1,10 @@
-from ui.run import run_ui
+from django_meta.setup import setup_django
 
 
 if __name__ == '__main__':
-    """
-    Können leider nicht die Library verwenden, weil sie scheinbar Probleme hat und weil wir sämtliche Informationen
-    wie Kommentare behalten wollen, für weitere Informationen in der Zukunft.
-    """
-    run_ui()
+    setup_django('django_sample_project.apps.config.settings')
+
+    from gherkin.compiler import GherkinToPyTestCompiler
+    compiler = GherkinToPyTestCompiler()
+    compiler.compile_file('django_sample_project/features/variable_reference.feature')
+    compiler.export_as_file('generated_tests/')
