@@ -37,6 +37,17 @@ def get_next_token(token):
         return NoToken()
 
 
+def tokens_are_equal(token_1, token_2):
+    """
+    Check if two tokens are equal. This method is needed because if tokens are compared via == and one of them
+    is a NoToken, the Token from spacy does not know how to handle it.
+    """
+    if isinstance(token_1, NoToken) or isinstance(token_2, NoToken):
+        return False
+
+    return token_1 == token_2
+
+
 def get_previous_token(token):
     """
     Returns the token that is behind the one that is passed to the function. If there is none, a NoToken instance is

@@ -10,7 +10,8 @@ from nlp.generate.expression import Expression, CompareExpression, ModelQueryset
 from nlp.generate.statement import AssertStatement, AssignmentStatement
 from nlp.generate.variable import Variable
 from nlp.locator import ComparisonLocator
-from nlp.utils import token_is_plural, token_is_definite, token_is_indefinite, get_previous_token, token_is_noun
+from nlp.utils import token_is_plural, token_is_definite, token_is_indefinite, get_previous_token, token_is_noun, \
+    tokens_are_equal
 
 
 class QuerysetConverter(ModelConverter):
@@ -155,7 +156,7 @@ class CountQuerysetConverter(QuerysetConverter):
     def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
         """Since the count token is extracted by a IntegerExtractor, remove kwargs that it does not need."""
         kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
-        if argument_wrapper.token == self.count.token:
+        if tokens_are_equal(argument_wrapper.token, self.count.token):
             del kwargs['model_adapter']
             del kwargs['field_adapter']
         return kwargs
@@ -170,7 +171,7 @@ class CountQuerysetConverter(QuerysetConverter):
         For everything related to the filter use the normal extractor classes. For the count token use an
         IntegerExtractor instead.
         """
-        if argument_wrapper.token == self.count.token:
+        if tokens_are_equal(argument_wrapper.token, self.count.token):
             return IntegerExtractor
         return super().get_extractor_class(argument_wrapper)
 

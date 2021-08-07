@@ -11,6 +11,7 @@ from nlp.generate.expression import RequestExpression, APIClientAuthenticateExpr
 from nlp.generate.statement import AssignmentStatement
 from nlp.generate.variable import Variable
 from nlp.searcher import UrlSearcher, SerializerFieldSearcher, ModelFieldSearcher
+from nlp.utils import tokens_are_equal
 
 
 class RequestConverter(ClassConverter):
@@ -122,8 +123,9 @@ class RequestConverter(ClassConverter):
         reverse_kwargs = []
         model_token = self.model_variable.token
         user_token = self.user.token
+        pk_in_route_kwargs = self.url_pattern_adapter.key_exists_in_route_kwargs('pk')
 
-        if model_token and model_token != user_token and self.url_pattern_adapter.key_exists_in_route_kwargs('pk'):
+        if model_token and not tokens_are_equal(model_token, user_token) and pk_in_route_kwargs:
             reverse_kwargs.append(Kwarg('pk', Attribute(self.model_variable.value, 'pk')))
 
         # create the statement with the request
