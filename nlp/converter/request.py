@@ -192,6 +192,7 @@ class RequestConverter(ClassConverter):
 
         # some data may be passed via the url or the body, so check if the defined field exists on the url; if yes
         # add it to the reverse expression instead
+        # TODO: check this!!!
         if self.url_pattern_adapter.key_exists_in_route_kwargs(extractor.field_name):
             kwarg_list = request_expression.reverse_expression.function_kwargs
         else:
