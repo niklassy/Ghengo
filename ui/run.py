@@ -46,7 +46,7 @@ def run_ui():
     ]
 
     # Create the Window
-    window = sg.Window('Gherkogen - Django-Gherkin Test Generator', layout)
+    window = sg.Window('Ghenko - Django-Gherkin Test Generator', layout)
 
     c = GherkinToPyTestCompiler()
     last_gherkin_text = ''
@@ -62,6 +62,7 @@ def run_ui():
 
         if input_text == '\n':
             return
+        window['OUTPUT_FIELD'].update('Loading...')
 
         try:
             c.compile_text(input_text)
