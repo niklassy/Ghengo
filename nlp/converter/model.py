@@ -102,15 +102,24 @@ class ModelVariableReferenceConverter(ModelConverter):
     """
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
-        self.variable = ReferenceModelVariableProperty(self)
+        self.model_in_text = NewModelProperty(self)
         self.model = ReferenceModelProperty(self)
+        self.variable = ReferenceModelVariableProperty(self)
 
         # the value of the variable is important for the model
         self.variable.calculate_value()
 
+    def get_variable_model_adapter(self):
+        if not self.variable.value:
+            return None
+
+        variable_instance = self.variable.value
+        return variable_instance.value.model_adapter
+
     def get_document_compatibility(self):
         """Only if a previous variable exists, this converter makes sense."""
-        if self.variable.value:
+        variable_model_adapter = self.get_variable_model_adapter()
+        if variable_model_adapter and variable_model_adapter.models_are_equal(self.model_in_text.value):
             return 1
         return 0
 

@@ -32,7 +32,9 @@ Funktionalität: Reference
 #    Wenn Alice einen Auftrag mit der Datei "asd" erstellt
 
   Szenario: file
-    Wenn Benutzer 1 einen Auftrag erstellt
+    Gegeben sei ein Auftrag 1
+    Und ein Auftrag 2
+    Und der Benutzer 1 hat den Vornamen "Alice"
 #    Dann sollten Benutzer mit dem Vornamen "Alice" existieren
 
 #    Wenn Alice ein Dach mit dem System 3 ändert

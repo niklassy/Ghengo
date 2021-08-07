@@ -192,13 +192,14 @@ def test_object_qs_converter_compatibility(doc, min_compatibility, max_compatibi
 @pytest.mark.parametrize(
     'doc, filter_fields, variable_type', [
         (nlp('Dann sollte Alice den Namen "Alice" haben.'), ['first_name'], 'user'),
+        (nlp('Dann sollte der Benutzer 1 den Namen "Alice" haben.'), ['first_name'], 'user_no_name'),
         (nlp('Dann sollte der Auftrag 1 den Namen "Alice" haben.'), ['name'], 'order'),
         (nlp('Dann sollte der Auftrag 1 den Namen "Alice" und den Wert "Test" haben.'), ['name', 'worth'], 'order'),
     ]
 )
 def test_object_qs_converter_output(doc, mocker, filter_fields, variable_type):
     """Check that the output of AssertPreviousModelConverter is correct."""
-    assert variable_type in ['order', 'user', None]
+    assert variable_type in ['order', 'user', 'user_no_name', None]
 
     mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
@@ -206,22 +207,29 @@ def test_object_qs_converter_output(doc, mocker, filter_fields, variable_type):
 
     # add two statements: a user `alice` and an `order_1`
     user_variable = Variable('Alice', 'User')
+    user_no_name_variable = Variable('1', 'User')
     order_variable = Variable('1', 'Order')
 
     if variable_type == 'user':
         referenced_variable = user_variable
     elif variable_type == 'order':
         referenced_variable = order_variable
+    elif variable_type == 'user_no_name':
+        referenced_variable = user_no_name_variable
     else:
         referenced_variable = None
 
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelAdapter(User, None), [Kwarg('bar', 123)]),
+        expression=PyTestModelFactoryExpression(ModelAdapter(Order, None), []),
+        variable=order_variable,
+    ))
+    test_case.add_statement(AssignmentStatement(
+        expression=PyTestModelFactoryExpression(ModelAdapter(User, None), []),
         variable=user_variable,
     ))
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelAdapter(Order, None), [Kwarg('bar', 123)]),
-        variable=order_variable,
+        expression=PyTestModelFactoryExpression(ModelAdapter(User, None), []),
+        variable=user_no_name_variable,
     ))
 
     converter = AssertPreviousModelConverter(
@@ -242,8 +250,6 @@ def test_object_qs_converter_output(doc, mocker, filter_fields, variable_type):
 
         if referenced_variable:
             assert exp.value_1.variable == referenced_variable
-
-
 
 
 def test_model_variable_reference_converter(mocker):

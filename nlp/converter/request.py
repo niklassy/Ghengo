@@ -39,6 +39,11 @@ class RequestConverter(ClassConverter):
         for token in (self.method.token, self.user.token, self.model_variable.token, self.model.token):
             self.block_token_as_argument(token)
 
+        # if there is a user token, it might be defined as "Alice" or "User 1", if there is a token we also want
+        # to block the root which would be `User` in the second example
+        if self.user.token:
+            self.block_token_as_argument(self.user.chunk.root)
+
     def get_searcher_kwargs(self):
         """When searching for a serializer adapter, we need to add the serializer class to the kwargs."""
         serializer = None
