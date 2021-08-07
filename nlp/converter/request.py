@@ -35,6 +35,21 @@ class RequestConverter(ClassConverter):
 
         self.model_variable = ReferenceModelVariableProperty(self)
 
+    def token_can_be_argument(self, token):
+        can_be_argument = super().token_can_be_argument(token)
+        if not can_be_argument:
+            return False
+
+        # when making a request the last verb typically describes the action (get, geholt, holen, bekommen, erstellen)
+        # this can be covered by the method token, but the method is not always determined by the verb
+        if token.pos_ == 'VERB':
+            all_verbs = [t for t in self.get_possible_argument_tokens() if t.pos_ == 'VERB']
+
+            if len(all_verbs) > 0 and all_verbs[-1] == token:
+                return False
+
+        return True
+
     def prepare_converter(self):
         for token in (self.method.token, self.user.token, self.model_variable.token, self.model.token):
             self.block_token_as_argument(token)

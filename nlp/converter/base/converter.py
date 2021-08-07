@@ -253,6 +253,10 @@ class ClassConverter(Converter):
         """Returns a list of default arguments wrappers. For each the selected value will be forced."""
         return []
 
+    def get_possible_argument_tokens(self):
+        """Returns all tokens that can possibly be an argument."""
+        return get_non_stop_tokens(self.document)
+
     def get_argument_wrappers(self) -> [ConverterInitArgumentWrapper]:
         """
         Returns a list of objects that hold a token and the representative for an argument of the __init__ for the
@@ -261,7 +265,7 @@ class ClassConverter(Converter):
         default_argument_wrappers = self.get_default_argument_wrappers()
         argument_wrappers = []
 
-        for token in get_non_stop_tokens(self.document):
+        for token in self.get_possible_argument_tokens():
             if not self.token_can_be_argument(token):
                 continue
 

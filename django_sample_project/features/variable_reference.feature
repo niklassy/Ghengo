@@ -1,7 +1,7 @@
 # language: de
 Funktionalität: Reference
-  Grundlage:
-   Gegeben sei ein Benutzer 1 mit dem Nachnamen "alice", der Email "a@local.local"
+#  Grundlage:
+#   Gegeben sei ein Benutzer 1 mit dem Nachnamen "alice", der Email "a@local.local"
 
 #  Szenario: Permission in Text
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "Auftrag hinzufügen"
@@ -32,8 +32,7 @@ Funktionalität: Reference
 #    Wenn Alice einen Auftrag mit der Datei "asd" erstellt
 
   Szenario: file
-    Wenn die Todoliste geholt wird
-    Dann sollte in der Liste keine Todos enthalten sein
+    Wenn die Liste der Aufträge, die abgeschlossen sind, geholt wird
 #    Dann sollten Benutzer mit dem Vornamen "Alice" existieren
 
 #    Wenn Alice ein Dach mit dem System 3 ändert
