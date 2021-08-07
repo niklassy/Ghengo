@@ -275,7 +275,7 @@ class UserReferenceVariableProperty(ReferenceModelVariableProperty):
 
     def get_token_possibilities(self):
         """In this case, the user is the model, so search for the token in the own chunk only."""
-        return self.chunk
+        return [t for t in self.chunk] + get_all_children(self.chunk.root)
 
 
 class ModelWithUserProperty(NewModelProperty):
