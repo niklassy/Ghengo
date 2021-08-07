@@ -51,6 +51,10 @@ def get_previous_token(token):
         return NoToken()
 
 
+def token_can_represent_variable(token):
+    return token_is_proper_noun(token) or token.is_digit or is_quoted(token)
+
+
 def get_non_stop_tokens(doc):
     """Reduce to the most important content."""
     return [t for t in doc if not t.is_stop]

@@ -11,8 +11,8 @@ from nlp.generate.expression import ModelFactoryExpression, CreateUploadFileExpr
 from nlp.generate.variable import Variable
 from nlp.generate.warning import NO_VALUE_FOUND_CODE, VARIABLE_NOT_FOUND, DICT_AS_STRING, FILE_NOT_FOUND, NUMBER_ERROR
 from nlp.utils import is_quoted, get_all_children, get_verb_for_token, token_is_negated, \
-    token_is_proper_noun, token_is_like_num, \
-    num_word_to_integer, get_next_token, NoToken, get_propn_from_previous_chunk
+    token_is_like_num, \
+    num_word_to_integer, get_next_token, NoToken, get_propn_from_previous_chunk, token_can_represent_variable
 
 
 class ExtractorOutput(object):
@@ -160,7 +160,7 @@ class ExtractorOutput(object):
 
         # check if any children is a digit or a proper noun, if yes they are the value
         for child in token.children:
-            if child.is_digit or token_is_proper_noun(child):
+            if token_can_represent_variable(child):
                 return str(child), child
 
         # as an alternative, if the next token is in quotes it should be the value

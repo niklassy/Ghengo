@@ -7,8 +7,8 @@ from nlp.generate.expression import ModelFactoryExpression
 from nlp.generate.variable import Variable
 from nlp.locator import RestActionLocator, FileLocator
 from nlp.searcher import ModelSearcher, NoConversionFound
-from nlp.utils import token_to_function_name, NoToken, is_proper_noun_of, token_is_proper_noun, is_quoted, \
-    token_is_noun, token_is_like_num, get_next_token, get_all_children
+from nlp.utils import token_to_function_name, NoToken, is_quoted, \
+    token_is_noun, token_is_like_num, get_next_token, get_all_children, token_can_represent_variable
 
 
 class NewModelProperty(ConverterProperty):
@@ -95,8 +95,7 @@ class NewVariableProperty(ConverterProperty):
             # sometimes nlp gets confused about variables and what belongs to this model factory and
             # what is a reference to an older variable - so if there is a variable with the exact same name
             # we assume that that token is not valid
-            propn_or_digit = child.is_digit or is_proper_noun_of(child, self.get_related_object_property().token)
-            if (propn_or_digit or is_quoted(child)) and not variable_in_tc:
+            if token_can_represent_variable(child) and not variable_in_tc:
                 return child
 
         return NoToken()
@@ -186,7 +185,7 @@ class ReferenceModelVariableProperty(NewModelVariableProperty):
 
             for token in self.get_token_possibilities():
                 defined_in_tc = self.variable_defined_in_test_case(token, model_adapter.name)
-                if (token.is_digit or token_is_proper_noun(token) or is_quoted(token)) and defined_in_tc:
+                if token_can_represent_variable(token) and defined_in_tc:
                     return token
 
         return NoToken()

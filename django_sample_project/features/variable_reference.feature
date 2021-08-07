@@ -1,7 +1,7 @@
 # language: de
 Funktionalität: Reference
-#  Grundlage:
-#   Gegeben sei ein Benutzer Alice mit dem Nachnamen "alice", der Email "a@local.local"
+  Grundlage:
+   Gegeben sei ein Benutzer 1 mit dem Nachnamen "alice", der Email "a@local.local"
 
 #  Szenario: Permission in Text
 #    Gegeben seien der Benutzer Bob mit der Benutzerberechtigung "Auftrag hinzufügen"
@@ -32,7 +32,7 @@ Funktionalität: Reference
 #    Wenn Alice einen Auftrag mit der Datei "asd" erstellt
 
   Szenario: file
-    Dann sollten zwei Aufträge mit dem Namen "Alice" existieren
+    Wenn Benutzer 1 einen Auftrag erstellt
 #    Dann sollten Benutzer mit dem Vornamen "Alice" existieren
 
 #    Wenn Alice ein Dach mit dem System 3 ändert
