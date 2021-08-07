@@ -62,7 +62,20 @@ def test_model_request_converter_anonymous(mocker):
     assert isinstance(statements[1].expression, RequestExpression)
 
 
-def test_model_request_converter_with_reference(mocker):
+@pytest.mark.parametrize(
+    'doc, variable_string, model_token_index, model_variable_index, user_var_index', [
+        (nlp('Wenn Alice den Auftrag 1 löscht'), 'Alice', 3, 4, 1),
+        (nlp('Wenn der Benutzer 1 den Auftrag 1 löscht'), '1', 5, 6, 3),
+    ]
+)
+def test_model_request_converter_with_reference(
+    mocker,
+    doc,
+    variable_string,
+    model_token_index,
+    model_variable_index,
+    user_var_index,
+):
     """Check that a converter with a reference to a model sets all properties correctly and has the correct output."""
     mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     given = Given(keyword='Wenn', text='Alice einen Auftrag holt')
@@ -70,24 +83,23 @@ def test_model_request_converter_with_reference(mocker):
     test_case = suite.create_and_add_test_case('bar')
     test_case.add_statement(AssignmentStatement(
         expression=PyTestModelFactoryExpression(ModelAdapter(User, None), []),
-        variable=Variable('Alice', 'User'),
+        variable=Variable(variable_string, 'User'),
     ))
     order_variable = Variable('1', 'Order')
     test_case.add_statement(AssignmentStatement(
         expression=PyTestModelFactoryExpression(ModelAdapter(Order, None), []),
         variable=order_variable,
     ))
-    doc = nlp('Wenn Alice den Auftrag 1 löscht')
     converter = RequestConverter(doc, given, django_project, test_case)
     statements = converter.convert_to_statements()
 
     # check all the properties
     assert isinstance(converter.model.value, ModelAdapter)
     assert converter.model.value.model == Order
-    assert converter.model.token == doc[3]
+    assert converter.model.token == doc[model_token_index]
     assert converter.model_variable.value == order_variable
-    assert converter.model_variable.token == doc[4]
-    assert converter.user.token == doc[1]
+    assert converter.model_variable.token == doc[model_variable_index]
+    assert converter.user.token == doc[user_var_index]
 
     assert len(statements) == 3
     assert isinstance(statements[0].expression, APIClientExpression)

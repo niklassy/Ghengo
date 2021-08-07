@@ -1,8 +1,8 @@
 from django_meta.api import UrlPatternAdapter
 from django_meta.model import AbstractModelFieldAdapter
 from nlp.converter.base.converter import ClassConverter
-from nlp.converter.property import UserReferenceVariableProperty, ModelWithUserProperty, MethodProperty, \
-    ReferenceModelVariableProperty
+from nlp.converter.property import UserReferenceVariableProperty, MethodProperty, \
+    ReferenceModelVariableProperty, NewModelProperty
 from nlp.extractor.fields_model import get_model_field_extractor, ModelFieldExtractor
 from nlp.extractor.fields_rest_api import get_api_model_field_extractor
 from nlp.generate.argument import Kwarg
@@ -25,8 +25,14 @@ class RequestConverter(ClassConverter):
         self._url_pattern_adapter = None
 
         self.user = UserReferenceVariableProperty(self)
-        self.model = ModelWithUserProperty(self)
         self.method = MethodProperty(self)
+
+        # the new model property should not contain the user information, if there is any
+        blocked_model_tokens = [self.method.token]
+        if self.user.token:
+            blocked_model_tokens += [self.user.chunk.root, self.user.token]
+        self.model = NewModelProperty(self, blocked_tokens=blocked_model_tokens)
+
         self.model_variable = ReferenceModelVariableProperty(self)
 
     def prepare_converter(self):

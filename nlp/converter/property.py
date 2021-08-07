@@ -278,29 +278,6 @@ class UserReferenceVariableProperty(ReferenceModelVariableProperty):
         return [t for t in self.chunk] + get_all_children(self.chunk.root)
 
 
-class ModelWithUserProperty(NewModelProperty):
-    """
-    This property can be used if there is a model defined beside a user:
-
-    E.g. Alice creates an Order
-    """
-    def get_chunk(self):
-        """
-        The model is contained in the chunk that does not hold the user or the method.
-        """
-        method_token_chunk = None
-
-        for chunk in self.converter.get_noun_chunks():
-            # in some cases the chunk might be the same as the method chunk (e.g. `Alice gets the order list`)
-            if self.converter.method.token in chunk:
-                method_token_chunk = chunk
-
-            if self.converter.user.token not in chunk and self.converter.method.token not in chunk:
-                return chunk
-
-        return method_token_chunk
-
-
 class MethodProperty(ConverterProperty):
     """
     The method property can be used to find a REST method in a sentence.
