@@ -63,9 +63,11 @@ def test_model_request_converter_anonymous(mocker):
 
 
 @pytest.mark.parametrize(
-    'doc, variable_string, model_token_index, model_variable_index, user_var_index', [
-        (nlp('Wenn Alice den Auftrag 1 löscht'), 'Alice', 3, 4, 1),
-        (nlp('Wenn der Benutzer 1 den Auftrag 1 löscht'), '1', 5, 6, 3),
+    'doc, variable_string, model_token_index, model_variable_index, user_var_index, data_field_names', [
+        (nlp('Wenn Alice den Auftrag 1 löscht'), 'Alice', 3, 4, 1, ['pk']),
+        (nlp('Wenn der Benutzer 1 den Auftrag 1 löscht'), '1', 5, 6, 3, ['pk']),
+        (nlp('Wenn der Benutzer 1 die Liste der Aufträge, die abgeschlossen sind, holt.'), '1', 7, None, 3, ['closed']),
+        (nlp('Wenn der Benutzer 1 die Liste der abgeschlossenen Aufträge holt.'), '1', 8, None, 3, ['closed']),
     ]
 )
 def test_model_request_converter_with_reference(
@@ -75,6 +77,7 @@ def test_model_request_converter_with_reference(
     model_token_index,
     model_variable_index,
     user_var_index,
+    data_field_names,
 ):
     """Check that a converter with a reference to a model sets all properties correctly and has the correct output."""
     mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
@@ -97,8 +100,11 @@ def test_model_request_converter_with_reference(
     assert isinstance(converter.model.value, ModelAdapter)
     assert converter.model.value.model == Order
     assert converter.model.token == doc[model_token_index]
-    assert converter.model_variable.value == order_variable
-    assert converter.model_variable.token == doc[model_variable_index]
+    if model_variable_index is not None:
+        assert converter.model_variable.value == order_variable
+        assert converter.model_variable.token == doc[model_variable_index]
+    else:
+        assert not converter.model_variable.token
     assert converter.user.token == doc[user_var_index]
 
     assert len(statements) == 3
@@ -107,8 +113,17 @@ def test_model_request_converter_with_reference(
     assert isinstance(statements[2].expression, RequestExpression)
     # check that the reverse expression holds the data of the order variable
     reverse_kwargs = statements[2].expression.reverse_expression.function_kwargs
-    attribute = reverse_kwargs[0].value.value
-    assert attribute.variable == order_variable
+    request_kwargs = statements[2].expression.function_kwargs
+    assert len(reverse_kwargs) + len(request_kwargs) == len(data_field_names)
+
+    for i, field_name in enumerate(data_field_names):
+        # if a primary key was meant, check that there is a variable
+        if field_name == 'pk':
+            attribute = reverse_kwargs[0].value.value
+            assert attribute.variable == order_variable
+        else:
+            # check that the field name is correct
+            assert converter.extractors[i].field_name == field_name
 
 
 @pytest.mark.parametrize(
