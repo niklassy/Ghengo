@@ -16,7 +16,7 @@ def test_decorator_with_arguments():
 
 
 def test_decorator_equals():
-    """Check that comparison is handled correctly for decorators."""
+    """Check that _comparison is handled correctly for decorators."""
     dec = Decorator('foo', [Argument('value_1'), Argument(123)])
     assert dec != '123'
     assert dec is not None

@@ -67,6 +67,13 @@ class ModelAdapter(AbstractModelAdapter):
             return None
 
     @property
+    def verbose_name_plural(self):
+        try:
+            return str(self.model._meta.verbose_name_plural)
+        except AttributeError:
+            return None
+
+    @property
     def fields(self):
         return [ModelFieldAdapter(field) for field in self.model._meta.get_fields()]
 

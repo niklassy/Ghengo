@@ -32,9 +32,8 @@ Funktionalität: Reference
 #    Wenn Alice einen Auftrag mit der Datei "asd" erstellt
 
   Szenario: file
-    Gegeben sei ein Auftrag 1
-    Und ein Auftrag 2
-    Und der Benutzer 1 hat den Vornamen "Alice"
+    Wenn die Todoliste geholt wird
+    Dann sollte in der Liste keine Todos enthalten sein
 #    Dann sollten Benutzer mit dem Vornamen "Alice" existieren
 
 #    Wenn Alice ein Dach mit dem System 3 ändert

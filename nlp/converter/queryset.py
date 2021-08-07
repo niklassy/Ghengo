@@ -201,14 +201,13 @@ class CountQuerysetConverter(QuerysetConverter):
         count_extractor = self.get_extractor_instance(count_wrapper)
         count_value = self.extract_and_handle_output(count_extractor)
 
-        # get the comparison value (==, <= etc.)
+        # get the _comparison value (==, <= etc.)
         compare_locator = ComparisonLocator(self.count.chunk, reverse=False)
-        compare_locator.locate()
 
         # create expression and statement
         expression = CompareExpression(
             Attribute(qs_statement.variable, 'count()'),
-            compare_locator.comparison,
+            compare_locator.get_comparison_for_value(count_value),
             Argument(count_value),
         )
         statement = AssertStatement(expression)

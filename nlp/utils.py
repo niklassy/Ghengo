@@ -187,7 +187,21 @@ def is_quoted(token):
 
 def token_is_negated(token):
     """Check if a token is negated."""
-    return any([child for child in token.children if child.lemma_ in NEGATIONS[token.lang_]])
+    return bool(get_negation_token(token))
+
+
+def get_negation_token(token):
+    """Returns the token that negates the given one. If there is none, a NoToken is returned."""
+    for child in token.children:
+        if token_represents_negation(child):
+            return child
+
+    return NoToken()
+
+
+def token_represents_negation(token):
+    """Check if a token represents a negation."""
+    return token.lemma_ in NEGATIONS[token.lang_]
 
 
 def token_is_indefinite(token):

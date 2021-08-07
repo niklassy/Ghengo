@@ -12,7 +12,8 @@ from nlp.generate.variable import Variable
 from nlp.generate.warning import NO_VALUE_FOUND_CODE, VARIABLE_NOT_FOUND, DICT_AS_STRING, FILE_NOT_FOUND, NUMBER_ERROR
 from nlp.utils import is_quoted, get_all_children, get_verb_for_token, token_is_negated, \
     token_is_like_num, \
-    num_word_to_integer, get_next_token, NoToken, get_propn_from_previous_chunk, token_can_represent_variable
+    num_word_to_integer, get_next_token, NoToken, get_propn_from_previous_chunk, token_can_represent_variable, \
+    get_negation_token
 
 
 class ExtractorOutput(object):
@@ -302,6 +303,10 @@ class NumberAsStringOutput(ExtractorOutput):
 
         if token.is_digit:
             return str(token), token
+
+        negation_token = get_negation_token(token)
+        if negation_token:
+            return '0', negation_token
 
         raise ExtractionError(NO_VALUE_FOUND_CODE)
 

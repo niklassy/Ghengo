@@ -12,6 +12,9 @@ class ToDo(models.Model):
     from_other_system = models.BooleanField()
     done = models.BooleanField(verbose_name='abgeschlossen')
 
+    class Meta:
+        verbose_name_plural = 'Todos'
+
 
 class Order(models.Model):
     plays_soccer = models.BooleanField()

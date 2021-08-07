@@ -84,7 +84,7 @@ def test_word_locator(doc, token_index, output, mocker):
     mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     locator = ComparisonLocator(doc)
     locator.locate()
-    assert locator.comparison == output
+    assert locator._comparison == output
 
     if token_index is not None:
         assert locator.fittest_token == doc[token_index]

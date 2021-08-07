@@ -313,7 +313,7 @@ class ResponseConverter(ResponseConverterBase):
 
         chunk = get_noun_chunk_of_token(extractor.source, self.document)
         compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
-        compare_locator.locate()
+        extracted_value = self.extract_and_handle_output(extractor)
 
         assert_statement = AssertStatement(
             CompareExpression(
@@ -323,9 +323,9 @@ class ResponseConverter(ResponseConverterBase):
                     [Argument(extractor.field_name)],
                 ),
                 # ==
-                compare_locator.comparison,
+                compare_locator.get_comparison_for_value(extracted_value),
                 # value
-                Argument(self.extract_and_handle_output(extractor)),
+                Argument(extracted_value),
             )
         )
         statements.append(assert_statement)
@@ -399,7 +399,7 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
 
             # if there is a warning set number to 0 to get the first entry
             if not extractor.generates_warning:
-                index = extracted_value - 1
+                index = extracted_value - 1 if extracted_value > 0 else 0
             else:
                 index = 0
 
@@ -469,7 +469,7 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
 
         # if there is no warning, subtract 1 since we need to translate to index values
         if not number_extractor.generates_warning:
-            extracted_number = extracted_number - 1
+            extracted_number = extracted_number - 1 if extracted_number > 0 else 0
 
         statement = AssignmentStatement(
             variable=self.entry_variable,
@@ -552,7 +552,7 @@ class ManyLengthResponseConverter(ManyResponseConverter):
 
         # the length is normally described in numbers not in adjectives (`first` vs. `one`)
         output_source = length_extractor.output.output_token
-        if output_source and output_source.pos_ != 'NUM':
+        if output_source and output_source.pos_ == 'ADJ':
             compatibility *= 0.3
 
         return compatibility
@@ -562,17 +562,17 @@ class ManyLengthResponseConverter(ManyResponseConverter):
 
         chunk = get_noun_chunk_of_token(self.get_length_token(), self.document)
         compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
-        compare_locator.locate()
 
         length_extractor = self.get_length_extractor()
+        extracted_value = self.extract_and_handle_output(length_extractor)
 
         if not length_extractor:
             return statements
 
         exp = CompareExpression(
             FunctionCallExpression('len', [Attribute(self.get_referenced_response_variable(), 'data')]),
-            compare_locator.comparison,
-            Argument(self.extract_and_handle_output(length_extractor)),
+            compare_locator.get_comparison_for_value(extracted_value),
+            Argument(extracted_value),
         )
         statements.append(AssertStatement(exp))
 

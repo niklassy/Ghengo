@@ -110,6 +110,9 @@ class ModelVariableReferenceConverter(ModelConverter):
         self.variable.calculate_value()
 
     def get_variable_model_adapter(self):
+        """
+        Returns the model adapter of the variable that this references. Returns none if there is no variable.
+        """
         if not self.variable.value:
             return None
 
@@ -180,12 +183,12 @@ class AssertPreviousModelConverter(ModelConverter):
         """For each extractor, use the field to create a compare expression."""
         chunk = get_noun_chunk_of_token(extractor.source, self.document)
         compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
-        compare_locator.locate()
+        extracted_value = extractor.extract_value()
 
         exp = CompareExpression(
             Attribute(self.variable.value, extractor.field_name),
-            compare_locator.comparison,
-            Argument(extractor.extract_value()),
+            compare_locator.get_comparison_for_value(extracted_value),
+            Argument(extracted_value),
         )
         statement = AssertStatement(exp)
         statements.append(statement)

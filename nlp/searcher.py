@@ -223,7 +223,7 @@ class ModelSearcher(Searcher):
         return AbstractModelAdapter(name=self.translator_to_en.translate(self.text))
 
     def get_keywords(self, model):
-        return [model.name, model.verbose_name]
+        return [model.name, model.verbose_name, model.verbose_name_plural]
 
     def get_possible_results(self, project_adapter, **kwargs):
         return project_adapter.get_models(as_adapter=True, include_django=True)

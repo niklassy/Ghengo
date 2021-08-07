@@ -198,7 +198,7 @@ class ComparisonLocator(Locator):
 
     def __init__(self, document, reverse=False):
         """
-        You can pass reverse to reverse the comparison value. This can be useful in cases where the code output
+        You can pass reverse to reverse the _comparison value. This can be useful in cases where the code output
         is not in the order of the text.
         """
         super().__init__(document)
@@ -209,7 +209,7 @@ class ComparisonLocator(Locator):
 
     def _get_comparison(self):
         """
-        Returns the comparison char for the given document.
+        Returns the _comparison char for the given document.
         """
         # if there is an or, it is expected to be fine to be equal too
         has_or = bool(self.or_locator.fittest_token)
@@ -229,7 +229,7 @@ class ComparisonLocator(Locator):
         return CompareChar.EQUAL
 
     @property
-    def comparison(self):
+    def _comparison(self):
         """
         Returns the compare char.
         """
@@ -238,6 +238,17 @@ class ComparisonLocator(Locator):
             return self.REVERSE_CHARS[compare_value]
 
         return compare_value
+
+    def get_comparison_for_value(self, python_value):
+        """
+        Returns the determined _comparison for a given python value.
+        """
+        self.locate()
+
+        if python_value is None or isinstance(python_value, bool):
+            return CompareChar.IS
+
+        return self._comparison
 
     def get_compare_values(self):
         """Return values that indicate greater or smaller."""
