@@ -8,7 +8,7 @@ from nlp.generate.variable import Variable
 from nlp.locator import RestActionLocator, FileLocator
 from nlp.searcher import ModelSearcher, NoConversionFound
 from nlp.utils import token_to_function_name, NoToken, is_quoted, \
-    token_is_noun, token_is_like_num, get_next_token, get_all_children, token_can_represent_variable
+    token_is_noun, token_is_like_num, get_next_token, get_all_children, token_can_represent_variable, get_noun_chunks
 
 
 class NewModelProperty(ConverterProperty):
@@ -128,7 +128,11 @@ class NewVariableProperty(ConverterProperty):
     @property
     def name(self):
         """The name of the variable."""
-        return token_to_function_name(self.token)
+        return self.token_to_variable_name(self.token)
+
+    @classmethod
+    def token_to_variable_name(cls, token):
+        return token_to_function_name(token)
 
 
 class NewModelVariableProperty(NewVariableProperty):
@@ -151,39 +155,55 @@ class ReferenceModelVariableProperty(NewModelVariableProperty):
     """
     This property can be used when a variable is needed that was already created previously.
     """
+    def __init__(self, converter, related_object_property=None):
+        super().__init__(converter)
+        self.related_object_property = related_object_property
+
+    def get_related_object_property(self):
+        if self.related_object_property:
+            return self.related_object_property
+
+        return super().get_related_object_property()
+
     def get_token_possibilities(self):
         """Since we are referencing a variable, try the model token children and the own chunk."""
-        return [c for c in self.converter.model.token.children] + [t for t in self.chunk]
+        return [c for c in self.get_related_object_property().token.children] + [t for t in self.chunk]
 
-    def get_model_adapter(self, statement):
+    def get_model_adapter(self, statement, token):
         """
         Returns the model of the variable. By default it tries to access the model in the converter. If that
         is not available, use the model from the statement.
         """
-        if hasattr(self.converter, 'model'):
-            model_adapter = self.get_related_object_property().value
+        # check if there is a variable with the string and without the reference
+        token_fits_general_variable = self.converter.test_case.variable_defined(
+            self.token_to_variable_name(token),
+            None,
+        )
 
-            # if the found model is abstract, use the adapter from the statement, just to be sure
-            if model_adapter.__class__ == AbstractModelAdapter:
-                return statement.expression.model_adapter
+        # we should allow models that are not in the code already
+        model_adapter = self.get_related_object_property().value or statement.expression.model_adapter
 
-            return self.converter.model.value or statement.expression.model_adapter
-        return statement.expression.model_adapter
+        # BUT if we find a token that generally fits the name of the model and the model does not exist in code
+        # yet, we trust the input and use the model from the statement where the strings fit
+        if token_fits_general_variable and not model_adapter.exists_in_code:
+            model_adapter = statement.expression.model_adapter
+
+        return model_adapter
 
     def get_token(self):
         """The token of the variable must reference a variable that was previously defined."""
         if not self.chunk:
             return NoToken()
 
-        for statement in self.converter.test_case.statements:
-            if not isinstance(statement.expression, ModelFactoryExpression):
-                continue
+        for token in self.get_token_possibilities():
+            for statement in self.converter.test_case.statements:
+                if not isinstance(statement.expression, ModelFactoryExpression):
+                    continue
 
-            model_adapter = self.get_model_adapter(statement)
-            if not model_adapter or model_adapter.model != statement.expression.model_adapter.model:
-                continue
+                model_adapter = self.get_model_adapter(statement, token)
+                if not model_adapter or not model_adapter.models_are_equal(statement.expression.model_adapter):
+                    continue
 
-            for token in self.get_token_possibilities():
                 defined_in_tc = self.variable_defined_in_test_case(token, model_adapter.name)
                 if token_can_represent_variable(token) and defined_in_tc:
                     return token
@@ -207,7 +227,7 @@ class ReferenceModelVariableProperty(NewModelVariableProperty):
             if not isinstance(statement.expression, ModelFactoryExpression):
                 continue
 
-            model = self.get_model_adapter(statement)
+            model = self.get_model_adapter(statement, self.token)
             future_name = token_to_function_name(self.token)
 
             if statement.string_matches_variable(future_name, model.name):
@@ -266,7 +286,7 @@ class UserReferenceVariableProperty(ReferenceModelVariableProperty):
     """
     This property can be used when a variable is referenced from the model User.
     """
-    def get_model_adapter(self, statement):
+    def get_model_adapter(self, statement, token):
         user_path = AUTH_USER_MODEL.split('.')
 
         return ModelAdapter.create_with_model(

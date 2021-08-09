@@ -2,7 +2,7 @@ from typing import Optional
 
 from django_meta.model import AbstractModelFieldAdapter
 from nlp.converter.base.converter import ClassConverter
-from nlp.converter.property import NewModelProperty
+from nlp.converter.property import NewModelProperty, ReferenceModelVariableProperty
 from nlp.converter.wrapper import ConverterInitArgumentWrapper
 from nlp.extractor.base import IntegerExtractor, Extractor, StringExtractor
 from nlp.extractor.fields_model import ModelFieldExtractor, get_model_field_extractor
@@ -11,7 +11,8 @@ from nlp.extractor.output import ModelVariableOutput
 from nlp.generate.argument import Argument
 from nlp.generate.attribute import Attribute
 from nlp.generate.constants import CompareChar
-from nlp.generate.expression import CompareExpression, FunctionCallExpression, Expression, RequestExpression
+from nlp.generate.expression import CompareExpression, FunctionCallExpression, Expression, RequestExpression, \
+    ModelFactoryExpression
 from nlp.generate.index import Index
 from nlp.generate.statement import AssertStatement, AssignmentStatement
 from nlp.generate.variable import Variable
@@ -40,6 +41,7 @@ class ResponseConverterBase(ClassConverter):
         self.error_locator.locate()
 
         self.model_in_text = NewModelProperty(self, blocked_tokens=self._blocked_argument_tokens)
+        self.model_in_text_var = ReferenceModelVariableProperty(self, self.model_in_text)
 
     @property
     def model_adapter_from_request(self):
@@ -137,6 +139,11 @@ class ResponseConverterBase(ClassConverter):
         # if there was no request previously, it is unlikely that this converter is compatible
         if not any([isinstance(s.expression, RequestExpression) for s in self.test_case.statements]):
             compatibility *= 0.1
+
+        # TODO: create tests for this
+        # if there is a model variable in the text, it is more likely that it is meant instead
+        if self.model_in_text_var.value:
+            compatibility *= 0.7
 
         return compatibility
 
@@ -438,10 +445,12 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
         entry_extractor = self.get_entry_extractor()
 
         # if there is no extractor for the entry, we cannot determine which entry we should check
-        if entry_extractor is None:
+        if entry_extractor is None or compatibility < 0.7:
             compatibility *= 0.1
             return compatibility
 
+        # this converter is more likely determined by the entry token, so we need to negate it and start from scratch
+        compatibility = 1
         entry_token = self.get_entry_token()
         output_source = entry_extractor.output.output_token
 
