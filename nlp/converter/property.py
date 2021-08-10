@@ -9,7 +9,7 @@ from nlp.locator import RestActionLocator, FileLocator
 from nlp.searcher import ModelSearcher, NoConversionFound
 from nlp.utils import token_to_function_name, NoToken, is_quoted, \
     token_is_noun, token_is_like_num, get_next_token, get_all_children, token_can_represent_variable, get_noun_chunks, \
-    tokens_are_equal
+    tokens_are_equal, token_in_list
 
 
 class NewModelProperty(ConverterProperty):
@@ -24,7 +24,7 @@ class NewModelProperty(ConverterProperty):
 
     def get_chunk(self):
         for chunk in self.converter.get_noun_chunks():
-            if any([token_is_noun(t) and t not in self.blocked_tokens for t in chunk]):
+            if any([token_is_noun(t) and not token_in_list(t, self.blocked_tokens) for t in chunk]):
                 return chunk
 
         return None

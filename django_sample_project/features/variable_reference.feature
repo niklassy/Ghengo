@@ -33,8 +33,7 @@ Funktionalität: Reference
 
   Szenario: file
     Gegeben sei ein Auftrag 1
-    Wenn die Liste der Aufträge, die abgeschlossen sind, geholt wird
-    Dann der Auftrag mit der Id 2 den Wert x haben
+    Wenn die Details von Auftrag 1 geholt werden
 
 #    Dann sollten Benutzer mit dem Vornamen "Alice" existieren
 

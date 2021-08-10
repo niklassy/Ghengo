@@ -48,6 +48,11 @@ def tokens_are_equal(token_1, token_2):
     return token_1 == token_2
 
 
+def token_in_list(token, token_list):
+    """Check if a given token is present in a list."""
+    return any([tokens_are_equal(token, t) for t in token_list])
+
+
 def get_previous_token(token):
     """
     Returns the token that is behind the one that is passed to the function. If there is none, a NoToken instance is

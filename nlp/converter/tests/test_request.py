@@ -2,6 +2,7 @@ import pytest
 from django.contrib.auth.models import User
 
 from core.constants import Languages
+from django_meta.api import Methods
 from django_meta.model import ModelAdapter
 from django_meta.project import DjangoProject
 from django_sample_project.apps.order.models import Order
@@ -63,11 +64,44 @@ def test_model_request_converter_anonymous(mocker):
 
 
 @pytest.mark.parametrize(
+    'doc, method, reverse_name', [
+        (nlp('Wenn Alice den Auftrag 1 löscht'), Methods.DELETE, 'orders-detail'),
+        (nlp('Wenn die Liste der Aufträge geholt wird'), Methods.GET, 'orders-list'),
+        (nlp('Wenn die Details des Auftrag 1 geholt wird'), Methods.GET, 'orders-detail'),
+        (nlp('Wenn ein Auftrag mit dem Namen "Test" erstellt wird.'), Methods.POST, 'orders-detail'),
+        (nlp('Wenn der Auftrag 1 so geändert wird, dass der Name "foo" ist'), Methods.PUT, 'orders-detail'),
+    ]
+)
+def test_model_request_converter_reverse_name(doc, method, reverse_name, mocker):
+    """Check that the correct reverse is given."""
+    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    given = Given(keyword='Wenn', text='Alice einen Auftrag holt')
+    suite = PyTestTestSuite('foo')
+    test_case = suite.create_and_add_test_case('bar')
+    test_case.add_statement(AssignmentStatement(
+        expression=PyTestModelFactoryExpression(ModelAdapter(User, None), []),
+        variable=Variable('Alice', 'User'),
+    ))
+    order_variable = Variable('1', 'Order')
+    test_case.add_statement(AssignmentStatement(
+        expression=PyTestModelFactoryExpression(ModelAdapter(Order, None), []),
+        variable=order_variable,
+    ))
+    converter = RequestConverter(doc, given, django_project, test_case)
+    statements = converter.convert_to_statements()
+    api_call_expression = statements[-1].expression
+    reverse_expression = statements[-1].expression.reverse_expression
+    assert reverse_expression.reverse_name.value == reverse_name
+    assert api_call_expression.function_name == method
+
+
+@pytest.mark.parametrize(
     'doc, variable_string, model_token_index, model_variable_index, user_var_index, data_field_names', [
         (nlp('Wenn Alice den Auftrag 1 löscht'), 'Alice', 3, 4, 1, ['pk']),
         (nlp('Wenn der Benutzer 1 den Auftrag 1 löscht'), '1', 5, 6, 3, ['pk']),
         (nlp('Wenn der Benutzer 1 die Liste der Aufträge, die abgeschlossen sind, holt.'), '1', 7, None, 3, ['closed']),
         (nlp('Wenn der Benutzer 1 die Liste der abgeschlossenen Aufträge holt.'), '1', 8, None, 3, ['closed']),
+        (nlp('Wenn der Benutzer 1 den Auftrag 1 so ändert, dass der Name "foo" ist.'), '1', 5, 6, 3, ['name', 'pk']),
     ]
 )
 def test_model_request_converter_with_reference(

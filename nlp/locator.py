@@ -261,7 +261,7 @@ class ComparisonLocator(Locator):
 
 class RestActionLocator(Locator):
     """This locator finds a token that indicates a special REST action."""
-    GET_VALUES = ['list', 'get', 'detail', 'fetch']
+    GET_VALUES = ['detail', 'list', 'get', 'fetch']
     DELETE_VALUES = ['remove', 'delete', 'clear', 'destroy']
     UPDATE_VALUES = ['change', 'update', 'modify', 'adjust']
     CREATE_VALUES = ['create', 'generate', 'add']
