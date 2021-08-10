@@ -12,6 +12,7 @@ Here are some features:
 
 ### Creating models and referencing each other
 
+![alt text](img/model_creation.gif)
 
 ### Creating files
 ### Making requests
