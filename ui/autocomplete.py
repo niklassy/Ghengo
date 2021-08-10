@@ -28,7 +28,7 @@ class AutoCompleteMultiLine(object):
     @classmethod
     def as_ui(cls):
         """Returns the ui element for the autocomplete."""
-        return sg.Multiline('', key=cls.key, font=('Courier', 15))
+        return sg.Multiline('', size=(1, 1), key=cls.key, font=('Courier', 15))
 
     def set_cursor_position(self):
         """Sets the cursor position in the gherkin editor to the position that was saved."""

@@ -46,7 +46,7 @@ def run_ui():
     ]
 
     # Create the Window
-    window = sg.Window('Ghenko - Django-Gherkin Test Generator', layout)
+    window = sg.Window('Ghengo - Django-Gherkin Test Generator', layout)
 
     c = GherkinToPyTestCompiler()
     last_gherkin_text = ''

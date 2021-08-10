@@ -8,7 +8,8 @@ from nlp.generate.variable import Variable
 from nlp.locator import RestActionLocator, FileLocator
 from nlp.searcher import ModelSearcher, NoConversionFound
 from nlp.utils import token_to_function_name, NoToken, is_quoted, \
-    token_is_noun, token_is_like_num, get_next_token, get_all_children, token_can_represent_variable, get_noun_chunks
+    token_is_noun, token_is_like_num, get_next_token, get_all_children, token_can_represent_variable, get_noun_chunks, \
+    tokens_are_equal
 
 
 class NewModelProperty(ConverterProperty):
@@ -145,10 +146,16 @@ class NewFileVariableProperty(NewVariableProperty):
     def get_related_object_property(self):
         return self.converter.file
 
+    @property
+    def reference_string(self):
+        return 'file'
+
     def get_token_possibilities(self):
         """The variable cannot be represented by the token that represents the file extension."""
         possibilities = super().get_token_possibilities()
-        return [token for token in possibilities if token != self.converter.file_extension_locator.fittest_token]
+        file_token = self.converter.file_extension_locator.fittest_token
+
+        return [token for token in possibilities if not tokens_are_equal(token, file_token)]
 
 
 class ReferenceModelVariableProperty(NewModelVariableProperty):

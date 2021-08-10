@@ -140,7 +140,6 @@ class ResponseConverterBase(ClassConverter):
         if not any([isinstance(s.expression, RequestExpression) for s in self.test_case.statements]):
             compatibility *= 0.1
 
-        # TODO: create tests for this
         # if there is a model variable in the text, it is more likely that it is meant instead
         if self.model_in_text_var.value:
             compatibility *= 0.7
