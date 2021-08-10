@@ -1,4 +1,4 @@
-# Django-Gherkin Test Generator
+# Ghengo - Django-Gherkin Test Generator
 
 ## What is this?
 With this project you are able to generate code with natural language. In this case Gherkin can be
@@ -7,6 +7,18 @@ It is fully tested for German but it also works in English. But it does not work
 
 Here you can see it in action. The UI for this was not the main part of the project and it is somewhat wonky and
 slow. You can still use it to try some stuff.
+
+Here are some features:
+
+### Creating models and referencing each other
+
+
+### Creating files
+### Making requests
+### Analyzing list responses
+### Analyzing simple responses
+### Analyzing database
+### Analyzing earlier model entries
 
 ![alt text](img/ui_demo_fast.gif)
 

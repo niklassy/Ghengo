@@ -167,7 +167,7 @@ class CommentToken(TokenContainsWholeLineMixin, GherkinToken):
 
 
 class LanguageToken(TokenContainsWholeLineMixin, GherkinToken):
-    color = '#444'
+    color = '#8e44ad'
 
     def __init__(self, text, line):
         super().__init__(line=line, text=text)
