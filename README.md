@@ -12,10 +12,16 @@ Here are some features:
 
 ### Creating models and referencing each other
 
-![alt text](img/model_creation.gif)
+![Creating model entries](img/model_creation.gif)
 
 ### Creating files
+
+![Creating an uploaded file](img/file_creation.gif)
+
 ### Making requests
+
+
+
 ### Analyzing list responses
 ### Analyzing simple responses
 ### Analyzing database

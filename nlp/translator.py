@@ -130,7 +130,7 @@ class CacheTranslator(object):
         """
         Translates a given text.
         """
-        if all([char in '!"#$%&\'()*+,-./:;<=>?@[]^_`{|}~\\' for char in text]):
+        if all([char in '!"#$%&\'()*+,-./:;<=>?@[]^_`{|}~\\1234567890' for char in text]):
             return text
 
         if self.translator is None:

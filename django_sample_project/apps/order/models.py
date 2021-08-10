@@ -18,6 +18,7 @@ class ToDo(models.Model):
 
 class Order(models.Model):
     plays_soccer = models.BooleanField()
+    proof = models.FileField()
     name = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
     to_dos = models.ManyToManyField(ToDo, related_name='orders')

@@ -74,6 +74,8 @@ def run_ui():
 
     window['GHERKIN_EDITOR'].Widget.bind('<Command-g>', on_generate_tests)
     window['GHERKIN_EDITOR'].Widget.bind('<Control-g>', on_generate_tests)
+    window['GHERKIN_EDITOR'].Widget.bind('<Command-r>', lambda *args: window['OUTPUT_FIELD'].update(''))
+    window['GHERKIN_EDITOR'].Widget.bind('<Control-r>', lambda *args: window['OUTPUT_FIELD'].update(''))
 
     while True:
         event, values = window.read(timeout=25)
