@@ -60,6 +60,7 @@ def test_tiler_best_converter():
     'keyword, text, expected_converter_cls', [
         ('Dann', 'sollten Aufträge mit dem Namen "Alice" existieren.', ExistsQuerysetConverter),
         ('Dann', 'sollten zwei Aufträge mit dem Namen "Alice" existieren', CountQuerysetConverter),
+        ('Dann', 'sollten zwei Benutzer mit dem Namen "Alice" existieren', CountQuerysetConverter),
         ('Dann', 'sollte Alice den Namen "Alice" haben.', AssertPreviousModelConverter),
         ('Dann', 'sollte der Benutzer Alice den Namen "Alice" haben.', AssertPreviousModelConverter),
         ('Dann', 'sollte der Auftrag mit der ID 2 den Namen "Alice" haben.', ObjectQuerysetConverter),
@@ -69,6 +70,7 @@ def test_tiler_best_converter():
         ('Dann', 'sollte die Antwort den Status 200 haben.', ResponseStatusCodeConverter),
         ('Dann', 'sollten drei Einträge zurückgegeben werden.', ManyLengthResponseConverter),
         ('Dann', 'sollten drei Benutzer zurückgegeben werden.', ManyLengthResponseConverter),
+        ('Dann', 'sollte die Antwort drei Benutzer enthalten.', ManyLengthResponseConverter),
         ('Dann', 'sollte die Antwort eine Länge von 2 haben.', ManyLengthResponseConverter),
         ('Dann', 'sollte der zweite Eintrag den Namen "Alice" enthalten.', ManyCheckEntryResponseConverter),
     ]
