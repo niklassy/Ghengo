@@ -19,19 +19,19 @@ Here are some features:
 ![Creating an uploaded file](demo/gif/file_creation.gif)
 
 ### Making requests
-CREATED
+![Making requests](demo/gif/requests.gif)
 
 ### Analyzing list responses
-CREATED
+![Checking list responses](demo/gif/list_response.gif)
 
 ### Analyzing simple responses
-CREATED
+![Checking simple responses](demo/gif/single_entry_resp.gif)
 
 ### Analyzing database
-
+![Accesing the database](demo/gif/queryset.gif)
 
 ### Analyzing earlier model entries
-CREATED
+![Checking previous model entries](demo/gif/previous_model.gif)
 
 ## Setup
 You need to install Pipenv first.
