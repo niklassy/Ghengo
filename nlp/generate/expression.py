@@ -3,7 +3,7 @@ import mimetypes
 
 from nlp.generate.argument import Argument, Kwarg
 from nlp.generate.constants import CompareChar
-from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
+from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin, ReferencedVariablesMixin
 from nlp.generate.replaceable import Replaceable
 from settings import PYTHON_INDENT_SPACES
 from nlp.generate.statement import Statement
@@ -11,7 +11,7 @@ from nlp.generate.suite import Import, ImportPlaceholder
 from nlp.generate.utils import camel_to_snake_case
 
 
-class Expression(Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
+class Expression(ReferencedVariablesMixin, Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
     template = '{child}'
 
     def __init__(self, child=None):
@@ -32,6 +32,10 @@ class FunctionCallExpression(Expression):
         super().__init__()
         self.function_name = function_name
         self.function_kwargs = function_kwargs
+
+    def get_variable_reference_children(self):
+        references = super().get_variable_reference_children()
+        return references + [self.function_name] + self.function_kwargs
 
     def get_template_context(self, line_indent, indent):
         kwargs_template = ', '.join([kwarg.to_template(line_indent) for kwarg in self.function_kwargs])
@@ -59,6 +63,9 @@ class ModelSaveExpression(FunctionCallExpression):
     def __init__(self, variable):
         self.variable = variable
         super().__init__('save', [])
+
+    def get_variable_reference_children(self):
+        return [self.variable]
 
     def get_template_context(self, line_indent, indent):
         context = super().get_template_context(line_indent, 0)
@@ -114,6 +121,10 @@ class CompareExpression(Expression):
         assert compare_char in CompareChar.get_all()
         self.compare_char = compare_char
 
+    def get_variable_reference_children(self):
+        references = super().get_variable_reference_children()
+        return references + [self.value_1, self.value_2]
+
     def get_template_context(self, line_indent, indent):
         return {'compare_char': self.compare_char, 'value_1': self.value_1, 'value_2': self.value_2}
 
@@ -128,7 +139,12 @@ class APIClientExpression(FunctionCallExpression):
 
 class APIClientAuthenticateExpression(FunctionCallExpression):
     def __init__(self, client_variable, user_variable):
+        self.client_variable = client_variable
         super().__init__('{}.force_authenticate'.format(client_variable), [Argument(user_variable)])
+
+    def get_variable_reference_children(self):
+        references = super().get_variable_reference_children()
+        return references + [self.client_variable]
 
 
 class ReverseCallExpression(FunctionCallExpression):
@@ -137,6 +153,10 @@ class ReverseCallExpression(FunctionCallExpression):
     def __init__(self, reverse_name, reverse_kwargs):
         super().__init__('reverse', reverse_kwargs)
         self.reverse_name = Argument(reverse_name)
+
+    def get_variable_reference_children(self):
+        references = super().get_variable_reference_children()
+        return references + [self.reverse_name]
 
     def get_template_context(self, line_indent, indent):
         context = super().get_template_context(line_indent, indent)
@@ -159,6 +179,10 @@ class RequestExpression(FunctionCallExpression):
         self.client_variable = client_variable
         self.reverse_expression = ReverseCallExpression(reverse_name, reverse_kwargs)
         self.url_adapter = url_adapter
+
+    def get_variable_reference_children(self):
+        references = super().get_variable_reference_children()
+        return references + [self.client_variable, self.reverse_expression]
 
     @property
     def serializer_class(self):
@@ -223,6 +247,10 @@ class ModelM2MAddExpression(Expression):
         self.model_instance_variable = model_instance_variable
         self.field = field
         self.add_variable = add_variable
+
+    def get_variable_reference_children(self):
+        references = super().get_variable_reference_children()
+        return references + [self.model_instance_variable, self.add_variable]
 
     def get_template_context(self, line_indent, indent):
         variable = self.add_variable

@@ -33,8 +33,8 @@ Funktionalität: Reference
 
   Szenario: file
     Gegeben sei ein Auftrag 1 mit dem Namen "foo"
-    Wenn ein Auftrag erstellt wird
-    Dann sollten zwei Aufträge enthalten sein
+    Und ein Auftrag 2
+    Wenn Auftrag 1 gelöscht wird
 
 #    Dann sollten Benutzer mit dem Vornamen "Alice" existieren
 

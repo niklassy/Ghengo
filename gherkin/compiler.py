@@ -203,6 +203,8 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         for child in ast.feature.get_scenario_children():
             self.scenario_to_test_case(child, suite, project)
 
+        suite.clean_up()
+
         Settings.generate_test_type = Settings.Defaults.GENERATE_TEST_TYPE
 
         return suite.to_template()

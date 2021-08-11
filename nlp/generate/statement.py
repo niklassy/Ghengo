@@ -1,8 +1,8 @@
-from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
+from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin, ReferencedVariablesMixin
 from nlp.generate.replaceable import Replaceable
 
 
-class Statement(Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
+class Statement(ReferencedVariablesMixin, Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
     template = '{expression}{comment}'
 
     def __init__(self, expression, comment=None):
@@ -17,6 +17,9 @@ class Statement(Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
             'comment': '   # {}'.format(self.comment) if self.comment else ''
         }
 
+    def get_variable_reference_children(self):
+        return [self.expression]
+
     def on_add_to_test_case(self, test_case):
         self.test_case = test_case
 
@@ -26,6 +29,12 @@ class Statement(Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
     def string_matches_variable(self, string, reference_string):
         return False
 
+    def clean_up(self, test_case, referenced_variables):
+        """
+        Can be used to clean up statements before everything is shipped.
+        """
+        pass
+
 
 class AssignmentStatement(Statement):
     template = '{variable} = {expression}{comment}'
@@ -34,6 +43,16 @@ class AssignmentStatement(Statement):
         super().__init__(expression)
         self.variable = variable
         variable.set_value(self.expression)
+
+    def get_variable_reference_children(self):
+        references = super().get_variable_reference_children()
+        references.append(self.variable)
+        return references
+
+    def clean_up(self, test_case, referenced_variables):
+        # if the variable here is not used anywhere, remove it
+        if self.variable not in referenced_variables:
+            self.variable = None
 
     def string_matches_variable(self, string, reference_string=None):
         """
@@ -83,6 +102,11 @@ class ModelFieldAssignmentStatement(Statement):
         self.field_name = field_name
         self.variable = variable
         super().__init__(assigned_value)
+
+    def get_variable_reference_children(self):
+        references = super().get_variable_reference_children()
+        references.append(self.variable)
+        return references
 
     def get_template_context(self, line_indent, indent):
         context = super().get_template_context(line_indent, indent)
