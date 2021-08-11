@@ -12,11 +12,11 @@ Here are some features:
 
 ### Creating models and referencing each other
 
-![Creating model entries](img/gif/model_creation.gif)
+![Creating model entries](demo/gif/model_creation.gif)
 
 ### Creating files
 
-![Creating an uploaded file](img/gif/file_creation.gif)
+![Creating an uploaded file](demo/gif/file_creation.gif)
 
 ### Making requests
 CREATED
