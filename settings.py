@@ -17,15 +17,31 @@ class _Settings:
         LANGUAGE = Languages.EN
         GENERATE_TEST_TYPE = GenerationType.PY_TEST
         DJANGO_SETTINGS_PATH = 'django_sample_project.apps.config.settings'
+        TEST_EXPORT_DIRECTORY = 'generated_tests/'
+        TEST_IMPORT_FILE = 'django_sample_project/features/variable_reference.feature'
 
+    # the language in gherkin
     language = Defaults.LANGUAGE
+
+    # the tests that are generated
     generate_test_type = Defaults.GENERATE_TEST_TYPE
+
+    # the settings path to the django project
     django_settings_path = Defaults.DJANGO_SETTINGS_PATH
+
+    # the directory to which tests are exported to
+    test_export_directory = Defaults.TEST_EXPORT_DIRECTORY
+
+    # the gherkin file which is imported
+    test_import_file = Defaults.TEST_IMPORT_FILE
 
     def reset(self):
         """Reset the settings to the default values."""
         self.language = self.Defaults.LANGUAGE
         self.generate_test_type = self.Defaults.GENERATE_TEST_TYPE
+        self.django_settings_path = self.Defaults.DJANGO_SETTINGS_PATH
+        self.test_export_directory = self.Defaults.TEST_EXPORT_DIRECTORY
+        self.test_import_file = self.Defaults.TEST_IMPORT_FILE
 
 
 Settings = _Settings()
