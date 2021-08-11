@@ -4,11 +4,12 @@ import PySimpleGUI as sg
 from gherkin.exception import GherkinInvalid
 from gherkin.token import CommentToken
 from nlp.setup import Nlp
+from settings import Settings
 from ui.window import WindowValues
 
 
 def run_ui():
-    setup_django('django_sample_project.apps.config.settings')
+    setup_django(Settings.django_settings_path)
     # all imports must follow the setup!!
     from gherkin.compiler import GherkinToPyTestCompiler
     from ui.autocomplete import AutoCompleteMultiLine
