@@ -7,7 +7,6 @@ from nlp.converter.wrapper import ConverterInitArgumentWrapper
 from nlp.extractor.base import IntegerExtractor, Extractor, StringExtractor
 from nlp.extractor.fields_model import ModelFieldExtractor, get_model_field_extractor
 from nlp.extractor.fields_rest_api import ApiModelFieldExtractor, get_api_model_field_extractor
-from nlp.extractor.output import ModelVariableOutput
 from nlp.generate.argument import Argument
 from nlp.generate.attribute import Attribute
 from nlp.generate.constants import CompareChar
@@ -185,9 +184,9 @@ class ResponseConverterBase(ClassConverter):
     def extract_and_handle_output(self, extractor):
         extracted_value = super().extract_and_handle_output(extractor)
 
-        # sine we are currently not supporting nested objects, if a model variable is returned from the extractor
+        # since we are currently not supporting nested objects, if a model variable is returned from the extractor
         # use the pk instead of that variable
-        if extractor.get_output_class() == ModelVariableOutput:
+        if isinstance(extracted_value, Variable) and isinstance(extracted_value.value, ModelFactoryExpression):
             return Attribute(extracted_value, 'pk')
 
         return extracted_value

@@ -21,10 +21,15 @@ Here are some features:
 ### Making requests
 
 
-
 ### Analyzing list responses
+
+
 ### Analyzing simple responses
+
+
 ### Analyzing database
+
+
 ### Analyzing earlier model entries
 
 ![alt text](img/ui_demo_fast.gif)
