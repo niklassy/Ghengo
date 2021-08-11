@@ -15,9 +15,9 @@ from nlp.generate.expression import CompareExpression, FunctionCallExpression, E
 from nlp.generate.index import Index
 from nlp.generate.statement import AssertStatement, AssignmentStatement
 from nlp.generate.variable import Variable
-from nlp.locator import ComparisonLocator, NounLocator
+from nlp.locator import ComparisonLocator, NounLocator, VerbLocator
 from nlp.searcher import SerializerFieldSearcher, ModelFieldSearcher
-from nlp.utils import get_noun_chunk_of_token, NoToken
+from nlp.utils import get_noun_chunk_of_token, NoToken, token_is_definite, get_previous_token
 
 
 class ResponseConverterBase(ClassConverter):
@@ -275,9 +275,13 @@ class ResponseConverter(ResponseConverterBase):
 
             # check if there is a model in the text, if not it is very unlikely to fit
             if self.model_in_text.token:
+                token_before = get_previous_token(self.model_in_text.token)
 
-                # if there is a model token and it fits the request model, this is likely to fit though
-                if self.model_in_text_fits_request:
+                # if there is a model token and it fits the request model, this is likely to fit though if
+                # the word before is definite (`der Auftrag`, `the order`)
+                # YES => Dann sollte *der* Auftrag den Namen "sa" haben
+                # NO  => Dann sollte *ein* Auftrag mit dem Namen "asd" existieren
+                if self.model_in_text_fits_request and token_is_definite(token_before):
                     compatibility *= 1
                 else:
                     compatibility *= 0.5
@@ -390,10 +394,18 @@ class ManyResponseConverter(ResponseConverterBase):
         # if there is the word `entry` it is likely that multiple objects are returned
         entry_token = self.response_entry_locator.fittest_token
 
-        if not list_token and not length_token and not entry_token and not self.model_in_text_fits_request:
-            compatibility *= 0.3
+        if not list_token and not length_token and not entry_token:
+            if not self.model_in_text_fits_request:
+                compatibility *= 0.3
+            else:
+                # if there is a model token that fits, check for a verb like contain or return that reference the
+                # request
+                verb_locator = VerbLocator(self.document, words=['to contain', 'to return'])
+                verb_locator.locate()
 
-        # make sure to stay between 0 and 1
+                if not verb_locator.fittest_token:
+                    compatibility *= 0.8
+
         return compatibility
 
 

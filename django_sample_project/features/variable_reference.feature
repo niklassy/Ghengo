@@ -33,8 +33,8 @@ Funktionalität: Reference
 
   Szenario: file
     Gegeben sei ein Auftrag 1 mit dem Namen "foo"
-    Wenn die Details von Auftrag 1 geholt werden
-    Dann sollte die Antwort den Name "foo" und den PK 1 enthalten
+    Wenn ein Auftrag erstellt wird
+    Dann sollten zwei Aufträge enthalten sein
 
 #    Dann sollten Benutzer mit dem Vornamen "Alice" existieren
 

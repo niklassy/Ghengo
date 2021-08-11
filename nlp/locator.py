@@ -160,17 +160,22 @@ class WordLocator(Locator):
     """
     This is a locator to search for a given word.
     """
-    def __init__(self, document, word):
+    def __init__(self, document, words):
         super().__init__(document)
-        self.word = word
+        self.words = words
 
     def get_compare_values(self):
-        return [self.word]
+        return [self.words] if not isinstance(self.words, list) else self.words
 
 
 class NounLocator(WordLocator):
     def token_is_relevant(self, token):
         return token_is_noun(token)
+
+
+class VerbLocator(WordLocator):
+    def token_is_relevant(self, token):
+        return token_is_verb(token)
 
 
 class FileLocator(NounLocator):

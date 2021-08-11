@@ -9,7 +9,7 @@ from nlp.generate.expression import Expression, CompareExpression, ModelQueryset
     ModelQuerysetBaseExpression, ModelQuerysetFilterExpression, ModelQuerysetAllExpression
 from nlp.generate.statement import AssertStatement, AssignmentStatement
 from nlp.generate.variable import Variable
-from nlp.locator import ComparisonLocator
+from nlp.locator import ComparisonLocator, VerbLocator
 from nlp.utils import token_is_plural, token_is_definite, token_is_indefinite, get_previous_token, token_is_noun, \
     tokens_are_equal
 

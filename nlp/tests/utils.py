@@ -484,7 +484,8 @@ TRANSLATIONS_EN = {
     "view order": "Bestellung ansehen",
     "view permission": "Berechtigung anzeigen",
     "view session": "Sitzung ansehen",
-    "view user": "Benutzer anzeigen"
+    "view user": "Benutzer anzeigen",
+    "to return": "zurückgeben",
 }
 
 
