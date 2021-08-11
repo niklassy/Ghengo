@@ -150,7 +150,7 @@ class RequestConverter(ClassConverter):
         except IndexError:
             fallback_method = 'get'
 
-        return self.method.value or self.url_pattern_adapter.methods[0]
+        return self.method.value or fallback_method
 
     def prepare_statements(self, statements):
         """
