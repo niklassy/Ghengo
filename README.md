@@ -12,11 +12,11 @@ Here are some features:
 
 ### Creating models and referencing each other
 
-![Creating model entries](img/model_creation.gif)
+![Creating model entries](img/gif/model_creation.gif)
 
 ### Creating files
 
-![Creating an uploaded file](img/file_creation.gif)
+![Creating an uploaded file](img/gif/file_creation.gif)
 
 ### Making requests
 CREATED
@@ -31,8 +31,7 @@ CREATED
 
 
 ### Analyzing earlier model entries
-
-![alt text](img/ui_demo_fast.gif)
+CREATED
 
 ## Setup
 You need to install Pipenv first.
