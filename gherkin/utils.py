@@ -34,7 +34,9 @@ def get_token_suggestion_after_line(sequence, line_index, return_full_sequence=F
         ScenarioGrammar,
         ExamplesGrammar,
         ScenarioOutlineGrammar,
-        BackgroundGrammar,
+        # next two cases are needed to enable autocomplete of Background since it always needs scenarios
+        [BackgroundGrammar, ScenarioGrammar],
+        [GivenGrammar, ScenarioGrammar],
         RuleGrammar,
         FeatureGrammar,
     ]
@@ -59,7 +61,13 @@ def get_token_suggestion_after_line(sequence, line_index, return_full_sequence=F
     new_line = Line('', line_index)
 
     for suggested_grammar in suggested_grammars:
-        token_sequence = [token_cls('', new_line) for token_cls in suggested_grammar.get_minimal_sequence()]
+        if not isinstance(suggested_grammar, list):
+            token_sequence = [token_cls('', new_line) for token_cls in suggested_grammar.get_minimal_sequence()]
+        else:
+            token_sequence = []
+            for grammar in suggested_grammar:
+                token_sequence += [token_cls('', new_line) for token_cls in grammar.get_minimal_sequence()]
+            suggested_grammar = suggested_grammar[0]
         new_sequence = tokens_before_line + token_sequence + tokens_after_and_in_line
 
         try:
