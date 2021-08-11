@@ -78,6 +78,9 @@ class Searcher(object):
         keywords = self.get_keywords(conversion_object)
         comparisons = []
 
+        if not self.text:
+            return []
+
         for keyword in set([k.replace('_', ' ') if k else None for k in keywords]):
             if not keyword or keyword in [str(key) for _, key in comparisons]:
                 continue
@@ -138,6 +141,27 @@ class Searcher(object):
     def highest_similarity(self):
         return self._highest_similarity
 
+    def is_new_fittest_conversion(self, similarity, conversion, input_doc, target_doc, fittest_conversion):
+        """
+        Check if the given conversion is fitter than the current fittest conversion.
+
+        :argument similarity - the calculated similarity value for input and target doc
+        :argument conversion - the conversion object that is currently checked
+        :argument input_doc - the current input_doc from `get_comparisons`
+        :argument target_doc - the current target_doc from `get_comparisons`
+        :argument fittest_conversion - the conversion object that is currently the fittest
+        """
+        return similarity > self._highest_similarity
+
+    def should_stop_checking_conversion_object(self, conversion, similarity):
+        """
+        Check if you should stop checking a single conversion object and start with the next one.
+
+        :argument conversion: the conversion object with the current best score
+        :argument: similarity: the similarity that was calculated for this object
+        """
+        return False
+
     def search(self, *args, raise_exception=False, **kwargs):
         """
         Search an object that represents the text that was given on init.  If none is found,
@@ -153,9 +177,12 @@ class Searcher(object):
             for input_doc, target_doc in comparisons:
                 similarity = self.get_similarity(input_doc, target_doc)
 
-                if similarity > self._highest_similarity:
+                if self.is_new_fittest_conversion(similarity, conversion, input_doc, target_doc, fittest_conversion):
                     fittest_conversion = conversion
                     self._highest_similarity = similarity
+
+                    if self.should_stop_checking_conversion_object(conversion, similarity):
+                        break
 
         if self._highest_similarity <= self.SIMILARITY_BENCHMARK or fittest_conversion is None:
             if raise_exception:
@@ -223,7 +250,7 @@ class ModelSearcher(Searcher):
         return AbstractModelAdapter(name=self.translator_to_en.translate(self.text))
 
     def get_keywords(self, model):
-        return [model.name, model.verbose_name]
+        return [model.name, model.verbose_name, model.verbose_name_plural]
 
     def get_possible_results(self, project_adapter, **kwargs):
         return project_adapter.get_models(as_adapter=True, include_django=True)
@@ -251,10 +278,43 @@ class UrlSearcher(Searcher):
             valid_methods = valid_methods.copy()
             valid_methods.append(Methods.PATCH)
 
-        self.valid_methods = valid_methods
+        self.valid_methods = [method for method in valid_methods if method]
 
     def get_convert_fallback(self):
         return AbstractUrlPatternAdapter(model_adapter=self.model_adapter)
+
+    def should_stop_checking_conversion_object(self, conversion, similarity):
+        return similarity > 0.9
+
+    def is_new_fittest_conversion(self, similarity, conversion, input_doc, target_doc, fittest_conversion):
+        """
+        For different urls there might be multiple endpoints with the same methods. To identify which one is meant,
+        the reverse name and url name is used to determine which endpoint is better suited.
+        """
+        if fittest_conversion and similarity == self._highest_similarity and conversion != fittest_conversion:
+            best_similarity = 0
+            best_conv = fittest_conversion
+
+            for conv in [fittest_conversion, conversion]:
+                reverse_url_name_translated = self.translator_to_src.translate(conv.reverse_url_name)
+                reverse_name_translated = self.translator_to_src.translate(conv.reverse_name)
+
+                for check in [reverse_name_translated, reverse_url_name_translated]:
+                    exact_similarity = self.get_similarity(input_doc, self.nlp_src_language(check))
+                    if exact_similarity > best_similarity:
+                        best_conv = conv
+                        best_similarity = exact_similarity
+
+            # sometimes we are not provided with the reverse url name but only the method; if there are default
+            # api routes by an ApiView, use them instead
+            conversion_default_route = conversion.reverse_url_name in ['detail', 'list']
+            fittest_conversion_default_route = fittest_conversion.reverse_url_name in ['detail', 'list']
+            if best_similarity < 0.4 and conversion_default_route and not fittest_conversion_default_route:
+                best_conv = conversion
+
+            return best_conv == conversion
+
+        return super().is_new_fittest_conversion(similarity, conversion, input_doc, target_doc, fittest_conversion)
 
     def get_keywords(self, url_pattern):
         keywords = [url_pattern.reverse_url_name, url_pattern.reverse_name]
@@ -282,7 +342,8 @@ class UrlSearcher(Searcher):
 
             if adapter.is_represented_by_view_set:
                 # if the url does not have a valid method, skip it
-                if not any([m in self.valid_methods for m in adapter.methods]):
+                # if there are no valid methods provided, allow all
+                if self.valid_methods and not any([m in self.valid_methods for m in adapter.methods]):
                     continue
 
                 # if the model is not the same, skip it

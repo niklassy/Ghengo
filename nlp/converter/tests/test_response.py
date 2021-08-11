@@ -160,6 +160,8 @@ def test_many_check_entry_response_converter_output(doc, desired_entry_index, mo
         (nlp('Dann sollte der zweite Auftrag den Namen "Alice" haben.'), 0, 0.3),
         (nlp('Dann sollte die Antwort zwei Einträge haben.'), 0.7, 1),
         (nlp('Dann sollte die Antwort vier Aufträge haben.'), 0.7, 1),
+        (nlp('Dann sollte die Liste vier Einträge haben.'), 0.7, 1),
+        (nlp('Dann sollte in der Antwort drei Aufträge enthalten sein'), 0.7, 1),
         (nlp('Dann sollte vier Einträge enthalten sein.'), 0.7, 1),
         (nlp('Dann sollte der Auftrag den Namen "Alice" haben.'), 0, 0.4),
         (nlp('Dann sollte die Antwort den Status 200 haben.'), 0, 0.4),

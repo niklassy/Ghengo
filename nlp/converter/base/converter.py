@@ -1,7 +1,8 @@
 from nlp.converter.wrapper import ConverterInitArgumentWrapper
 from nlp.generate.suite import TestCaseBase
 from nlp.searcher import NoConversionFound
-from nlp.utils import get_noun_chunks, get_non_stop_tokens, get_noun_chunk_of_token, token_is_verb, NoToken
+from nlp.utils import get_noun_chunks, get_non_stop_tokens, get_noun_chunk_of_token, token_is_verb, NoToken, \
+    tokens_are_equal
 
 
 class Converter(object):
@@ -174,7 +175,10 @@ class ClassConverter(Converter):
         if self.document[0] == token:
             return False
 
-        if any([blocked_token and blocked_token == token for blocked_token in self._blocked_argument_tokens]):
+        token_is_blocked = any([
+            blocked_token and tokens_are_equal(blocked_token, token) for blocked_token in self._blocked_argument_tokens
+        ])
+        if token_is_blocked:
             return False
 
         if token.pos_ != 'ADJ' and token.pos_ != 'NOUN' and token.pos_ != 'VERB' and token.pos_ != 'ADV':
@@ -189,7 +193,7 @@ class ClassConverter(Converter):
             return False
 
         # if there is a verb where the parent is a finites Modalverb (e.g. sollte), it should not be an argument
-        if token == self.last_document_word and token_is_verb(token) and token.head.tag_ == 'VMFIN':
+        if tokens_are_equal(token, self.last_document_word) and token_is_verb(token) and token.head.tag_ == 'VMFIN':
             return False
 
         return True
@@ -249,6 +253,10 @@ class ClassConverter(Converter):
         """Returns a list of default arguments wrappers. For each the selected value will be forced."""
         return []
 
+    def get_possible_argument_tokens(self):
+        """Returns all tokens that can possibly be an argument."""
+        return get_non_stop_tokens(self.document)
+
     def get_argument_wrappers(self) -> [ConverterInitArgumentWrapper]:
         """
         Returns a list of objects that hold a token and the representative for an argument of the __init__ for the
@@ -257,7 +265,7 @@ class ClassConverter(Converter):
         default_argument_wrappers = self.get_default_argument_wrappers()
         argument_wrappers = []
 
-        for token in get_non_stop_tokens(self.document):
+        for token in self.get_possible_argument_tokens():
             if not self.token_can_be_argument(token):
                 continue
 

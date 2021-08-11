@@ -28,7 +28,7 @@ class AutoCompleteMultiLine(object):
     @classmethod
     def as_ui(cls):
         """Returns the ui element for the autocomplete."""
-        return sg.Multiline('', key=cls.key, font=('Courier', 15))
+        return sg.Multiline('', size=(1, 1), key=cls.key, font=('Courier', 15))
 
     def set_cursor_position(self):
         """Sets the cursor position in the gherkin editor to the position that was saved."""
@@ -159,6 +159,7 @@ class AutoCompleteMultiLine(object):
         """Shows the auto complete box at given x and y."""
         self.ui.update(visible=True)
         self.widget.place(x=x, y=y)
+        # TODO: probably should use the binding from PySimpleGUI and not Tkinter
         self.widget.bind('<Return>', func=self.on_enter)
         self.widget.bind('<Up>', func=self.on_up)
         self.widget.bind('<Down>', func=self.on_down)
@@ -185,9 +186,10 @@ class AutoCompleteMultiLine(object):
     def set_values(self, values):
         """Set the values/ options of the auto complete."""
         self.focused_value_index = 0
-        self.values = values
+        self.values = list(set(values))
         if not values:
+            self.ui.set_size((1, 1))
             self.hide()
         else:
             self._draw_options()
-        self.ui.set_size((30, len(self.values)))
+            self.ui.set_size((30, len(self.values)))

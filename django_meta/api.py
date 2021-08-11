@@ -30,9 +30,9 @@ class AbstractUrlPatternAdapter(object):
 
     def key_exists_in_route_kwargs(self, key):
         """
-        Check if a given key exists in the kwargs of the url. By default all are allowed.
+        Check if a given key exists in the kwargs of the url. By default only pk and id are given in urls.
         """
-        return True
+        return key == 'pk' or key == 'id'
 
     @property
     def is_represented_by_view_set(self):

@@ -1,8 +1,8 @@
 from django_meta.api import UrlPatternAdapter
 from django_meta.model import AbstractModelFieldAdapter
 from nlp.converter.base.converter import ClassConverter
-from nlp.converter.property import UserReferenceVariableProperty, ModelWithUserProperty, MethodProperty, \
-    ReferenceModelVariableProperty
+from nlp.converter.property import UserReferenceVariableProperty, MethodProperty, \
+    ReferenceModelVariableProperty, NewModelProperty
 from nlp.extractor.fields_model import get_model_field_extractor, ModelFieldExtractor
 from nlp.extractor.fields_rest_api import get_api_model_field_extractor
 from nlp.generate.argument import Kwarg
@@ -11,6 +11,7 @@ from nlp.generate.expression import RequestExpression, APIClientAuthenticateExpr
 from nlp.generate.statement import AssignmentStatement
 from nlp.generate.variable import Variable
 from nlp.searcher import UrlSearcher, SerializerFieldSearcher, ModelFieldSearcher
+from nlp.utils import tokens_are_equal, NoToken
 
 
 class RequestConverter(ClassConverter):
@@ -24,13 +25,42 @@ class RequestConverter(ClassConverter):
         self._url_pattern_adapter = None
 
         self.user = UserReferenceVariableProperty(self)
-        self.model = ModelWithUserProperty(self)
         self.method = MethodProperty(self)
+
+        # the new model property should not contain the user information, if there is any
+        blocked_model_tokens = [self.method.token]
+        if self.user.token:
+            blocked_model_tokens += [self.user.chunk.root, self.user.token]
+        self.model = NewModelProperty(self, blocked_tokens=blocked_model_tokens)
+
         self.model_variable = ReferenceModelVariableProperty(self)
+
+    def get_document_verbs(self):
+        return [t for t in self.get_possible_argument_tokens() if t.pos_ == 'VERB']
+
+    def token_can_be_argument(self, token):
+        can_be_argument = super().token_can_be_argument(token)
+        if not can_be_argument:
+            return False
+
+        # when making a request the last verb typically describes the action (get, geholt, holen, bekommen, erstellen)
+        # this can be covered by the method token, but the method is not always determined by the verb
+        if token.pos_ == 'VERB':
+            all_verbs = self.get_document_verbs()
+
+            if len(all_verbs) > 0 and all_verbs[-1] == token:
+                return False
+
+        return True
 
     def prepare_converter(self):
         for token in (self.method.token, self.user.token, self.model_variable.token, self.model.token):
             self.block_token_as_argument(token)
+
+        # if there is a user token, it might be defined as "Alice" or "User 1", if there is a token we also want
+        # to block the root which would be `User` in the second example
+        if self.user.token:
+            self.block_token_as_argument(self.user.chunk.root)
 
     def get_searcher_kwargs(self):
         """When searching for a serializer adapter, we need to add the serializer class to the kwargs."""
@@ -75,8 +105,11 @@ class RequestConverter(ClassConverter):
         return get_api_model_field_extractor(field)
 
     def get_document_compatibility(self):
-        """If there is no method, it is unlikely that this converter is useful."""
-        if not self.method.token or not self.url_pattern_adapter:
+        """
+        For now there are not many alternatives for a request converter, if there are any new, this has to be
+        refactored
+        """
+        if not self.url_pattern_adapter:
             return 0
         return 1
 
@@ -91,9 +124,33 @@ class RequestConverter(ClassConverter):
         Returns the url pattern adapter that represents a Django URL pattern that fits the method provided.
         """
         if self._url_pattern_adapter is None:
-            searcher = UrlSearcher(str(self.method.token), self.language, self.model.value, [self.method.value])
+            all_verbs = self.get_document_verbs()
+            try:
+                last_verb = all_verbs[-1]
+            except IndexError:
+                last_verb = NoToken()
+
+            searcher = UrlSearcher(
+                # use either the method or the verb to determine the url
+                text=str(self.method.token or last_verb),
+                language=self.language,
+                model_adapter=self.model.value,
+                valid_methods=[self.method.value] if self.method.value else [],
+            )
             self._url_pattern_adapter = searcher.search(self.django_project)
         return self._url_pattern_adapter
+
+    def extract_method(self):
+        """
+        Returns the method for the statements. This also has the fallback for the cases where the text
+        has no obvious hint about the method. It will use the url pattern adapter instead.
+        """
+        try:
+            fallback_method = self.url_pattern_adapter.methods[0]
+        except IndexError:
+            fallback_method = 'get'
+
+        return self.method.value or fallback_method
 
     def prepare_statements(self, statements):
         """
@@ -122,13 +179,14 @@ class RequestConverter(ClassConverter):
         reverse_kwargs = []
         model_token = self.model_variable.token
         user_token = self.user.token
+        pk_in_route_kwargs = self.url_pattern_adapter.key_exists_in_route_kwargs('pk')
 
-        if model_token and model_token != user_token and self.url_pattern_adapter.key_exists_in_route_kwargs('pk'):
+        if model_token and not tokens_are_equal(model_token, user_token) and pk_in_route_kwargs:
             reverse_kwargs.append(Kwarg('pk', Attribute(self.model_variable.value, 'pk')))
 
         # create the statement with the request
         expression_request = RequestExpression(
-            self.method.value,
+            self.extract_method(),
             function_kwargs=[],
             reverse_name=self.url_pattern_adapter.reverse_name,
             client_variable=variable_client,
@@ -162,11 +220,14 @@ class RequestConverter(ClassConverter):
         request_expression = statements[-1].expression
         kwarg = Kwarg(extractor.field_name, extracted_value)
 
+        kwargs_for_url = request_expression.reverse_expression.function_kwargs
+        kwarg_for_body = request_expression.function_kwargs
+
         # some data may be passed via the url or the body, so check if the defined field exists on the url; if yes
         # add it to the reverse expression instead
         if self.url_pattern_adapter.key_exists_in_route_kwargs(extractor.field_name):
-            kwarg_list = request_expression.reverse_expression.function_kwargs
+            kwarg_list = kwargs_for_url
         else:
-            kwarg_list = request_expression.function_kwargs
+            kwarg_list = kwarg_for_body
 
         kwarg_list.append(kwarg)

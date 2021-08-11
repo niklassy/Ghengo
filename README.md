@@ -1,4 +1,4 @@
-# Django-Gherkin Test Generator
+# Ghengo - Django-Gherkin Test Generator
 
 ## What is this?
 With this project you are able to generate code with natural language. In this case Gherkin can be
@@ -8,7 +8,30 @@ It is fully tested for German but it also works in English. But it does not work
 Here you can see it in action. The UI for this was not the main part of the project and it is somewhat wonky and
 slow. You can still use it to try some stuff.
 
-![alt text](img/ui_demo_fast.gif)
+Here are some features:
+
+### Creating models and referencing each other
+
+![Creating model entries](demo/gif/model_creation.gif)
+
+### Creating files
+
+![Creating an uploaded file](demo/gif/file_creation.gif)
+
+### Making requests
+![Making requests](demo/gif/requests.gif)
+
+### Analyzing list responses
+![Checking list responses](demo/gif/list_response.gif)
+
+### Analyzing simple responses
+![Checking simple responses](demo/gif/single_entry_resp.gif)
+
+### Analyzing database
+![Accesing the database](demo/gif/queryset.gif)
+
+### Analyzing earlier model entries
+![Checking previous model entries](demo/gif/previous_model.gif)
 
 ## Setup
 You need to install Pipenv first.

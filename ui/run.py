@@ -20,7 +20,10 @@ def run_ui():
 
     layout = [
         [
-            sg.Text('Enter your Gherkin here:', size=(int(multi_line_size * 1.5), 1)),
+            sg.Text(
+                'Enter your Gherkin here. You can press Command/Control + g to generate.',
+                size=(int(multi_line_size * 1.5), 1)
+            ),
             sg.Text('The output will be here:', size=(int(multi_line_size * 1.5), 1)),
         ],
         [
@@ -30,18 +33,49 @@ def run_ui():
             AutoCompleteMultiLine.as_ui(),
         ],
         [
-            sg.Text('', size=(150, 1), key='ERROR_MESSAGE'),
+            sg.Text('Errors will appear here:'),
+            sg.Text(
+                '',
+                size=(int(int(multi_line_size * 1.5) * 1.8), 1),
+                key='ERROR_MESSAGE',
+                text_color='red',
+                background_color='white',
+            ),
         ],
-        [sg.Button('Show'), sg.Button('Exit')]
+        [sg.Button('Generate tests...')]
     ]
 
     # Create the Window
-    window = sg.Window('Window Title', layout)
+    window = sg.Window('Ghengo - Django-Gherkin Test Generator', layout)
 
     c = GherkinToPyTestCompiler()
     last_gherkin_text = ''
 
     window.finalize()
+
+    def on_generate_tests(bound_event=None, input_text=None):
+        assert bound_event or input_text
+
+        window['ERROR_MESSAGE'].update('')
+        if bound_event:
+            input_text = bound_event.widget.get("1.0", 'end')
+
+        if input_text == '\n':
+            return
+        window['OUTPUT_FIELD'].update('Loading...')
+
+        try:
+            c.compile_text(input_text)
+        except GherkinInvalid as e:
+            window['ERROR_MESSAGE'].update(str(e))
+            return
+
+        window['OUTPUT_FIELD'].update(c.export_as_text())
+
+    window['GHERKIN_EDITOR'].Widget.bind('<Command-g>', on_generate_tests)
+    window['GHERKIN_EDITOR'].Widget.bind('<Control-g>', on_generate_tests)
+    window['GHERKIN_EDITOR'].Widget.bind('<Command-r>', lambda *args: window['OUTPUT_FIELD'].update(''))
+    window['GHERKIN_EDITOR'].Widget.bind('<Control-r>', lambda *args: window['OUTPUT_FIELD'].update(''))
 
     while True:
         event, values = window.read(timeout=25)
@@ -52,6 +86,7 @@ def run_ui():
             break
 
         text = values['GHERKIN_EDITOR']
+
         gherkin_text = text.replace(' ', '')
         if not gherkin_text or (gherkin_text == last_gherkin_text and event == '__TIMEOUT__'):
             last_gherkin_text = gherkin_text
@@ -107,13 +142,6 @@ def run_ui():
                     auto_complete.show_at(x=int(cursor_x) * 5 + 10, y=int(cursor_y) * 16 + 20)
             continue
 
-        try:
-            c.compile_text(text)
-        except GherkinInvalid as e:
-            window['ERROR_MESSAGE'].update(str(e))
-            continue
-
-        text = c.export_as_text()
-        window['OUTPUT_FIELD'].update(text)
+        on_generate_tests(input_text=text)
 
     window.close()

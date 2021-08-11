@@ -37,6 +37,22 @@ def get_next_token(token):
         return NoToken()
 
 
+def tokens_are_equal(token_1, token_2):
+    """
+    Check if two tokens are equal. This method is needed because if tokens are compared via == and one of them
+    is a NoToken, the Token from spacy does not know how to handle it.
+    """
+    if isinstance(token_1, NoToken) or isinstance(token_2, NoToken):
+        return False
+
+    return token_1 == token_2
+
+
+def token_in_list(token, token_list):
+    """Check if a given token is present in a list."""
+    return any([tokens_are_equal(token, t) for t in token_list])
+
+
 def get_previous_token(token):
     """
     Returns the token that is behind the one that is passed to the function. If there is none, a NoToken instance is
@@ -49,6 +65,10 @@ def get_previous_token(token):
         return token.doc[token.i - 1]
     except IndexError:
         return NoToken()
+
+
+def token_can_represent_variable(token):
+    return token_is_proper_noun(token) or token.is_digit or is_quoted(token)
 
 
 def get_non_stop_tokens(doc):
@@ -172,7 +192,21 @@ def is_quoted(token):
 
 def token_is_negated(token):
     """Check if a token is negated."""
-    return any([child for child in token.children if child.lemma_ in NEGATIONS[token.lang_]])
+    return bool(get_negation_token(token))
+
+
+def get_negation_token(token):
+    """Returns the token that negates the given one. If there is none, a NoToken is returned."""
+    for child in token.children:
+        if token_represents_negation(child):
+            return child
+
+    return NoToken()
+
+
+def token_represents_negation(token):
+    """Check if a token represents a negation."""
+    return token.lemma_ in NEGATIONS[token.lang_]
 
 
 def token_is_indefinite(token):

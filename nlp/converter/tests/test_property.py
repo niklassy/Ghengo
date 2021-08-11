@@ -5,9 +5,9 @@ from core.constants import Languages
 from django_meta.api import Methods
 from django_meta.model import ModelAdapter
 from django_meta.project import DjangoProject
-from django_sample_project.apps.order.models import Order, ToDo
+from django_sample_project.apps.order.models import Order
 from nlp.converter.property import NewModelProperty, NewModelVariableProperty, MethodProperty, \
-    ReferenceModelVariableProperty, ReferenceModelProperty, UserReferenceVariableProperty, ModelWithUserProperty, \
+    ReferenceModelVariableProperty, ReferenceModelProperty, UserReferenceVariableProperty, \
     ModelCountProperty
 from nlp.generate.pytest import PyTestModelFactoryExpression
 from nlp.generate.pytest.suite import PyTestTestSuite
@@ -162,40 +162,6 @@ def test_reference_user_converter_property(doc, token_index, mocker):
         assert isinstance(prop.value, Variable)
         assert prop.value.reference_string == 'User'
         assert prop.token == doc[token_index]
-
-
-@pytest.mark.parametrize(
-    'doc, token_index, model', [
-        (nlp('Wenn Alice einen Auftrag 1 löscht'), 3, Order),
-        (nlp('Wenn der Bob ein ToDo 2 löscht'), 4, ToDo),
-        (nlp('Wenn Alice den Auftrag 2 erstellt'), 3, Order),
-    ]
-)
-def test_reference_model_with_user_converter_property(doc, token_index, mocker, model):
-    """Referencing models when a mode when a user exists works via the property."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
-    converter = ConverterMock(doc)
-    suite = PyTestTestSuite('foo')
-    test_case = suite.create_and_add_test_case('bar')
-    test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelAdapter(User, None), []),
-        variable=Variable('Alice', 'User'),
-    ))
-    test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelAdapter(User, None), []),
-        variable=Variable('Bob', 'User'),
-    ))
-    converter.test_case = test_case
-    converter.model = NewModelProperty(converter)
-    converter.variable = ReferenceModelVariableProperty(converter)
-    converter.variable.calculate_value()
-    converter.method = MethodProperty(converter)
-    converter.user = UserReferenceVariableProperty(converter)
-    prop = ModelWithUserProperty(converter)
-
-    assert isinstance(prop.value, ModelAdapter)
-    assert prop.value.model == model
-    assert prop.token == doc[token_index]
 
 
 @pytest.mark.parametrize(

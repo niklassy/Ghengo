@@ -9,7 +9,7 @@ def test_parameter_template():
 
 
 def test_parameter_equals():
-    """Check that the comparison of parameter is handled correctly."""
+    """Check that the _comparison of parameter is handled correctly."""
     param = Parameter('foo')
     assert param != 'foo'
     assert param != 'qweqwe'

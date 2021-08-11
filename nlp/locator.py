@@ -160,17 +160,22 @@ class WordLocator(Locator):
     """
     This is a locator to search for a given word.
     """
-    def __init__(self, document, word):
+    def __init__(self, document, words):
         super().__init__(document)
-        self.word = word
+        self.words = words
 
     def get_compare_values(self):
-        return [self.word]
+        return [self.words] if not isinstance(self.words, list) else self.words
 
 
 class NounLocator(WordLocator):
     def token_is_relevant(self, token):
         return token_is_noun(token)
+
+
+class VerbLocator(WordLocator):
+    def token_is_relevant(self, token):
+        return token_is_verb(token)
 
 
 class FileLocator(NounLocator):
@@ -198,7 +203,7 @@ class ComparisonLocator(Locator):
 
     def __init__(self, document, reverse=False):
         """
-        You can pass reverse to reverse the comparison value. This can be useful in cases where the code output
+        You can pass reverse to reverse the _comparison value. This can be useful in cases where the code output
         is not in the order of the text.
         """
         super().__init__(document)
@@ -209,7 +214,7 @@ class ComparisonLocator(Locator):
 
     def _get_comparison(self):
         """
-        Returns the comparison char for the given document.
+        Returns the _comparison char for the given document.
         """
         # if there is an or, it is expected to be fine to be equal too
         has_or = bool(self.or_locator.fittest_token)
@@ -229,7 +234,7 @@ class ComparisonLocator(Locator):
         return CompareChar.EQUAL
 
     @property
-    def comparison(self):
+    def _comparison(self):
         """
         Returns the compare char.
         """
@@ -238,6 +243,17 @@ class ComparisonLocator(Locator):
             return self.REVERSE_CHARS[compare_value]
 
         return compare_value
+
+    def get_comparison_for_value(self, python_value):
+        """
+        Returns the determined _comparison for a given python value.
+        """
+        self.locate()
+
+        if python_value is None or isinstance(python_value, bool):
+            return CompareChar.IS
+
+        return self._comparison
 
     def get_compare_values(self):
         """Return values that indicate greater or smaller."""
@@ -250,7 +266,7 @@ class ComparisonLocator(Locator):
 
 class RestActionLocator(Locator):
     """This locator finds a token that indicates a special REST action."""
-    GET_VALUES = ['list', 'get', 'detail', 'fetch']
+    GET_VALUES = ['detail', 'list', 'get', 'fetch']
     DELETE_VALUES = ['remove', 'delete', 'clear', 'destroy']
     UPDATE_VALUES = ['change', 'update', 'modify', 'adjust']
     CREATE_VALUES = ['create', 'generate', 'add']

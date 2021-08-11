@@ -2,22 +2,22 @@ from typing import Optional
 
 from django_meta.model import AbstractModelFieldAdapter
 from nlp.converter.base.converter import ClassConverter
-from nlp.converter.property import NewModelProperty
+from nlp.converter.property import NewModelProperty, ReferenceModelVariableProperty
 from nlp.converter.wrapper import ConverterInitArgumentWrapper
 from nlp.extractor.base import IntegerExtractor, Extractor, StringExtractor
 from nlp.extractor.fields_model import ModelFieldExtractor, get_model_field_extractor
 from nlp.extractor.fields_rest_api import ApiModelFieldExtractor, get_api_model_field_extractor
-from nlp.extractor.output import ModelVariableOutput
 from nlp.generate.argument import Argument
 from nlp.generate.attribute import Attribute
 from nlp.generate.constants import CompareChar
-from nlp.generate.expression import CompareExpression, FunctionCallExpression, Expression, RequestExpression
+from nlp.generate.expression import CompareExpression, FunctionCallExpression, Expression, RequestExpression, \
+    ModelFactoryExpression
 from nlp.generate.index import Index
 from nlp.generate.statement import AssertStatement, AssignmentStatement
 from nlp.generate.variable import Variable
-from nlp.locator import ComparisonLocator, NounLocator
+from nlp.locator import ComparisonLocator, NounLocator, VerbLocator
 from nlp.searcher import SerializerFieldSearcher, ModelFieldSearcher
-from nlp.utils import get_noun_chunk_of_token, NoToken
+from nlp.utils import get_noun_chunk_of_token, NoToken, token_is_definite, get_previous_token
 
 
 class ResponseConverterBase(ClassConverter):
@@ -40,6 +40,7 @@ class ResponseConverterBase(ClassConverter):
         self.error_locator.locate()
 
         self.model_in_text = NewModelProperty(self, blocked_tokens=self._blocked_argument_tokens)
+        self.model_in_text_var = ReferenceModelVariableProperty(self, self.model_in_text)
 
     @property
     def model_adapter_from_request(self):
@@ -138,6 +139,10 @@ class ResponseConverterBase(ClassConverter):
         if not any([isinstance(s.expression, RequestExpression) for s in self.test_case.statements]):
             compatibility *= 0.1
 
+        # if there is a model variable in the text, it is more likely that it is meant instead
+        if self.model_in_text_var.value:
+            compatibility *= 0.7
+
         return compatibility
 
     def get_referenced_response_variable(self) -> Optional[Variable]:
@@ -179,9 +184,9 @@ class ResponseConverterBase(ClassConverter):
     def extract_and_handle_output(self, extractor):
         extracted_value = super().extract_and_handle_output(extractor)
 
-        # sine we are currently not supporting nested objects, if a model variable is returned from the extractor
+        # since we are currently not supporting nested objects, if a model variable is returned from the extractor
         # use the pk instead of that variable
-        if extractor.get_output_class() == ModelVariableOutput:
+        if isinstance(extracted_value, Variable) and isinstance(extracted_value.value, ModelFactoryExpression):
             return Attribute(extracted_value, 'pk')
 
         return extracted_value
@@ -270,9 +275,13 @@ class ResponseConverter(ResponseConverterBase):
 
             # check if there is a model in the text, if not it is very unlikely to fit
             if self.model_in_text.token:
+                token_before = get_previous_token(self.model_in_text.token)
 
-                # if there is a model token and it fits the request model, this is likely to fit though
-                if self.model_in_text_fits_request:
+                # if there is a model token and it fits the request model, this is likely to fit though if
+                # the word before is definite (`der Auftrag`, `the order`)
+                # YES => Dann sollte *der* Auftrag den Namen "sa" haben
+                # NO  => Dann sollte *ein* Auftrag mit dem Namen "asd" existieren
+                if self.model_in_text_fits_request and token_is_definite(token_before):
                     compatibility *= 1
                 else:
                     compatibility *= 0.5
@@ -280,6 +289,12 @@ class ResponseConverter(ResponseConverterBase):
                 compatibility *= 0.2
 
         return compatibility
+
+    @property
+    def response_data_variable_already_present(self):
+        """Check if the response variable is already present in the test case."""
+        response_variable = self.response_data_variable
+        return self.test_case.variable_defined(response_variable.name_predetermined, response_variable.reference_string)
 
     @property
     def response_data_variable(self):
@@ -296,7 +311,7 @@ class ResponseConverter(ResponseConverterBase):
         """
         statements = super().prepare_statements(statements)
 
-        if len(self.extractors) > 0:
+        if len(self.extractors) > 0 and not self.response_data_variable_already_present:
             statement = AssignmentStatement(
                 variable=self.response_data_variable,
                 expression=Expression(Attribute(self.get_referenced_response_variable(), 'data')),
@@ -313,7 +328,7 @@ class ResponseConverter(ResponseConverterBase):
 
         chunk = get_noun_chunk_of_token(extractor.source, self.document)
         compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
-        compare_locator.locate()
+        extracted_value = self.extract_and_handle_output(extractor)
 
         assert_statement = AssertStatement(
             CompareExpression(
@@ -323,9 +338,9 @@ class ResponseConverter(ResponseConverterBase):
                     [Argument(extractor.field_name)],
                 ),
                 # ==
-                compare_locator.comparison,
+                compare_locator.get_comparison_for_value(extracted_value),
                 # value
-                Argument(self.extract_and_handle_output(extractor)),
+                Argument(extracted_value),
             )
         )
         statements.append(assert_statement)
@@ -379,10 +394,18 @@ class ManyResponseConverter(ResponseConverterBase):
         # if there is the word `entry` it is likely that multiple objects are returned
         entry_token = self.response_entry_locator.fittest_token
 
-        if not list_token and not length_token and not entry_token and not self.model_in_text_fits_request:
-            compatibility *= 0.3
+        if not list_token and not length_token and not entry_token:
+            if not self.model_in_text_fits_request:
+                compatibility *= 0.3
+            else:
+                # if there is a model token that fits, check for a verb like contain or return that reference the
+                # request
+                verb_locator = VerbLocator(self.document, words=['to contain', 'to return'])
+                verb_locator.locate()
 
-        # make sure to stay between 0 and 1
+                if not verb_locator.fittest_token:
+                    compatibility *= 0.8
+
         return compatibility
 
 
@@ -399,7 +422,7 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
 
             # if there is a warning set number to 0 to get the first entry
             if not extractor.generates_warning:
-                index = extracted_value - 1
+                index = extracted_value - 1 if extracted_value > 0 else 0
             else:
                 index = 0
 
@@ -438,10 +461,12 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
         entry_extractor = self.get_entry_extractor()
 
         # if there is no extractor for the entry, we cannot determine which entry we should check
-        if entry_extractor is None:
+        if entry_extractor is None or compatibility < 0.7:
             compatibility *= 0.1
             return compatibility
 
+        # this converter is more likely determined by the entry token, so we need to negate it and start from scratch
+        compatibility = 1
         entry_token = self.get_entry_token()
         output_source = entry_extractor.output.output_token
 
@@ -469,7 +494,7 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
 
         # if there is no warning, subtract 1 since we need to translate to index values
         if not number_extractor.generates_warning:
-            extracted_number = extracted_number - 1
+            extracted_number = extracted_number - 1 if extracted_number > 0 else 0
 
         statement = AssignmentStatement(
             variable=self.entry_variable,
@@ -552,7 +577,7 @@ class ManyLengthResponseConverter(ManyResponseConverter):
 
         # the length is normally described in numbers not in adjectives (`first` vs. `one`)
         output_source = length_extractor.output.output_token
-        if output_source and output_source.pos_ != 'NUM':
+        if output_source and output_source.pos_ == 'ADJ':
             compatibility *= 0.3
 
         return compatibility
@@ -562,17 +587,17 @@ class ManyLengthResponseConverter(ManyResponseConverter):
 
         chunk = get_noun_chunk_of_token(self.get_length_token(), self.document)
         compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
-        compare_locator.locate()
 
         length_extractor = self.get_length_extractor()
+        extracted_value = self.extract_and_handle_output(length_extractor)
 
         if not length_extractor:
             return statements
 
         exp = CompareExpression(
             FunctionCallExpression('len', [Attribute(self.get_referenced_response_variable(), 'data')]),
-            compare_locator.comparison,
-            Argument(self.extract_and_handle_output(length_extractor)),
+            compare_locator.get_comparison_for_value(extracted_value),
+            Argument(extracted_value),
         )
         statements.append(AssertStatement(exp))
 

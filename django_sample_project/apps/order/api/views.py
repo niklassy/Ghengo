@@ -12,9 +12,9 @@ class OrderViewSet(ModelViewSet):
     def list(self, *args, **kwargs):
         return super().list(*args, **kwargs)
 
-    @action(detail=False, methods=['get'])
-    def my_route(self, *args, **kwargs):
-        return super().list(*args, **kwargs)
+    @action(detail=False, methods=['post'])
+    def book(self, *args, **kwargs):
+        return super().create(*args, **kwargs)
 
 
 # Currently not used

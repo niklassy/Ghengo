@@ -102,15 +102,27 @@ class ModelVariableReferenceConverter(ModelConverter):
     """
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
-        self.variable = ReferenceModelVariableProperty(self)
+        self.model_in_text = NewModelProperty(self)
         self.model = ReferenceModelProperty(self)
+        self.variable = ReferenceModelVariableProperty(self)
 
         # the value of the variable is important for the model
         self.variable.calculate_value()
 
+    def get_variable_model_adapter(self):
+        """
+        Returns the model adapter of the variable that this references. Returns none if there is no variable.
+        """
+        if not self.variable.value:
+            return None
+
+        variable_instance = self.variable.value
+        return variable_instance.value.model_adapter
+
     def get_document_compatibility(self):
         """Only if a previous variable exists, this converter makes sense."""
-        if self.variable.value:
+        variable_model_adapter = self.get_variable_model_adapter()
+        if variable_model_adapter and variable_model_adapter.models_are_equal(self.model_in_text.value):
             return 1
         return 0
 
@@ -171,12 +183,12 @@ class AssertPreviousModelConverter(ModelConverter):
         """For each extractor, use the field to create a compare expression."""
         chunk = get_noun_chunk_of_token(extractor.source, self.document)
         compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
-        compare_locator.locate()
+        extracted_value = extractor.extract_value()
 
         exp = CompareExpression(
             Attribute(self.variable.value, extractor.field_name),
-            compare_locator.comparison,
-            Argument(extractor.extract_value()),
+            compare_locator.get_comparison_for_value(extracted_value),
+            Argument(extracted_value),
         )
         statement = AssertStatement(exp)
         statements.append(statement)

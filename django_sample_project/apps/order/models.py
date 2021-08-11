@@ -12,9 +12,13 @@ class ToDo(models.Model):
     from_other_system = models.BooleanField()
     done = models.BooleanField(verbose_name='abgeschlossen')
 
+    class Meta:
+        verbose_name_plural = 'Todos'
+
 
 class Order(models.Model):
     plays_soccer = models.BooleanField()
+    proof = models.FileField()
     name = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
     to_dos = models.ManyToManyField(ToDo, related_name='orders')

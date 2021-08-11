@@ -1,7 +1,7 @@
 from nlp.extractor.exception import ExtractionError
 from nlp.extractor.output import ExtractorOutput, VariableOutput, NumberAsStringOutput, StringOutput, IntegerOutput
 from nlp.generate.warning import GenerationWarning
-from nlp.utils import get_all_children, is_quoted, token_is_proper_noun, get_next_token
+from nlp.utils import get_all_children, is_quoted, get_next_token, token_can_represent_variable
 
 
 class Extractor(object):
@@ -140,18 +140,7 @@ class ManyExtractorMixin(object):
         """
         Returns a boolean if the token should be skipped when handling a multi extraction.
         """
-        output_class = self.get_output_class()
-
-        # in case the child output class is for variables, skip tokens that are
-        # unlikely to be one
-        if issubclass(output_class, VariableOutput) or output_class == VariableOutput:
-            return not token.is_digit and not token_is_proper_noun(token)
-
-        # numbers can be digits
-        if issubclass(output_class, NumberAsStringOutput):
-            return not is_quoted(token) and not token.is_digit
-
-        return not token.is_digit and not token_is_proper_noun(token) and not is_quoted(token)
+        return not token_can_represent_variable(token)
 
     def _extract_value(self, output_instance=None, token=None):
         """
