@@ -374,6 +374,10 @@ class Step(object):
     def has_datatable(self):
         return bool(self.argument and isinstance(self.argument, DataTable))
 
+    def get_parent_step(self):
+        """This should return the step that is the parent of the current one."""
+        raise NotImplementedError()
+
     def __repr__(self):
         return '{} - {}{}'.format(self.__class__.__name__.upper(), self.keyword, self.text)
 
@@ -388,6 +392,10 @@ class ParentStep(Step):
     def __init__(self, keyword, text, argument=None):
         super().__init__(keyword, text, argument)
         self.__sub_steps = []
+
+    def get_parent_step(self):
+        """Since this is a parent step, it is technically its own parent."""
+        return self
 
     @property
     def sub_steps(self):
@@ -406,6 +414,9 @@ class SubStep(Step):
     def __init__(self, keyword, text, argument=None):
         super().__init__(keyword, text, argument)
         self.parent = None
+
+    def get_parent_step(self):
+        return self.parent
 
 
 class Given(ParentStep):

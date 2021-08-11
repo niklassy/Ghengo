@@ -20,6 +20,9 @@ class Expression(ReferencedVariablesMixin, Replaceable, TemplateMixin, OnAddToTe
     def get_template_context(self, line_indent, indent):
         return {'child': self.child if self.child else ''}
 
+    def get_variable_reference_children(self):
+        return [self.child] if self.child else []
+
     def as_statement(self):
         """Expressions can be statements. This can be used to translate an expression into a Statement."""
         return Statement(self)

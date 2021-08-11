@@ -7,7 +7,7 @@ from settings import GenerationType
 from nlp.generate.utils import to_function_name
 from gherkin.compiler_base.compiler import Lexer, Compiler, Parser, CodeGenerator
 
-from gherkin.ast import Comment as ASTComment, ScenarioOutline, Then, When
+from gherkin.ast import Comment as ASTComment, ScenarioOutline, Then, When, Given
 from gherkin.compiler_base.exception import GrammarInvalid, GrammarNotUsed
 from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
@@ -110,18 +110,35 @@ class GherkinParser(Parser):
 class GherkinToPyTestCodeGenerator(CodeGenerator):
     file_extension = 'py'
 
-    def scenario_to_test_case(self, scenario, suite, project):
+    STEP_TO_TILER = {
+        Given: GivenTiler,
+        When: WhenTiler,
+        Then: ThenTiler,
+    }
+
+    def __init__(self, compiler):
+        super().__init__(compiler)
+
+        self._suite = None
+
+    def get_test_case_name(self, scenario):
+        """Returns the name for the test case of the scenario."""
         if not scenario.name:
-            test_case_name = str(len(suite.test_cases))
-        else:
-            test_case_name = CacheTranslator(
-                src_language=Settings.language,
-                target_language=Languages.EN
-            ).translate(
-                scenario.name.lstrip(),
-            )
+            return str(len(self._suite.test_cases))
+
+        translator = CacheTranslator(src_language=Settings.language, target_language=Languages.EN)
+        return translator.translate(scenario.name.lstrip())
+
+    def scenario_to_test_case(self, scenario, project):
+        """
+        Does everything to transform a scenario object into a test case object.
+        """
+        suite = self._suite
+
+        test_case_name = self.get_test_case_name(scenario)
         test_case = suite.create_and_add_test_case(test_case_name)
 
+        # handle tags
         for tag in scenario.tags:
             try:
                 test_case.add_decorator(PyTestMarkDecorator(tag.name))
@@ -140,49 +157,18 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
                 except test_case.DecoratorAlreadyPresent:
                     pass
 
-        # first phase: GIVEN clauses
-        in_given_steps = True
-        in_when_steps = False
-        in_then_steps = False
-
         for step in scenario.steps:
-            tiler = None
+            # the parent step will always be given, when or then; if and or but are used, the parent is returned
+            parent_step = step.get_parent_step()
 
-            if isinstance(step, (When, Then)) and in_given_steps:
-                in_given_steps = False
-                in_when_steps = True
-
-            if isinstance(step, Then) and (in_when_steps or in_given_steps):
-                in_given_steps = False
-                in_when_steps = False
-                in_then_steps = True
-
-            if in_given_steps:
-                tiler = GivenTiler(
-                    ast_object=step,
-                    django_project=project,
-                    language=Settings.language,
-                    test_case=test_case,
-                )
-
-            if in_when_steps:
-                tiler = WhenTiler(
-                    ast_object=step,
-                    django_project=project,
-                    language=Settings.language,
-                    test_case=test_case
-                )
-
-            if in_then_steps:
-                tiler = ThenTiler(
-                    ast_object=step,
-                    django_project=project,
-                    language=Settings.language,
-                    test_case=test_case
-                )
-
-            if tiler is not None:
-                tiler.add_statements_to_test_case()
+            tiler_cls = self.STEP_TO_TILER[parent_step.__class__]
+            tiler_instance = tiler_cls(
+                ast_object=step,
+                django_project=project,
+                language=Settings.language,
+                test_case=test_case,
+            )
+            tiler_instance.add_statements_to_test_case()
 
         return test_case
 
@@ -193,21 +179,23 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         if not ast.feature:
             return ''
 
+        # first set the test type and get the django project
         Settings.test_type = GenerationType.PY_TEST
+        project = DjangoProject(Settings.django_settings_path)
 
-        # TODO: extract django project path from input
-        project = DjangoProject('django_sample_project.apps.config.settings')
+        # create a suite
+        self._suite = PyTestTestSuite(ast.feature.name if ast.feature else '')
 
-        suite = PyTestTestSuite(ast.feature.name if ast.feature else '')
-
+        # go through each scenario child and generate test cases
         for child in ast.feature.get_scenario_children():
-            self.scenario_to_test_case(child, suite, project)
+            self.scenario_to_test_case(child, project)
 
-        suite.clean_up()
-
+        # clean up the test suite
+        self._suite.clean_up()
         Settings.generate_test_type = Settings.Defaults.GENERATE_TEST_TYPE
 
-        return suite.to_template()
+        # return the suite as a template string
+        return self._suite.to_template()
 
 
 class GherkinToPyTestCompiler(Compiler):
