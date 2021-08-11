@@ -78,6 +78,9 @@ class Searcher(object):
         keywords = self.get_keywords(conversion_object)
         comparisons = []
 
+        if not self.text:
+            return []
+
         for keyword in set([k.replace('_', ' ') if k else None for k in keywords]):
             if not keyword or keyword in [str(key) for _, key in comparisons]:
                 continue
@@ -275,7 +278,7 @@ class UrlSearcher(Searcher):
             valid_methods = valid_methods.copy()
             valid_methods.append(Methods.PATCH)
 
-        self.valid_methods = valid_methods
+        self.valid_methods = [method for method in valid_methods if method]
 
     def get_convert_fallback(self):
         return AbstractUrlPatternAdapter(model_adapter=self.model_adapter)
@@ -301,6 +304,13 @@ class UrlSearcher(Searcher):
                     if exact_similarity > best_similarity:
                         best_conv = conv
                         best_similarity = exact_similarity
+
+            # sometimes we are not provided with the reverse url name but only the method; if there are default
+            # api routes by an ApiView, use them instead
+            conversion_default_route = conversion.reverse_url_name in ['detail', 'list']
+            fittest_conversion_default_route = fittest_conversion.reverse_url_name in ['detail', 'list']
+            if best_similarity < 0.4 and conversion_default_route and not fittest_conversion_default_route:
+                best_conv = conversion
 
             return best_conv == conversion
 
@@ -332,7 +342,8 @@ class UrlSearcher(Searcher):
 
             if adapter.is_represented_by_view_set:
                 # if the url does not have a valid method, skip it
-                if not any([m in self.valid_methods for m in adapter.methods]):
+                # if there are no valid methods provided, allow all
+                if self.valid_methods and not any([m in self.valid_methods for m in adapter.methods]):
                     continue
 
                 # if the model is not the same, skip it

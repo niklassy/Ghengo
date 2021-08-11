@@ -70,6 +70,7 @@ def test_model_request_converter_anonymous(mocker):
         (nlp('Wenn die Details des Auftrag 1 geholt wird'), Methods.GET, 'orders-detail'),
         (nlp('Wenn ein Auftrag mit dem Namen "Test" erstellt wird.'), Methods.POST, 'orders-detail'),
         (nlp('Wenn der Auftrag 1 so geändert wird, dass der Name "foo" ist'), Methods.PUT, 'orders-detail'),
+        (nlp('Wenn der Auftrag 1 gebucht wird'), Methods.POST, 'orders-book'),
     ]
 )
 def test_model_request_converter_reverse_name(doc, method, reverse_name, mocker):
@@ -169,9 +170,6 @@ def test_model_request_converter_with_reference(
         (nlp('Wenn die Liste der Aufträge geholt wird'), 0.7, 1),
         (nlp('Wenn ein Auftrag gelöscht wird'), 0.7, 1),
         (nlp('Wenn Alice einen Auftrag erstellt'), 0.7, 1),
-        (nlp('Gegeben sei ein Auftrag'), 0, 0.1),
-        (nlp('Und ein Benutzer Alice'), 0, 0.1),
-        (nlp('Sie fahren mit dem Auto'), 0, 0.1),
     ]
 )
 def test_model_request_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):

@@ -11,7 +11,7 @@ from nlp.generate.expression import RequestExpression, APIClientAuthenticateExpr
 from nlp.generate.statement import AssignmentStatement
 from nlp.generate.variable import Variable
 from nlp.searcher import UrlSearcher, SerializerFieldSearcher, ModelFieldSearcher
-from nlp.utils import tokens_are_equal
+from nlp.utils import tokens_are_equal, NoToken
 
 
 class RequestConverter(ClassConverter):
@@ -35,6 +35,9 @@ class RequestConverter(ClassConverter):
 
         self.model_variable = ReferenceModelVariableProperty(self)
 
+    def get_document_verbs(self):
+        return [t for t in self.get_possible_argument_tokens() if t.pos_ == 'VERB']
+
     def token_can_be_argument(self, token):
         can_be_argument = super().token_can_be_argument(token)
         if not can_be_argument:
@@ -43,7 +46,7 @@ class RequestConverter(ClassConverter):
         # when making a request the last verb typically describes the action (get, geholt, holen, bekommen, erstellen)
         # this can be covered by the method token, but the method is not always determined by the verb
         if token.pos_ == 'VERB':
-            all_verbs = [t for t in self.get_possible_argument_tokens() if t.pos_ == 'VERB']
+            all_verbs = self.get_document_verbs()
 
             if len(all_verbs) > 0 and all_verbs[-1] == token:
                 return False
@@ -102,8 +105,11 @@ class RequestConverter(ClassConverter):
         return get_api_model_field_extractor(field)
 
     def get_document_compatibility(self):
-        """If there is no method, it is unlikely that this converter is useful."""
-        if not self.method.token or not self.url_pattern_adapter:
+        """
+        For now there are not many alternatives for a request converter, if there are any new, this has to be
+        refactored
+        """
+        if not self.url_pattern_adapter:
             return 0
         return 1
 
@@ -118,9 +124,33 @@ class RequestConverter(ClassConverter):
         Returns the url pattern adapter that represents a Django URL pattern that fits the method provided.
         """
         if self._url_pattern_adapter is None:
-            searcher = UrlSearcher(str(self.method.token), self.language, self.model.value, [self.method.value])
+            all_verbs = self.get_document_verbs()
+            try:
+                last_verb = all_verbs[-1]
+            except IndexError:
+                last_verb = NoToken()
+
+            searcher = UrlSearcher(
+                # use either the method or the verb to determine the url
+                text=str(self.method.token or last_verb),
+                language=self.language,
+                model_adapter=self.model.value,
+                valid_methods=[self.method.value] if self.method.value else [],
+            )
             self._url_pattern_adapter = searcher.search(self.django_project)
         return self._url_pattern_adapter
+
+    def extract_method(self):
+        """
+        Returns the method for the statements. This also has the fallback for the cases where the text
+        has no obvious hint about the method. It will use the url pattern adapter instead.
+        """
+        try:
+            fallback_method = self.url_pattern_adapter.methods[0]
+        except IndexError:
+            fallback_method = 'get'
+
+        return self.method.value or self.url_pattern_adapter.methods[0]
 
     def prepare_statements(self, statements):
         """
@@ -156,7 +186,7 @@ class RequestConverter(ClassConverter):
 
         # create the statement with the request
         expression_request = RequestExpression(
-            self.method.value,
+            self.extract_method(),
             function_kwargs=[],
             reverse_name=self.url_pattern_adapter.reverse_name,
             client_variable=variable_client,
