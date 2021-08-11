@@ -27,3 +27,28 @@ class TemplateMixin(object):
 
     def __str__(self):
         return self.to_template()
+
+
+class ReferencedVariablesMixin(object):
+    """
+    This mixin can be used to get all the variables it and its children reference.
+    """
+    def get_variable_reference_children(self):
+        """
+        Returns all the objects that might have more references to any variable.
+        """
+        return []
+
+    def get_referenced_variables(self):
+        """
+        Returns all the variables that are referenced by this object and its children.
+        """
+        variables = []
+
+        for child in self.get_variable_reference_children():
+            if not isinstance(child, ReferencedVariablesMixin):
+                continue
+
+            variables += child.get_referenced_variables()
+
+        return variables

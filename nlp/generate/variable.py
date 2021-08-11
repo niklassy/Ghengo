@@ -1,8 +1,9 @@
+from nlp.generate.mixin import ReferencedVariablesMixin
 from nlp.generate.replaceable import Replaceable
 from nlp.generate.utils import to_function_name
 
 
-class Variable(Replaceable):
+class Variable(ReferencedVariablesMixin, Replaceable):
     """
     This class represents a variable in a test case.
     """
@@ -34,6 +35,10 @@ class Variable(Replaceable):
 
     def __str__(self):
         return self.name
+
+    def get_referenced_variables(self):
+        """Overwrite the default behaviour here since this is a variable."""
+        return [self]
 
     def copy(self):
         """Create a copy of this variable."""

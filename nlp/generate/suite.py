@@ -3,7 +3,7 @@ from nlp.generate.mixin import TemplateMixin
 from nlp.generate.parameter import Parameter
 from nlp.generate.replaceable import Replaceable
 from settings import PYTHON_INDENT_SPACES
-from nlp.generate.statement import PassStatement, Statement
+from nlp.generate.statement import PassStatement, Statement, AssignmentStatement
 from nlp.generate.utils import to_function_name
 from nlp.generate.warning import GenerationWarningCollection
 
@@ -166,6 +166,18 @@ class TestCaseBase(Replaceable, TemplateMixin):
         else:
             raise self.ParameterAlreadyPresent()
 
+    def clean_up(self):
+        """
+        Cleanup up all the statements in a test case.
+        """
+        statement_copy = self.statements.copy()
+        referenced_variables = []
+
+        # for each statement: clean it up and save the variables that it uses
+        for statement in reversed(statement_copy):
+            statement.clean_up(self, referenced_variables)
+            referenced_variables += statement.get_referenced_variables()
+
 
 class TestSuiteBase(Replaceable, TemplateMixin):
     test_case_class = None
@@ -176,6 +188,13 @@ class TestSuiteBase(Replaceable, TemplateMixin):
         self.warning_collection = GenerationWarningCollection()
         self.imports = []
         self.test_cases = []
+
+    def clean_up(self):
+        """
+        Can be called after everything is ready. This will do everything as a last step to cleanup before exporting.
+        """
+        for test_case in self.test_cases:
+            test_case.clean_up()
 
     def get_template_context(self, line_indent, indent):
         return {

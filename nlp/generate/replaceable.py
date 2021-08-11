@@ -10,9 +10,17 @@ class Replaceable(object):
     for_test_type = None
     replacement_for = None
 
+    @classmethod
+    def should_be_replaced(cls, sub_class):
+        return sub_class.should_replace(cls) and Settings.generate_test_type == sub_class.for_test_type
+
+    @classmethod
+    def should_replace(cls, parent):
+        return cls.replacement_for == parent
+
     def __new__(cls, *args, **kwargs):
         for sub_class in cls.__subclasses__():
-            if sub_class.replacement_for == cls and Settings.generate_test_type == sub_class.for_test_type:
+            if cls.should_be_replaced(sub_class):
                 return super().__new__(sub_class)
 
         return super().__new__(cls)

@@ -1,9 +1,9 @@
-from nlp.generate.mixin import TemplateMixin
+from nlp.generate.mixin import TemplateMixin, ReferencedVariablesMixin
 from nlp.generate.replaceable import Replaceable
 from settings import PYTHON_INDENT_SPACES
 
 
-class Argument(Replaceable, TemplateMixin):
+class Argument(ReferencedVariablesMixin, Replaceable, TemplateMixin):
     """
     Class that represents the values that are passed to a function during runtime.
 
@@ -33,6 +33,9 @@ class Argument(Replaceable, TemplateMixin):
             return super().__new__(StringArgument, value, *args, **kwargs)
 
         return super().__new__(cls, value, *args, **kwargs)
+
+    def get_variable_reference_children(self):
+        return [self.value]
 
     @classmethod
     def get_string_for_template(cls, string):
@@ -84,13 +87,16 @@ class StringArgument(Argument):
         return {'value': '\'{}\''.format(self.value)}
 
 
-class Kwarg(TemplateMixin):
+class Kwarg(ReferencedVariablesMixin, TemplateMixin):
     template = '{name}={value}'
 
     def __init__(self, name, value):
         super().__init__()
         self.name = name
         self.value = Argument(value)
+
+    def get_variable_reference_children(self):
+        return [self.value]
 
     def get_template_context(self, line_indent, indent):
         return {'name': self.name, 'value': self.value.to_template(line_indent, 0)}
