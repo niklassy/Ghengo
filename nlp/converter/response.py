@@ -287,6 +287,12 @@ class ResponseConverter(ResponseConverterBase):
         return compatibility
 
     @property
+    def response_data_variable_already_present(self):
+        """Check if the response variable is already present in the test case."""
+        response_variable = self.response_data_variable
+        return self.test_case.variable_defined(response_variable.name_predetermined, response_variable.reference_string)
+
+    @property
     def response_data_variable(self):
         if self._response_data_variable is None:
             self._response_data_variable = Variable(
@@ -301,7 +307,7 @@ class ResponseConverter(ResponseConverterBase):
         """
         statements = super().prepare_statements(statements)
 
-        if len(self.extractors) > 0:
+        if len(self.extractors) > 0 and not self.response_data_variable_already_present:
             statement = AssignmentStatement(
                 variable=self.response_data_variable,
                 expression=Expression(Attribute(self.get_referenced_response_variable(), 'data')),

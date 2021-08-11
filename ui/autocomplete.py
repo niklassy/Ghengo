@@ -186,7 +186,7 @@ class AutoCompleteMultiLine(object):
     def set_values(self, values):
         """Set the values/ options of the auto complete."""
         self.focused_value_index = 0
-        self.values = values
+        self.values = list(set(values))
         if not values:
             self.ui.set_size((1, 1))
             self.hide()

@@ -19,13 +19,13 @@ Here are some features:
 ![Creating an uploaded file](img/file_creation.gif)
 
 ### Making requests
-
+CREATED
 
 ### Analyzing list responses
-
+CREATED
 
 ### Analyzing simple responses
-
+CREATED
 
 ### Analyzing database
 
