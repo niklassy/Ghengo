@@ -30,6 +30,9 @@ class TemplateMixin(object):
 
 
 class ReferencedVariablesMixin(object):
+    """
+    This mixin can be used to get all the variables it and its children reference.
+    """
     def get_variable_reference_children(self):
         """
         Returns all the objects that might have more references to any variable.
