@@ -193,20 +193,22 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         if not ast.feature:
             return ''
 
+        # first set the test type and get the django project
         Settings.test_type = GenerationType.PY_TEST
+        project = DjangoProject(Settings.django_settings_path)
 
-        # TODO: extract django project path from input
-        project = DjangoProject('django_sample_project.apps.config.settings')
-
+        # create a suite
         suite = PyTestTestSuite(ast.feature.name if ast.feature else '')
 
+        # go through each scenario child and generate test cases
         for child in ast.feature.get_scenario_children():
             self.scenario_to_test_case(child, suite, project)
 
+        # clean up the test suite
         suite.clean_up()
-
         Settings.generate_test_type = Settings.Defaults.GENERATE_TEST_TYPE
 
+        # return the suite as a template string
         return suite.to_template()
 
 
