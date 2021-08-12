@@ -1,6 +1,7 @@
 from nlp.converter.wrapper import ConverterInitArgumentWrapper
 from nlp.generate.suite import TestCaseBase
 from nlp.lookout.exception import LookoutFoundNothing
+from nlp.lookout.nested import NestedLookout
 from nlp.utils import get_noun_chunks, get_non_stop_tokens, get_noun_chunk_of_token, token_is_verb, NoToken, \
     tokens_are_equal
 
@@ -216,34 +217,15 @@ class ClassConverter(Converter):
         if token and str(token) not in search_texts:
             search_texts.append(str(token))
 
-        for index, lookout_class in enumerate(self.field_lookout_classes):
-            last_lookout_class = index == len(self.field_lookout_classes) - 1
-
-            best_lookout_result = None
-            highest_similarity = 0
-
-            for search_text_index, search_text in enumerate(search_texts):
-                lookout = lookout_class(search_text, src_language=self.language)
-
-                # only raise no exception if it is the last lookout class and the last text to have a fallback
-                last_search_text = search_text_index == len(search_texts) - 1
-                raise_exception = not last_search_text or not last_lookout_class
-
-                try:
-                    lookout_result = lookout.locate(**lookout_kwargs, raise_exception=raise_exception)
-                    if best_lookout_result is None or lookout.highest_similarity > highest_similarity:
-                        best_lookout_result = lookout_result
-                        highest_similarity = lookout.highest_similarity
-
-                        if highest_similarity > 0.9:
-                            break
-                except LookoutFoundNothing:
-                    pass
-
-            if best_lookout_result is not None:
-                return best_lookout_result
-
-        return None
+        lookout = NestedLookout(
+            texts=search_texts,
+            language=self.language,
+            lookout_child_classes=self.field_lookout_classes,
+            locate_kwargs=lookout_kwargs,
+        )
+        lookout.locate()
+        best_lookout_result = lookout.fittest_output_object
+        return best_lookout_result
 
     def is_valid_search_result(self, search_result):
         """This method can be used to filter out specific search results before they are turned into extractors."""

@@ -27,11 +27,16 @@ class Lookout(object):
         self._highest_similarity = 0
         self._fittest_output_object = None
         self._fittest_keyword = None
+        self._results_in_fallback = False
 
         # normally the locate() is not done on init because of the performance reasons, you can call it on init
         # though
         if locate_on_init:
             self.locate(*args, **kwargs)
+
+    @property
+    def results_in_fallback(self):
+        return self._results_in_fallback
 
     def get_similarity_benchmark(self):
         """A wrapper around the benchmark for the similarity."""
@@ -171,6 +176,14 @@ class Lookout(object):
         """
         self._fittest_output_object = None
 
+    def on_new_fittest_output_object_found(self, similarity, output_object, keyword, input_1, input_2):
+        """
+        Is called after a new best output_object has been found.
+        """
+        self._highest_similarity = similarity
+        self._fittest_output_object = output_object
+        self._fittest_keyword = keyword
+
     def locate(self, *args, raise_exception=False, **kwargs):
         """
         The main function that looks for the fittest_output_object.
@@ -180,6 +193,8 @@ class Lookout(object):
         """
         if self.fittest_output_object is not None:
             return self.fittest_output_object
+
+        self._results_in_fallback = False
 
         for output_object in self.get_output_objects(*args, **kwargs):
             # if we should stop, end the loop
@@ -203,17 +218,23 @@ class Lookout(object):
                     similarity = self.get_similarity(value_1, value_2)
 
                     if self.is_new_fittest_output_object(similarity, output_object, value_1, value_2):
-                        self._highest_similarity = similarity
-                        self._fittest_output_object = output_object
-                        self._fittest_keyword = keyword
+                        self.on_new_fittest_output_object_found(
+                            similarity=similarity,
+                            input_1=value_1,
+                            input_2=value_2,
+                            output_object=output_object,
+                            keyword=keyword,
+                        )
 
                     if self.go_to_next_output(similarity):
                         break
 
         # if the highest_similarity is too low, overwrite the values and raise an exception if wanted
         if self.highest_similarity < self.get_similarity_benchmark() or self.fittest_output_object is None:
+            # has to stay before raise_exception!
             self._fittest_output_object = self.get_output_object_fallback()
             self._fittest_keyword = None
+            self._results_in_fallback = True
 
             if raise_exception:
                 raise LookoutFoundNothing()
