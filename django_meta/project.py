@@ -3,7 +3,7 @@ import importlib
 from django.apps import apps
 from django.urls import URLPattern, URLResolver, get_resolver
 
-from django_meta.app import AppAdapter
+from django_meta.app import AppWrapper
 from django_meta.setup import setup_django
 
 
@@ -50,7 +50,7 @@ class DjangoProject(object):
 
         return url_list
 
-    def get_apps(self, include_django=False, include_third_party=False, include_project=True, as_adapter=False):
+    def get_apps(self, include_django=False, include_third_party=False, include_project=True, as_wrapper=False):
         """
         Returns desired apps of the django project.
 
@@ -58,7 +58,7 @@ class DjangoProject(object):
             include_django (bool): should django apps be returned?
             include_project (bool): should apps from the project be returned?
             include_third_party (bool): should apps from third party be returned (not django)?
-            as_adapter (bool): should the return value be [AppConfig] (false) or [AppAdapter] (true)?
+            as_wrapper (bool): should the return value be [AppConfig] (false) or [AppWrapper] (true)?
         """
         # get all apps from application
         all_apps = list(apps.get_app_configs())
@@ -70,25 +70,25 @@ class DjangoProject(object):
         output = []
 
         for app in all_apps:
-            app_adapter = AppAdapter(app, self)
+            app_wrapper = AppWrapper(app, self)
 
             # add django apps if wanted
-            if include_django and app_adapter.defined_by_django:
-                output.append(app_adapter if as_adapter else app)
+            if include_django and app_wrapper.defined_by_django:
+                output.append(app_wrapper if as_wrapper else app)
                 continue
 
             # add third party apps if wanted
-            if include_third_party and app_adapter.defined_by_third_party:
-                output.append(app_adapter if as_adapter else app)
+            if include_third_party and app_wrapper.defined_by_third_party:
+                output.append(app_wrapper if as_wrapper else app)
                 continue
 
             # add project apps if wanted
-            if include_project and app_adapter.defined_by_project:
-                output.append(app_adapter if as_adapter else app)
+            if include_project and app_wrapper.defined_by_project:
+                output.append(app_wrapper if as_wrapper else app)
 
         return output
 
-    def get_models(self, include_django=False, include_third_party=False, include_project=True, as_adapter=False):
+    def get_models(self, include_django=False, include_third_party=False, include_project=True, as_wrapper=False):
         """
         Returns all the models that are used in the project. The output can be filtered.
 
@@ -96,18 +96,18 @@ class DjangoProject(object):
             include_django (bool): include django models?
             include_project (bool): include models from the project itself?
             include_third_party (bool): include third party models?
-            as_adapter (bool): return as [ModelAdapter]?
+            as_wrapper (bool): return as [ModelWrapper]?
         """
         output = []
         project_apps = self.get_apps(
             include_django=include_django,
             include_third_party=include_third_party,
             include_project=include_project,
-            as_adapter=True,
+            as_wrapper=True,
         )
 
         for app in project_apps:
-            for model in app.get_models(as_adapter=as_adapter):
+            for model in app.get_models(as_wrapper=as_wrapper):
                 output.append(model)
 
         return output

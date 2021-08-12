@@ -3,9 +3,9 @@ import inspect
 from django.contrib.auth.models import Permission
 
 from core.constants import Languages
-from django_meta.api import UrlPatternAdapter, Methods, AbstractApiFieldAdapter, ApiFieldAdapter, \
-    AbstractUrlPatternAdapter
-from django_meta.model import AbstractModelFieldAdapter, AbstractModelAdapter
+from django_meta.api import UrlPatternWrapper, Methods, AbstractApiFieldWrapper, ApiFieldWrapper, \
+    AbstractUrlPatternWrapper
+from django_meta.model import AbstractModelFieldWrapper, AbstractModelWrapper
 from nlp.locator import RestActionLocator
 from nlp.setup import Nlp
 from nlp.similarity import CosineSimilarity, ContainsSimilarity, LevenshteinSimilarity
@@ -222,18 +222,18 @@ class ClassArgumentSearcher(Searcher):
 
 class ModelFieldSearcher(Searcher):
     def get_convert_fallback(self):
-        return AbstractModelFieldAdapter(name=self.translator_to_en.translate(self.text))
+        return AbstractModelFieldWrapper(name=self.translator_to_en.translate(self.text))
 
     def get_keywords(self, field):
         return [field.name, getattr(field, 'verbose_name', None)]
 
-    def get_possible_results(self, model_adapter, **kwargs):
-        return model_adapter.fields
+    def get_possible_results(self, model_wrapper, **kwargs):
+        return model_wrapper.fields
 
 
 class SerializerFieldSearcher(Searcher):
     def get_convert_fallback(self):
-        return AbstractApiFieldAdapter(name=self.translator_to_en.translate(self.text))
+        return AbstractApiFieldWrapper(name=self.translator_to_en.translate(self.text))
 
     def get_keywords(self, field):
         return [field.source]
@@ -242,18 +242,18 @@ class SerializerFieldSearcher(Searcher):
         if not serializer:
             return []
 
-        return [ApiFieldAdapter(api_field=field) for field in serializer.fields.fields.values()]
+        return [ApiFieldWrapper(api_field=field) for field in serializer.fields.fields.values()]
 
 
 class ModelSearcher(Searcher):
     def get_convert_fallback(self):
-        return AbstractModelAdapter(name=self.translator_to_en.translate(self.text))
+        return AbstractModelWrapper(name=self.translator_to_en.translate(self.text))
 
     def get_keywords(self, model):
         return [model.name, model.verbose_name, model.verbose_name_plural]
 
-    def get_possible_results(self, project_adapter, **kwargs):
-        return project_adapter.get_models(as_adapter=True, include_django=True)
+    def get_possible_results(self, project_wrapper, **kwargs):
+        return project_wrapper.get_models(as_wrapper=True, include_django=True)
 
 
 class PermissionSearcher(Searcher):
@@ -270,9 +270,9 @@ class PermissionSearcher(Searcher):
 
 
 class UrlSearcher(Searcher):
-    def __init__(self, text, language, model_adapter, valid_methods):
+    def __init__(self, text, language, model_wrapper, valid_methods):
         super().__init__(text, language)
-        self.model_adapter = model_adapter
+        self.model_wrapper = model_wrapper
 
         if Methods.PUT in valid_methods:
             valid_methods = valid_methods.copy()
@@ -281,7 +281,7 @@ class UrlSearcher(Searcher):
         self.valid_methods = [method for method in valid_methods if method]
 
     def get_convert_fallback(self):
-        return AbstractUrlPatternAdapter(model_adapter=self.model_adapter)
+        return AbstractUrlPatternWrapper(model_wrapper=self.model_wrapper)
 
     def should_stop_checking_conversion_object(self, conversion, similarity):
         return similarity > 0.9
@@ -338,18 +338,18 @@ class UrlSearcher(Searcher):
         results = []
 
         for pattern in url_patterns:
-            adapter = UrlPatternAdapter(pattern)
+            wrapper = UrlPatternWrapper(pattern)
 
-            if adapter.is_represented_by_view_set:
+            if wrapper.is_represented_by_view_set:
                 # if the url does not have a valid method, skip it
                 # if there are no valid methods provided, allow all
-                if self.valid_methods and not any([m in self.valid_methods for m in adapter.methods]):
+                if self.valid_methods and not any([m in self.valid_methods for m in wrapper.methods]):
                     continue
 
                 # if the model is not the same, skip it
-                if adapter.model_adapter.model != self.model_adapter.model:
+                if wrapper.model_wrapper.model != self.model_wrapper.model:
                     continue
 
-                results.append(adapter)
+                results.append(wrapper)
 
         return results

@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 
-from django_meta.model import ModelAdapter, AbstractModelAdapter
+from django_meta.model import ModelWrapper, AbstractModelWrapper
 from nlp.generate.argument import Kwarg
 from nlp.generate.expression import Expression, FunctionCallExpression, ModelFactoryExpression, ModelM2MAddExpression, \
     ModelQuerysetBaseExpression
@@ -25,11 +25,11 @@ def test_function_call_expression():
 
 
 def test_model_factory_expression():
-    """Check that the model factory expression handled the adapter and the data correctly."""
-    class ModelAdapter:
+    """Check that the model factory expression handled the wrapper and the data correctly."""
+    class CustomModelWrapper:
         name = 'order'
 
-    exp = ModelFactoryExpression(ModelAdapter(), [Kwarg('bar', 123)])
+    exp = ModelFactoryExpression(CustomModelWrapper(), [Kwarg('bar', 123)])
     assert exp.factory_name == 'order_factory'
     assert exp.to_template() == 'order_factory(bar=123)'
     assert exp.to_template(4, 4) == '    order_factory(bar=123)'
@@ -43,9 +43,9 @@ def test_m2m_add_expression():
 
 def test_model_queryset_base_expression():
     """Check that ModelQuerysetBaseExpression generates the correct template."""
-    exp = ModelQuerysetBaseExpression(ModelAdapter(User, None), 'filter', [])
+    exp = ModelQuerysetBaseExpression(ModelWrapper(User, None), 'filter', [])
     assert exp.to_template() == 'User.objects.filter()'
-    exp_2 = ModelQuerysetBaseExpression(AbstractModelAdapter('Roof'), 'all', [])
+    exp_2 = ModelQuerysetBaseExpression(AbstractModelWrapper('Roof'), 'all', [])
     assert exp_2.to_template() == 'Roof.objects.all()'
 
 
@@ -54,9 +54,9 @@ def test_model_queryset_base_expression_add_to_test_case():
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
-    exp = ModelQuerysetBaseExpression(ModelAdapter(User, None), 'filter', [])
+    exp = ModelQuerysetBaseExpression(ModelWrapper(User, None), 'filter', [])
     exp.on_add_to_test_case(test_case)
-    exp_2 = ModelQuerysetBaseExpression(AbstractModelAdapter('Roof'), 'filter', [])
+    exp_2 = ModelQuerysetBaseExpression(AbstractModelWrapper('Roof'), 'filter', [])
     exp_2.on_add_to_test_case(test_case)
 
     assert len(suite.imports) == 2

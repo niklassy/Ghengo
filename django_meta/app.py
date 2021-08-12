@@ -1,17 +1,17 @@
-from django_meta.model import ModelAdapter
+from django_meta.model import ModelWrapper
 
 
-class AppAdapter(object):
+class AppWrapper(object):
     def __init__(self, app, project):
         self.app = app
         self.project = project
 
-    def get_models(self, as_adapter=False):
+    def get_models(self, as_wrapper=False):
         output = []
 
         for model in self.app.get_models():
-            if as_adapter:
-                model = ModelAdapter(model, self)
+            if as_wrapper:
+                model = ModelWrapper(model, self)
             output.append(model)
 
         return output

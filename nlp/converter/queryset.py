@@ -157,8 +157,8 @@ class CountQuerysetConverter(QuerysetConverter):
         """Since the count token is extracted by a IntegerExtractor, remove kwargs that it does not need."""
         kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
         if tokens_are_equal(argument_wrapper.token, self.count.token):
-            del kwargs['model_adapter']
-            del kwargs['field_adapter']
+            del kwargs['model_wrapper']
+            del kwargs['field_wrapper']
         return kwargs
 
     def prepare_converter(self):

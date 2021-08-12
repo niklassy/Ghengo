@@ -1,7 +1,7 @@
 from django.apps import apps
 from django.conf.global_settings import AUTH_USER_MODEL
 
-from django_meta.model import ModelAdapter, AbstractModelAdapter
+from django_meta.model import ModelWrapper, AbstractModelWrapper
 from nlp.converter.base.property import ConverterProperty
 from nlp.generate.expression import ModelFactoryExpression
 from nlp.generate.variable import Variable
@@ -37,7 +37,7 @@ class NewModelProperty(ConverterProperty):
             return None
 
         searcher = ModelSearcher(text=str(self.token.lemma_), src_language=self.converter.language)
-        return searcher.search(project_adapter=self.converter.django_project)
+        return searcher.search(project_wrapper=self.converter.django_project)
 
 
 class ModelCountProperty(NewModelProperty):
@@ -176,7 +176,7 @@ class ReferenceModelVariableProperty(NewModelVariableProperty):
         """Since we are referencing a variable, try the model token children and the own chunk."""
         return [c for c in self.get_related_object_property().token.children] + [t for t in self.chunk]
 
-    def get_model_adapter(self, statement, token):
+    def get_model_wrapper(self, statement, token):
         """
         Returns the model of the variable. By default it tries to access the model in the converter. If that
         is not available, use the model from the statement.
@@ -188,14 +188,14 @@ class ReferenceModelVariableProperty(NewModelVariableProperty):
         )
 
         # we should allow models that are not in the code already
-        model_adapter = self.get_related_object_property().value or statement.expression.model_adapter
+        model_wrapper = self.get_related_object_property().value or statement.expression.model_wrapper
 
         # BUT if we find a token that generally fits the name of the model and the model does not exist in code
         # yet, we trust the input and use the model from the statement where the strings fit
-        if token_fits_general_variable and not model_adapter.exists_in_code:
-            model_adapter = statement.expression.model_adapter
+        if token_fits_general_variable and not model_wrapper.exists_in_code:
+            model_wrapper = statement.expression.model_wrapper
 
-        return model_adapter
+        return model_wrapper
 
     def get_token(self):
         """The token of the variable must reference a variable that was previously defined."""
@@ -207,11 +207,11 @@ class ReferenceModelVariableProperty(NewModelVariableProperty):
                 if not isinstance(statement.expression, ModelFactoryExpression):
                     continue
 
-                model_adapter = self.get_model_adapter(statement, token)
-                if not model_adapter or not model_adapter.models_are_equal(statement.expression.model_adapter):
+                model_wrapper = self.get_model_wrapper(statement, token)
+                if not model_wrapper or not model_wrapper.models_are_equal(statement.expression.model_wrapper):
                     continue
 
-                defined_in_tc = self.variable_defined_in_test_case(token, model_adapter.name)
+                defined_in_tc = self.variable_defined_in_test_case(token, model_wrapper.name)
                 if token_can_represent_variable(token) and defined_in_tc:
                     return token
 
@@ -234,7 +234,7 @@ class ReferenceModelVariableProperty(NewModelVariableProperty):
             if not isinstance(statement.expression, ModelFactoryExpression):
                 continue
 
-            model = self.get_model_adapter(statement, self.token)
+            model = self.get_model_wrapper(statement, self.token)
             future_name = token_to_function_name(self.token)
 
             if statement.string_matches_variable(future_name, model.name):
@@ -262,7 +262,7 @@ class ReferenceModelProperty(NewModelProperty):
         """
         if self.converter.variable.value_determined is True and self.converter.variable.value is not None:
             variable = self.converter.variable.value
-            return variable.value.model_adapter
+            return variable.value.model_wrapper
 
         return super().value
 
@@ -275,16 +275,16 @@ class ReferenceModelProperty(NewModelProperty):
 
         # try to search for a model
         try:
-            found_m_adapter = model_searcher.search(
-                project_adapter=self.converter.django_project, raise_exception=True)
+            found_model_wrapper = model_searcher.search(
+                project_wrapper=self.converter.django_project, raise_exception=True)
         except NoConversionFound:
             return None
 
         # try to find a statement where the found model is saved in the expression
         for statement in self.converter.test_case.statements:
             exp = statement.expression
-            if isinstance(exp, ModelFactoryExpression) and found_m_adapter.models_are_equal(exp.model_adapter):
-                return found_m_adapter
+            if isinstance(exp, ModelFactoryExpression) and found_model_wrapper.models_are_equal(exp.model_wrapper):
+                return found_model_wrapper
 
         return None
 
@@ -293,10 +293,10 @@ class UserReferenceVariableProperty(ReferenceModelVariableProperty):
     """
     This property can be used when a variable is referenced from the model User.
     """
-    def get_model_adapter(self, statement, token):
+    def get_model_wrapper(self, statement, token):
         user_path = AUTH_USER_MODEL.split('.')
 
-        return ModelAdapter.create_with_model(
+        return ModelWrapper.create_with_model(
             apps.get_model(user_path[0], user_path[1])
         )
 

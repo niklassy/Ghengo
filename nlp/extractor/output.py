@@ -494,7 +494,7 @@ class ModelVariableOutput(VariableOutput):
 
     def statement_matches_output(self, statement, output):
         """A statement is valid if the model is the same and the reference string matches."""
-        expression_model = statement.expression.model_adapter.model
+        expression_model = statement.expression.model_wrapper.model
         statement_variable_matches = statement.string_matches_variable(output, reference_string=self.model.__name__)
 
         return expression_model == self.model and statement_variable_matches

@@ -77,41 +77,41 @@ class ModelSaveExpression(FunctionCallExpression):
 
 
 class ModelQuerysetBaseExpression(FunctionCallExpression):
-    def __init__(self, model_adapter, function_name, function_kwargs):
-        self.model_adapter = model_adapter
-        super().__init__('{}.objects.{}'.format(model_adapter.name, function_name), function_kwargs)
+    def __init__(self, model_wrapper, function_name, function_kwargs):
+        self.model_wrapper = model_wrapper
+        super().__init__('{}.objects.{}'.format(model_wrapper.name, function_name), function_kwargs)
 
     def get_template_context(self, line_indent, indent):
         context = super().get_template_context(line_indent, indent)
-        context['model'] = self.model_adapter.name
+        context['model'] = self.model_wrapper.name
         return context
 
     def on_add_to_test_case(self, test_case):
         # We can only add the import if the model already exists in the code
-        if self.model_adapter.exists_in_code:
+        if self.model_wrapper.exists_in_code:
             test_case.test_suite.add_import(
                 Import(
-                    self.model_adapter.model.__module__,
-                    self.model_adapter.model.__name__
+                    self.model_wrapper.model.__module__,
+                    self.model_wrapper.model.__name__
                 )
             )
         else:
-            test_case.test_suite.add_import(ImportPlaceholder(self.model_adapter.name))
+            test_case.test_suite.add_import(ImportPlaceholder(self.model_wrapper.name))
 
 
 class ModelQuerysetFilterExpression(ModelQuerysetBaseExpression):
-    def __init__(self, model_adapter, function_kwargs):
-        super().__init__(model_adapter, 'filter', function_kwargs)
+    def __init__(self, model_wrapper, function_kwargs):
+        super().__init__(model_wrapper, 'filter', function_kwargs)
 
 
 class ModelQuerysetGetExpression(ModelQuerysetBaseExpression):
-    def __init__(self, model_adapter, function_kwargs):
-        super().__init__(model_adapter, 'get', function_kwargs)
+    def __init__(self, model_wrapper, function_kwargs):
+        super().__init__(model_wrapper, 'get', function_kwargs)
 
 
 class ModelQuerysetAllExpression(ModelQuerysetBaseExpression):
-    def __init__(self, model_adapter):
-        super().__init__(model_adapter, 'all', [])
+    def __init__(self, model_wrapper):
+        super().__init__(model_wrapper, 'all', [])
 
 
 class CompareExpression(Expression):
@@ -177,11 +177,11 @@ class ReverseCallExpression(FunctionCallExpression):
 class RequestExpression(FunctionCallExpression):
     template = '{client_variable}.{fn_name}({long_content_start}{reverse}{kwargs}{long_content_end})'
 
-    def __init__(self, function_name, function_kwargs, reverse_name, client_variable, reverse_kwargs, url_adapter):
+    def __init__(self, function_name, function_kwargs, reverse_name, client_variable, reverse_kwargs, url_wrapper):
         super().__init__(function_name, function_kwargs)
         self.client_variable = client_variable
         self.reverse_expression = ReverseCallExpression(reverse_name, reverse_kwargs)
-        self.url_adapter = url_adapter
+        self.url_wrapper = url_wrapper
 
     def get_variable_reference_children(self):
         references = super().get_variable_reference_children()
@@ -189,7 +189,7 @@ class RequestExpression(FunctionCallExpression):
 
     @property
     def serializer_class(self):
-        return self.url_adapter.get_serializer_class(self.function_name)
+        return self.url_wrapper.get_serializer_class(self.function_name)
 
     def get_template_context(self, line_indent, indent):
         context = super().get_template_context(line_indent, indent)
@@ -233,13 +233,13 @@ class CreateUploadFileExpression(FunctionCallExpression):
 
 
 class ModelFactoryExpression(FunctionCallExpression):
-    def __init__(self, model_adapter, factory_kwargs):
-        self.model_adapter = model_adapter
+    def __init__(self, model_wrapper, factory_kwargs):
+        self.model_wrapper = model_wrapper
         super().__init__(self.factory_name, factory_kwargs)
 
     @property
     def factory_name(self):
-        return '{}_factory'.format(camel_to_snake_case(self.model_adapter.name))
+        return '{}_factory'.format(camel_to_snake_case(self.model_wrapper.name))
 
 
 class ModelM2MAddExpression(Expression):

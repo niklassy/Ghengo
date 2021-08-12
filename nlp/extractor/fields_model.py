@@ -1,6 +1,6 @@
 import re
 
-from django_meta.model import AbstractModelFieldAdapter, ModelAdapter
+from django_meta.model import AbstractModelFieldWrapper, ModelWrapper
 from nlp.extractor.base import FieldExtractor, ManyExtractorMixin
 from nlp.extractor.output import IntegerOutput, FloatOutput, DecimalOutput, BooleanOutput, \
     ModelVariableOutput, StringOutput, FileVariableOutput
@@ -17,11 +17,11 @@ class ModelFieldExtractor(FieldExtractor):
     """
     Extracts the value from a token for a given field of a model.
     """
-    default_field_class = AbstractModelFieldAdapter
+    default_field_class = AbstractModelFieldWrapper
 
-    def __init__(self, test_case, source, model_adapter, field_adapter, document, representative=None):
-        super().__init__(test_case=test_case, source=source, document=document, field_adapter=field_adapter)
-        self.model_adapter = model_adapter
+    def __init__(self, test_case, source, model_wrapper, field_wrapper, document, representative=None):
+        super().__init__(test_case=test_case, source=source, document=document, field_wrapper=field_wrapper)
+        self.model_wrapper = model_wrapper
         self.field_name = self.field.name
 
 
@@ -77,8 +77,8 @@ class M2MModelFieldExtractor(ManyExtractorMixin, ForeignKeyModelFieldExtractor):
 
     def get_child_extractor_kwargs(self):
         kwargs = super().get_child_extractor_kwargs()
-        kwargs['field_adapter'] = self.field_adapter
-        kwargs['model_adapter'] = self.model_adapter
+        kwargs['field_wrapper'] = self.field_wrapper
+        kwargs['model_wrapper'] = self.model_wrapper
         return kwargs
 
     def extract_value(self):
@@ -113,10 +113,10 @@ class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):
 
         try:
             permission = PermissionSearcher(searcher_input, self.source.lang_).search(raise_exception=True)
-            permission_adapter = ModelAdapter.create_with_model(Permission)
+            permission_wrapper = ModelWrapper.create_with_model(Permission)
 
             permission_query = ModelQuerysetFilterExpression(
-                permission_adapter,
+                permission_wrapper,
                 [
                     Kwarg('content_type__model', permission.content_type.model),
                     Kwarg('content_type__app_label', permission.content_type.app_label),

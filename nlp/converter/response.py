@@ -1,6 +1,6 @@
 from typing import Optional
 
-from django_meta.model import AbstractModelFieldAdapter
+from django_meta.model import AbstractModelFieldWrapper
 from nlp.converter.base.converter import ClassConverter
 from nlp.converter.property import NewModelProperty, ReferenceModelVariableProperty
 from nlp.converter.wrapper import ConverterInitArgumentWrapper
@@ -43,24 +43,24 @@ class ResponseConverterBase(ClassConverter):
         self.model_in_text_var = ReferenceModelVariableProperty(self, self.model_in_text)
 
     @property
-    def model_adapter_from_request(self):
-        """Returns the model_adapter that is referenced by the variable of the request."""
+    def model_wrapper_from_request(self):
+        """Returns the model_wrapper that is referenced by the variable of the request."""
         referenced_variable = self.get_referenced_response_variable()
 
         if not referenced_variable:
             return None
 
-        return referenced_variable.value.url_adapter.model_adapter
+        return referenced_variable.value.url_wrapper.model_wrapper
 
     @property
     def model_in_text_fits_request(self):
         """Checks if the model in the text is valid and fits to the one provided by the request."""
-        model_adapter = self.model_adapter_from_request
+        model_wrapper = self.model_wrapper_from_request
 
-        if not model_adapter:
+        if not model_wrapper:
             return False
 
-        return model_adapter.models_are_equal(self.model_in_text.value)
+        return model_wrapper.models_are_equal(self.model_in_text.value)
 
     @property
     def _token_to_extractor_map(self):
@@ -97,7 +97,7 @@ class ResponseConverterBase(ClassConverter):
         if argument_wrapper.token and argument_wrapper.token in locator_extractor_map:
             return locator_extractor_map[argument_wrapper.token]
 
-        if isinstance(argument_wrapper.representative, AbstractModelFieldAdapter):
+        if isinstance(argument_wrapper.representative, AbstractModelFieldWrapper):
             return get_model_field_extractor(argument_wrapper.representative.field)
 
         return get_api_model_field_extractor(argument_wrapper.representative.field)
@@ -107,12 +107,12 @@ class ResponseConverterBase(ClassConverter):
         kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
 
         if extractor_cls == ApiModelFieldExtractor or issubclass(extractor_cls, ApiModelFieldExtractor):
-            kwargs['field_adapter'] = argument_wrapper.representative
+            kwargs['field_wrapper'] = argument_wrapper.representative
 
-        # since the class may be for model fields or REST fields, add the model_adapter if needed
+        # since the class may be for model fields or REST fields, add the model_wrapper if needed
         if issubclass(extractor_cls, ModelFieldExtractor) or extractor_cls == ModelFieldExtractor:
-            kwargs['model_adapter'] = self.model_adapter_from_request
-            kwargs['field_adapter'] = argument_wrapper.representative
+            kwargs['model_wrapper'] = self.model_wrapper_from_request
+            kwargs['field_wrapper'] = argument_wrapper.representative
 
         return kwargs
 
@@ -121,7 +121,7 @@ class ResponseConverterBase(ClassConverter):
 
         return {
             'serializer': serializer_class() if serializer_class else None,
-            'model_adapter': self.model_adapter_from_request,
+            'model_wrapper': self.model_wrapper_from_request,
         }
 
     def prepare_converter(self):
@@ -301,7 +301,7 @@ class ResponseConverter(ResponseConverterBase):
         if self._response_data_variable is None:
             self._response_data_variable = Variable(
                 'resp_data',
-                self.model_adapter_from_request.name if self.model_adapter_from_request else '',
+                self.model_wrapper_from_request.name if self.model_wrapper_from_request else '',
             )
         return self._response_data_variable
 
@@ -427,7 +427,7 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
                 index = 0
 
             # use the index
-            self.entry_variable = Variable('entry_{}'.format(index), self.model_adapter_from_request)
+            self.entry_variable = Variable('entry_{}'.format(index), self.model_wrapper_from_request)
         else:
             self.entry_variable = None
 
