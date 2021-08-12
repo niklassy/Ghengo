@@ -15,8 +15,8 @@ from nlp.generate.expression import CompareExpression, FunctionCallExpression, E
 from nlp.generate.index import Index
 from nlp.generate.statement import AssertStatement, AssignmentStatement
 from nlp.generate.variable import Variable
-from nlp.locator import ComparisonLocator, NounLocator, VerbLocator
-from nlp.searcher import SerializerFieldSearcher, ModelFieldSearcher
+from nlp.lookout.project import SerializerFieldSearcher, ModelFieldSearcher
+from nlp.lookout.token import NounLocator, ComparisonLocator, VerbLocator
 from nlp.utils import get_noun_chunk_of_token, NoToken, token_is_definite, get_previous_token
 
 
@@ -165,7 +165,7 @@ class ResponseConverterBase(ClassConverter):
             return valid_variables[-1]
 
         wrapper = ConverterInitArgumentWrapper(
-            representative=self.response_locator.best_compare_value,
+            representative=self.response_locator.fittest_keyword,
             token=self.response_locator.fittest_token,
         )
 
@@ -212,7 +212,7 @@ class ResponseStatusCodeConverter(ResponseConverterBase):
 
             wrapper = ConverterInitArgumentWrapper(
                 token=self.status_locator.fittest_token,
-                representative=self.status_locator.best_compare_value
+                representative=self.status_locator.fittest_keyword
             )
             extractor = self.get_extractor_instance(wrapper)
             exp = CompareExpression(
@@ -245,7 +245,7 @@ class ResponseErrorConverter(ResponseConverterBase):
 
             wrapper = ConverterInitArgumentWrapper(
                 token=self.error_locator.fittest_token,
-                representative=self.error_locator.best_compare_value
+                representative=self.error_locator.fittest_keyword
             )
             extractor = self.get_extractor_instance(wrapper)
             exp = CompareExpression(

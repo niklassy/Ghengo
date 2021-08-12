@@ -7,7 +7,8 @@ from nlp.extractor.output import IntegerOutput, FloatOutput, DecimalOutput, Bool
 from nlp.generate.argument import Kwarg
 from nlp.generate.expression import ModelM2MAddExpression, ModelQuerysetFilterExpression
 from nlp.generate.warning import GenerationWarning, PERMISSION_NOT_FOUND
-from nlp.searcher import PermissionSearcher, NoConversionFound
+from nlp.lookout.exception import LookoutFoundNothing
+from nlp.lookout.project import PermissionSearcher
 from nlp.utils import is_quoted
 from django.db.models import IntegerField, FloatField, BooleanField, DecimalField, ManyToManyField, ManyToManyRel, \
     ForeignKey, ManyToOneRel, CharField, TextField, FileField
@@ -112,7 +113,10 @@ class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):
         factory_statement = statements[0]
 
         try:
-            permission = PermissionSearcher(searcher_input, self.source.lang_).search(raise_exception=True)
+            permission = PermissionSearcher(
+                searcher_input,
+                self.source.lang_
+            ).search(raise_exception=True)
             permission_wrapper = ModelWrapper.create_with_model(Permission)
 
             permission_query = ModelQuerysetFilterExpression(
@@ -123,7 +127,7 @@ class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):
                     Kwarg('codename', permission.codename),
                 ]
             )
-        except NoConversionFound:
+        except LookoutFoundNothing:
             permission_query = GenerationWarning(PERMISSION_NOT_FOUND)
             self.test_case.test_suite.warning_collection.add_warning(permission_query.code)
 

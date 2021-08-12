@@ -1,31 +1,25 @@
 from core.constants import Languages
-from nlp.searcher import Searcher, NoConversionFound
-
-
-def test_searcher_search_no_results():
-    """Try to search when there are no possible results."""
-    searcher = Searcher('Auftrag', Languages.DE)
-    # by default the input text should be returned
-    assert searcher.search() == 'Auftrag'
-    try:
-        searcher.search(raise_exception=True)
-        assert False
-    except NoConversionFound:
-        pass
+from nlp.lookout.base import Lookout
 
 
 def test_searcher_search_with_results():
     """Check that the result is chosen with the highest similarity."""
-    class CustomSearcher(Searcher):
-        def get_possible_results(self, *args, **kwargs):
+    class Custom6Searcher(Lookout):
+        def get_output_objects(self, *args, **kwargs):
             return [1, 0, 6, 4, 2]
 
-        def get_comparisons(self, integer):
+        def get_compare_variations(self, integer, keyword):
             return [(integer, None)]
+
+        def get_keywords(self, integer):
+            return [integer]
 
         def get_similarity(self, input_doc, target_doc):
             """Simply return the input_doc, which will be an integer."""
-            return input_doc
+            return 1 if input_doc == 6 else 0
 
-    searcher = CustomSearcher('Auftrag', Languages.DE)
-    assert searcher.search() == 6
+        def get_output_object_fallback(self):
+            return None
+
+    searcher = Custom6Searcher('Auftrag', Languages.DE)
+    assert searcher.locate(None) == 6

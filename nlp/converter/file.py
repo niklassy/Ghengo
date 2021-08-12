@@ -7,8 +7,8 @@ from nlp.extractor.base import StringExtractor
 from nlp.generate.argument import Kwarg
 from nlp.generate.expression import CreateUploadFileExpression
 from nlp.generate.statement import AssignmentStatement
-from nlp.locator import FileExtensionLocator
-from nlp.searcher import ClassArgumentSearcher
+from nlp.lookout.project import ClassArgumentSearcher
+from nlp.lookout.token import FileExtensionLocator
 
 
 class FileConverter(ClassConverter):
@@ -94,7 +94,7 @@ class FileConverter(ClassConverter):
         # ignore GenerationWarnings
         if representative == self.ArgumentRepresentatives.NAME and not extractor.generates_warning:
             # add the file extension to the extracted value
-            extracted_value = '{}.{}'.format(extracted_value, self.file_extension_locator.best_compare_value or 'txt')
+            extracted_value = '{}.{}'.format(extracted_value, self.file_extension_locator.fittest_keyword or 'txt')
 
         kwarg = Kwarg(representative, extracted_value)
         expression.add_kwarg(kwarg)

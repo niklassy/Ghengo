@@ -3,7 +3,7 @@ import pytest
 from core.constants import Languages
 from django_meta.api import Methods
 from nlp.generate.constants import CompareChar
-from nlp.locator import Locator, FileExtensionLocator, WordLocator, ComparisonLocator, RestActionLocator
+from nlp.lookout.token import TokenLookout, FileExtensionLocator, WordLocator, ComparisonLocator, RestActionLocator
 from nlp.setup import Nlp
 from nlp.tests.utils import MockTranslator
 from nlp.utils import NoToken
@@ -14,18 +14,18 @@ nlp = Nlp.for_language(Languages.DE)
 def test_locator_fittest_token(mocker):
     """Check that the fittest token is only determined when locate is called."""
     mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
-    locator = Locator(nlp('Sie spielt mit drei Bällen.'))
-    assert locator.fittest_token is None
+    locator = TokenLookout(nlp('Sie spielt mit drei Bällen.'))
+    assert locator.fittest_output_object is None
     locator.locate()
-    assert locator.fittest_token is not None
-    assert isinstance(locator.fittest_token, NoToken)
+    assert locator.fittest_output_object is not None
+    assert isinstance(locator.fittest_output_object, NoToken)
 
 
 def test_locator_get_variations(mocker):
     """Check that the fittest token is only determined when locate is called."""
     mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
-    locator = Locator(nlp('Sie spielt mit drei Bällen.'))
-    variations = locator.get_variations(nlp('Auftrag')[0], 'User')
+    locator = TokenLookout(nlp('Sie spielt mit drei Bällen.'))
+    variations = locator.get_compare_variations(nlp('Auftrag')[0], 'User')
     assert len(variations) == 3
     assert str(variations[0][0]) == 'Auftrag'
     assert str(variations[0][1]) == 'Benutzer'
@@ -49,8 +49,8 @@ def test_file_extension_locator(doc, token_index, output, mocker):
     mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     locator = FileExtensionLocator(doc)
     locator.locate()
-    assert locator.fittest_token == doc[token_index]
-    assert locator.best_compare_value == output
+    assert locator.fittest_output_object == doc[token_index]
+    assert locator.fittest_keyword == output
 
 
 @pytest.mark.parametrize(
@@ -66,8 +66,8 @@ def test_word_locator(word, doc, token_index, mocker):
     mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
     locator = WordLocator(doc, word)
     locator.locate()
-    assert locator.fittest_token == doc[token_index]
-    assert locator.best_compare_value == word
+    assert locator.fittest_output_object == doc[token_index]
+    assert locator.fittest_keyword == word
 
 
 @pytest.mark.parametrize(
@@ -87,9 +87,9 @@ def test_word_locator(doc, token_index, output, mocker):
     assert locator._comparison == output
 
     if token_index is not None:
-        assert locator.fittest_token == doc[token_index]
+        assert locator.fittest_output_object == doc[token_index]
     else:
-        assert isinstance(locator.fittest_token, NoToken)
+        assert isinstance(locator.fittest_output_object, NoToken)
 
 
 @pytest.mark.parametrize(
@@ -110,6 +110,6 @@ def test_word_locator(doc, token_index, output, mocker):
     assert locator.method == output
 
     if token_index is not None:
-        assert locator.fittest_token == doc[token_index]
+        assert locator.fittest_output_object == doc[token_index]
     else:
-        assert isinstance(locator.fittest_token, NoToken)
+        assert isinstance(locator.fittest_output_object, NoToken)

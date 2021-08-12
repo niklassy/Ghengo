@@ -6,8 +6,8 @@ from nlp.generate.argument import Argument, Kwarg
 from nlp.generate.attribute import Attribute
 from nlp.generate.expression import ModelSaveExpression, ModelFactoryExpression, Expression, CompareExpression
 from nlp.generate.statement import ModelFieldAssignmentStatement, AssignmentStatement, AssertStatement
-from nlp.locator import ComparisonLocator
-from nlp.searcher import ModelFieldSearcher
+from nlp.lookout.project import ModelFieldSearcher
+from nlp.lookout.token import ComparisonLocator
 from nlp.utils import get_root_of_token, token_is_noun, token_is_plural, get_noun_chunk_of_token
 
 

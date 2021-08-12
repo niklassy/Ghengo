@@ -1,6 +1,6 @@
 from nlp.converter.wrapper import ConverterInitArgumentWrapper
 from nlp.generate.suite import TestCaseBase
-from nlp.searcher import NoConversionFound
+from nlp.lookout.exception import LookoutFoundNothing
 from nlp.utils import get_noun_chunks, get_non_stop_tokens, get_noun_chunk_of_token, token_is_verb, NoToken, \
     tokens_are_equal
 
@@ -237,7 +237,7 @@ class ClassConverter(Converter):
 
                         if highest_similarity > 0.9:
                             break
-                except NoConversionFound:
+                except LookoutFoundNothing:
                     pass
 
             if best_search_result is not None:

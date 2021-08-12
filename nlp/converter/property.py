@@ -1,14 +1,15 @@
 from django.apps import apps
 from django.conf.global_settings import AUTH_USER_MODEL
 
-from django_meta.model import ModelWrapper, AbstractModelWrapper
+from django_meta.model import ModelWrapper
 from nlp.converter.base.property import ConverterProperty
 from nlp.generate.expression import ModelFactoryExpression
 from nlp.generate.variable import Variable
-from nlp.locator import RestActionLocator, FileLocator
-from nlp.searcher import ModelSearcher, NoConversionFound
+from nlp.lookout.exception import LookoutFoundNothing
+from nlp.lookout.project import ModelSearcher
+from nlp.lookout.token import FileLocator, RestActionLocator
 from nlp.utils import token_to_function_name, NoToken, is_quoted, \
-    token_is_noun, token_is_like_num, get_next_token, get_all_children, token_can_represent_variable, get_noun_chunks, \
+    token_is_noun, token_is_like_num, get_next_token, get_all_children, token_can_represent_variable, \
     tokens_are_equal, token_in_list
 
 
@@ -277,7 +278,7 @@ class ReferenceModelProperty(NewModelProperty):
         try:
             found_model_wrapper = model_searcher.search(
                 project_wrapper=self.converter.django_project, raise_exception=True)
-        except NoConversionFound:
+        except LookoutFoundNothing:
             return None
 
         # try to find a statement where the found model is saved in the expression
@@ -341,4 +342,4 @@ class FileProperty(ConverterProperty):
         return None
 
     def get_token(self):
-        return self.locator.fittest_token
+        return self.locator.fittest_output_object

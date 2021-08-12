@@ -10,7 +10,7 @@ from nlp.generate.attribute import Attribute
 from nlp.generate.expression import RequestExpression, APIClientAuthenticateExpression, APIClientExpression
 from nlp.generate.statement import AssignmentStatement
 from nlp.generate.variable import Variable
-from nlp.searcher import UrlSearcher, SerializerFieldSearcher, ModelFieldSearcher
+from nlp.lookout.project import SerializerFieldSearcher, ModelFieldSearcher, UrlSearcher
 from nlp.utils import tokens_are_equal, NoToken
 
 
