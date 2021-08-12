@@ -7,7 +7,7 @@ from django_meta.api import AbstractApiFieldWrapper, ApiFieldWrapper, Methods, A
     UrlPatternWrapper
 from django_meta.model import AbstractModelFieldWrapper, AbstractModelWrapper
 from nlp.lookout.base import Lookout
-from nlp.lookout.token import RestActionLocator
+from nlp.lookout.token import RestActionLookout
 from nlp.similarity import CosineSimilarity, ContainsSimilarity, LevenshteinSimilarity
 
 
@@ -19,10 +19,6 @@ class DjangoProjectLookout(Lookout, ABC):
 
     def prepare_keywords(self, keywords):
         return set([k.replace('_', ' ') if k else None for k in keywords])
-
-    def search(self, *args, **kwargs):
-        """For backwards compatibility..."""
-        return self.locate(*args, **kwargs)
 
     def should_stop_looking_for_output(self):
         """Always look through all outputs"""
@@ -79,9 +75,9 @@ class DjangoProjectLookout(Lookout, ABC):
         return total_similarity
 
 
-class ClassArgumentSearcher(DjangoProjectLookout):
+class ClassArgumentLookout(DjangoProjectLookout):
     """
-    This searcher searches tokens that could represent the argument/ parameter of an __init__ of a given class.
+    This lookout searches tokens that could represent the argument/ parameter of an __init__ of a given class.
     """
     def get_output_object_fallback(self):
         return None
@@ -109,7 +105,7 @@ class ClassArgumentSearcher(DjangoProjectLookout):
         return [param.name for param in parameters.values()]
 
 
-class ModelFieldSearcher(DjangoProjectLookout):
+class ModelFieldLookout(DjangoProjectLookout):
     def get_output_object_fallback(self):
         return AbstractModelFieldWrapper(name=self.translator_to_en.translate(self.text))
 
@@ -120,7 +116,7 @@ class ModelFieldSearcher(DjangoProjectLookout):
         return model_wrapper.fields
 
 
-class SerializerFieldSearcher(DjangoProjectLookout):
+class SerializerFieldLookout(DjangoProjectLookout):
     def get_output_object_fallback(self):
         return AbstractApiFieldWrapper(name=self.translator_to_en.translate(self.text))
 
@@ -134,7 +130,7 @@ class SerializerFieldSearcher(DjangoProjectLookout):
         return [ApiFieldWrapper(api_field=field) for field in serializer.fields.fields.values()]
 
 
-class ModelSearcher(DjangoProjectLookout):
+class ModelLookout(DjangoProjectLookout):
     def get_output_object_fallback(self):
         return AbstractModelWrapper(name=self.translator_to_en.translate(self.text))
 
@@ -145,7 +141,7 @@ class ModelSearcher(DjangoProjectLookout):
         return project_wrapper.get_models(as_wrapper=True, include_django=True)
 
 
-class PermissionSearcher(DjangoProjectLookout):
+class PermissionLookout(DjangoProjectLookout):
     """Can search for specific permissions in Django."""
 
     def get_output_object_fallback(self):
@@ -158,7 +154,7 @@ class PermissionSearcher(DjangoProjectLookout):
         return Permission.objects.all()
 
 
-class UrlSearcher(DjangoProjectLookout):
+class UrlLookout(DjangoProjectLookout):
     """
     This lookout will find urls in the django project.
     """
@@ -214,16 +210,16 @@ class UrlSearcher(DjangoProjectLookout):
         keywords = [url_wrapper.reverse_url_name, url_wrapper.reverse_name]
 
         if url_wrapper.method_is_supported(Methods.GET):
-            keywords += RestActionLocator.GET_KEYWORDS
+            keywords += RestActionLookout.GET_KEYWORDS
 
         if url_wrapper.method_is_supported(Methods.POST):
-            keywords += RestActionLocator.CREATE_KEYWORDS
+            keywords += RestActionLookout.CREATE_KEYWORDS
 
         if url_wrapper.method_is_supported(Methods.PUT) or url_wrapper.method_is_supported(Methods.PATCH):
-            keywords += RestActionLocator.UPDATE_KEYWORDS
+            keywords += RestActionLookout.UPDATE_KEYWORDS
 
         if url_wrapper.method_is_supported(Methods.DELETE):
-            keywords += RestActionLocator.DELETE_KEYWORDS
+            keywords += RestActionLookout.DELETE_KEYWORDS
 
         return keywords
 

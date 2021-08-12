@@ -10,7 +10,7 @@ from nlp.generate.attribute import Attribute
 from nlp.generate.expression import RequestExpression, APIClientAuthenticateExpression, APIClientExpression
 from nlp.generate.statement import AssignmentStatement
 from nlp.generate.variable import Variable
-from nlp.lookout.project import SerializerFieldSearcher, ModelFieldSearcher, UrlSearcher
+from nlp.lookout.project import SerializerFieldLookout, ModelFieldLookout, UrlLookout
 from nlp.utils import tokens_are_equal, NoToken
 
 
@@ -18,7 +18,7 @@ class RequestConverter(ClassConverter):
     """
     This converter is responsible to turn a document into statements that will do a request to the django REST api.
     """
-    field_searcher_classes = [SerializerFieldSearcher, ModelFieldSearcher]
+    field_lookout_classes = [SerializerFieldLookout, ModelFieldLookout]
 
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
@@ -62,7 +62,7 @@ class RequestConverter(ClassConverter):
         if self.user.token:
             self.block_token_as_argument(self.user.chunk.root)
 
-    def get_searcher_kwargs(self):
+    def get_lookout_kwargs(self):
         """When searching for a serializer wrapper, we need to add the serializer class to the kwargs."""
         serializer = None
 
@@ -130,14 +130,14 @@ class RequestConverter(ClassConverter):
             except IndexError:
                 last_verb = NoToken()
 
-            searcher = UrlSearcher(
+            lookout = UrlLookout(
                 # use either the method or the verb to determine the url
                 text=str(self.method.token or last_verb),
                 language=self.language,
                 model_wrapper=self.model.value,
                 valid_methods=[self.method.value] if self.method.value else [],
             )
-            self._url_pattern_wrapper = searcher.search(self.django_project)
+            self._url_pattern_wrapper = lookout.locate(self.django_project)
         return self._url_pattern_wrapper
 
     def extract_method(self):

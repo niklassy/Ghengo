@@ -6,8 +6,8 @@ from nlp.converter.base.property import ConverterProperty
 from nlp.generate.expression import ModelFactoryExpression
 from nlp.generate.variable import Variable
 from nlp.lookout.exception import LookoutFoundNothing
-from nlp.lookout.project import ModelSearcher
-from nlp.lookout.token import FileLocator, RestActionLocator
+from nlp.lookout.project import ModelLookout
+from nlp.lookout.token import FileLookout, RestActionLookout
 from nlp.utils import token_to_function_name, NoToken, is_quoted, \
     token_is_noun, token_is_like_num, get_next_token, get_all_children, token_can_represent_variable, \
     tokens_are_equal, token_in_list
@@ -37,8 +37,8 @@ class NewModelProperty(ConverterProperty):
         if not self.token:
             return None
 
-        searcher = ModelSearcher(text=str(self.token.lemma_), src_language=self.converter.language)
-        return searcher.search(project_wrapper=self.converter.django_project)
+        lookout = ModelLookout(text=str(self.token.lemma_), src_language=self.converter.language)
+        return lookout.locate(project_wrapper=self.converter.django_project)
 
 
 class ModelCountProperty(NewModelProperty):
@@ -154,7 +154,7 @@ class NewFileVariableProperty(NewVariableProperty):
     def get_token_possibilities(self):
         """The variable cannot be represented by the token that represents the file extension."""
         possibilities = super().get_token_possibilities()
-        file_token = self.converter.file_extension_locator.fittest_token
+        file_token = self.converter.file_extension_lookout.fittest_token
 
         return [token for token in possibilities if not tokens_are_equal(token, file_token)]
 
@@ -272,12 +272,14 @@ class ReferenceModelProperty(NewModelProperty):
         Try to find a model from the token. If none is found return None instead of a placeholder. Also
         try to find the model in a previous statement.
         """
-        model_searcher = ModelSearcher(text=str(self.token.lemma_), src_language=self.converter.language)
+        model_lookout = ModelLookout(text=str(self.token.lemma_), src_language=self.converter.language)
 
         # try to search for a model
         try:
-            found_model_wrapper = model_searcher.search(
-                project_wrapper=self.converter.django_project, raise_exception=True)
+            found_model_wrapper = model_lookout.locate(
+                project_wrapper=self.converter.django_project,
+                raise_exception=True
+            )
         except LookoutFoundNothing:
             return None
 
@@ -312,14 +314,14 @@ class MethodProperty(ConverterProperty):
     """
     def __init__(self, converter):
         super().__init__(converter)
-        self.locator = RestActionLocator(self.document)
-        self.locator.locate()
+        self.lookout = RestActionLookout(self.document)
+        self.lookout.locate()
 
     def get_value(self):
-        return self.locator.method
+        return self.lookout.method
 
     def get_token(self):
-        return self.locator.fittest_token
+        return self.lookout.fittest_token
 
     def get_chunk(self):
         return None
@@ -328,8 +330,8 @@ class MethodProperty(ConverterProperty):
 class FileProperty(ConverterProperty):
     def __init__(self, converter):
         super().__init__(converter)
-        self.locator = FileLocator(self.document)
-        self.locator.locate()
+        self.lookout = FileLookout(self.document)
+        self.lookout.locate()
 
     def get_chunk(self):
         if len(self.converter.get_noun_chunks()) == 0:
@@ -342,4 +344,4 @@ class FileProperty(ConverterProperty):
         return None
 
     def get_token(self):
-        return self.locator.fittest_output_object
+        return self.lookout.fittest_output_object

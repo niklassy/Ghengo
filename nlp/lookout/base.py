@@ -40,7 +40,7 @@ class Lookout(object):
     @property
     def translator_to_en(self):
         """
-        The locator has to translate keywords and values. This is its own translator for the source language
+        The lookout has to translate keywords and values. This is its own translator for the source language
         to english.
         """
         if self._translator_to_en is None:

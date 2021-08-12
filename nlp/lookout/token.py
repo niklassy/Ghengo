@@ -77,7 +77,7 @@ class TokenLookout(Lookout, ABC):
         return self.fittest_output_object
 
 
-class WordLocator(TokenLookout):
+class WordLookout(TokenLookout):
     def __init__(self, document, words, locate_on_init=False):
         super().__init__(document, locate_on_init=locate_on_init)
         self.words = words
@@ -86,23 +86,23 @@ class WordLocator(TokenLookout):
         return [self.words] if not isinstance(self.words, list) else self.words
 
 
-class NounLocator(WordLocator):
+class NounLookout(WordLookout):
     def output_object_is_relevant(self, token):
         return token_is_noun(token)
 
 
-class VerbLocator(WordLocator):
+class VerbLookout(WordLookout):
     def output_object_is_relevant(self, token):
         return token_is_verb(token)
 
 
-class FileLocator(NounLocator):
-    """This locator finds a token that indicates a file."""
+class FileLookout(NounLookout):
+    """This lookout finds a token that indicates a file."""
     def __init__(self, document):
         super().__init__(document, 'file')
 
 
-class FileExtensionLocator(TokenLookout):
+class FileExtensionLookout(TokenLookout):
     use_lemma_for_variation = False
 
     def get_similarity(self, token, compare_value):
@@ -144,9 +144,9 @@ class FileExtensionLocator(TokenLookout):
         return [(token, keyword)]
 
 
-class ComparisonLocator(TokenLookout):
+class ComparisonLookout(TokenLookout):
     """
-    This locator can be used to search for comparisons (similar to ==, <= etc.).
+    This lookout can be used to search for comparisons (similar to ==, <= etc.).
     """
     use_lemma_for_variation = False
 
@@ -169,15 +169,15 @@ class ComparisonLocator(TokenLookout):
         super().__init__(document)
         self.reverse = reverse
 
-        self.or_locator = WordLocator(self.document, 'or')
-        self.or_locator.locate()
+        self.or_lookout = WordLookout(self.document, 'or')
+        self.or_lookout.locate()
 
     def _get_comparison(self):
         """
         Returns the _comparison char for the given document.
         """
         # if there is an or, it is expected to be fine to be equal too
-        has_or = bool(self.or_locator.fittest_output_object)
+        has_or = bool(self.or_lookout.fittest_output_object)
 
         if self.fittest_keyword in self.GREATER_KEYWORDS:
             if has_or:
@@ -224,8 +224,8 @@ class ComparisonLocator(TokenLookout):
         return token.pos_ == 'DET'
 
 
-class RestActionLocator(TokenLookout):
-    """This locator finds a token that indicates a special REST action."""
+class RestActionLookout(TokenLookout):
+    """This lookout finds a token that indicates a special REST action."""
     GET_KEYWORDS = ['detail', 'list', 'get', 'fetch']
     DELETE_KEYWORDS = ['remove', 'delete', 'clear', 'destroy']
     UPDATE_KEYWORDS = ['change', 'update', 'modify', 'adjust']

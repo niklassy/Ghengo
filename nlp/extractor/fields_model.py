@@ -8,7 +8,7 @@ from nlp.generate.argument import Kwarg
 from nlp.generate.expression import ModelM2MAddExpression, ModelQuerysetFilterExpression
 from nlp.generate.warning import GenerationWarning, PERMISSION_NOT_FOUND
 from nlp.lookout.exception import LookoutFoundNothing
-from nlp.lookout.project import PermissionSearcher
+from nlp.lookout.project import PermissionLookout
 from nlp.utils import is_quoted
 from django.db.models import IntegerField, FloatField, BooleanField, DecimalField, ManyToManyField, ManyToManyRel, \
     ForeignKey, ManyToOneRel, CharField, TextField, FileField
@@ -108,15 +108,15 @@ class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):
 
         return super().fits_input(field, *args, **kwargs) and field.related_model == Permission
 
-    def get_permission_statement(self, searcher_input, statements):
+    def get_permission_statement(self, lookout_input, statements):
         from django.contrib.auth.models import Permission
         factory_statement = statements[0]
 
         try:
-            permission = PermissionSearcher(
-                searcher_input,
+            permission = PermissionLookout(
+                lookout_input,
                 self.source.lang_
-            ).search(raise_exception=True)
+            ).locate(raise_exception=True)
             permission_wrapper = ModelWrapper.create_with_model(Permission)
 
             permission_query = ModelQuerysetFilterExpression(

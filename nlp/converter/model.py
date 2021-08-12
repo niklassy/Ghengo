@@ -6,8 +6,8 @@ from nlp.generate.argument import Argument, Kwarg
 from nlp.generate.attribute import Attribute
 from nlp.generate.expression import ModelSaveExpression, ModelFactoryExpression, Expression, CompareExpression
 from nlp.generate.statement import ModelFieldAssignmentStatement, AssignmentStatement, AssertStatement
-from nlp.lookout.project import ModelFieldSearcher
-from nlp.lookout.token import ComparisonLocator
+from nlp.lookout.project import ModelFieldLookout
+from nlp.lookout.token import ComparisonLookout
 from nlp.utils import get_root_of_token, token_is_noun, token_is_plural, get_noun_chunk_of_token
 
 
@@ -15,7 +15,7 @@ class ModelConverter(ClassConverter):
     """
     This is the base converter for model related stuff.
     """
-    field_searcher_classes = [ModelFieldSearcher]
+    field_lookout_classes = [ModelFieldLookout]
 
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
@@ -27,8 +27,8 @@ class ModelConverter(ClassConverter):
         self.block_token_as_argument(self.model.token)
         self.block_token_as_argument(self.variable.token)
 
-    def get_searcher_kwargs(self):
-        """Add the model to the searcher."""
+    def get_lookout_kwargs(self):
+        """Add the model to the lookout."""
         return {'model_wrapper': self.model.value}
 
     def get_extractor_class(self, argument_wrapper):
@@ -182,12 +182,12 @@ class AssertPreviousModelConverter(ModelConverter):
     def handle_extractor(self, extractor, statements):
         """For each extractor, use the field to create a compare expression."""
         chunk = get_noun_chunk_of_token(extractor.source, self.document)
-        compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
+        compare_lookout = ComparisonLookout(chunk or self.document, reverse=False)
         extracted_value = extractor.extract_value()
 
         exp = CompareExpression(
             Attribute(self.variable.value, extractor.field_name),
-            compare_locator.get_comparison_for_value(extracted_value),
+            compare_lookout.get_comparison_for_value(extracted_value),
             Argument(extracted_value),
         )
         statement = AssertStatement(exp)

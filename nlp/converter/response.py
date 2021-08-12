@@ -15,8 +15,8 @@ from nlp.generate.expression import CompareExpression, FunctionCallExpression, E
 from nlp.generate.index import Index
 from nlp.generate.statement import AssertStatement, AssignmentStatement
 from nlp.generate.variable import Variable
-from nlp.lookout.project import SerializerFieldSearcher, ModelFieldSearcher
-from nlp.lookout.token import NounLocator, ComparisonLocator, VerbLocator
+from nlp.lookout.project import SerializerFieldLookout, ModelFieldLookout
+from nlp.lookout.token import NounLookout, ComparisonLookout, VerbLookout
 from nlp.utils import get_noun_chunk_of_token, NoToken, token_is_definite, get_previous_token
 
 
@@ -24,20 +24,20 @@ class ResponseConverterBase(ClassConverter):
     """
     This is the base class for all converters that relate to the response.
     """
-    field_searcher_classes = [SerializerFieldSearcher, ModelFieldSearcher]
+    field_lookout_classes = [SerializerFieldLookout, ModelFieldLookout]
 
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
 
-        # create some locators that look for certain keywords:
-        self.status_locator = NounLocator(self.document, 'status')  # <- status of response
-        self.status_locator.locate()
+        # create some lookouts that look for certain keywords:
+        self.status_lookout = NounLookout(self.document, 'status')  # <- status of response
+        self.status_lookout.locate()
 
-        self.response_locator = NounLocator(self.document, 'response')  # <- response itself
-        self.response_locator.locate()
+        self.response_lookout = NounLookout(self.document, 'response')  # <- response itself
+        self.response_lookout.locate()
 
-        self.error_locator = NounLocator(self.document, 'error')  # <- error
-        self.error_locator.locate()
+        self.error_lookout = NounLookout(self.document, 'error')  # <- error
+        self.error_lookout.locate()
 
         self.model_in_text = NewModelProperty(self, blocked_tokens=self._blocked_argument_tokens)
         self.model_in_text_var = ReferenceModelVariableProperty(self, self.model_in_text)
@@ -86,16 +86,16 @@ class ResponseConverterBase(ClassConverter):
         transformed into a dict in `_token_to_extractor_map`
         """
         return [
-            (self.status_locator.fittest_token, IntegerExtractor),
-            (self.error_locator.fittest_token, StringExtractor),
+            (self.status_lookout.fittest_token, IntegerExtractor),
+            (self.error_lookout.fittest_token, StringExtractor),
         ]
 
     def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
         """Can use serializer, model fields and the custom extractors."""
-        locator_extractor_map = self._token_to_extractor_map
+        lookout_extractor_map = self._token_to_extractor_map
 
-        if argument_wrapper.token and argument_wrapper.token in locator_extractor_map:
-            return locator_extractor_map[argument_wrapper.token]
+        if argument_wrapper.token and argument_wrapper.token in lookout_extractor_map:
+            return lookout_extractor_map[argument_wrapper.token]
 
         if isinstance(argument_wrapper.representative, AbstractModelFieldWrapper):
             return get_model_field_extractor(argument_wrapper.representative.field)
@@ -116,7 +116,7 @@ class ResponseConverterBase(ClassConverter):
 
         return kwargs
 
-    def get_searcher_kwargs(self):
+    def get_lookout_kwargs(self):
         serializer_class = self.get_referenced_response_variable().value.serializer_class
 
         return {
@@ -125,8 +125,8 @@ class ResponseConverterBase(ClassConverter):
         }
 
     def prepare_converter(self):
-        self.block_token_as_argument(self.status_locator.fittest_token)
-        self.block_token_as_argument(self.response_locator.fittest_token)
+        self.block_token_as_argument(self.status_lookout.fittest_token)
+        self.block_token_as_argument(self.response_lookout.fittest_token)
 
         # only block the model in text if it is actually equal to the one the serializer returns
         if self.model_in_text_fits_request:
@@ -161,12 +161,12 @@ class ResponseConverterBase(ClassConverter):
 
         # there is the option that a specific request was referenced (e.g. `the first response`), if not simply return
         # the last entry
-        if not self.response_locator.fittest_token:
+        if not self.response_lookout.fittest_token:
             return valid_variables[-1]
 
         wrapper = ConverterInitArgumentWrapper(
-            representative=self.response_locator.fittest_keyword,
-            token=self.response_locator.fittest_token,
+            representative=self.response_lookout.fittest_keyword,
+            token=self.response_lookout.fittest_token,
         )
 
         # always get the integer for the response -> which response is meant?
@@ -196,23 +196,23 @@ class ResponseStatusCodeConverter(ResponseConverterBase):
     """
     This converter is responsible for checking the status code of a response.
     """
-    field_searcher_classes = []
+    field_lookout_classes = []
 
     def get_document_compatibility(self):
         compatibility = super().get_document_compatibility()
 
-        if not self.status_locator.fittest_token:
+        if not self.status_lookout.fittest_token:
             compatibility *= 0.2
 
         return compatibility
 
     def prepare_statements(self, statements):
-        if self.status_locator.fittest_token:
+        if self.status_lookout.fittest_token:
             response_var = self.get_referenced_response_variable()
 
             wrapper = ConverterInitArgumentWrapper(
-                token=self.status_locator.fittest_token,
-                representative=self.status_locator.fittest_keyword
+                token=self.status_lookout.fittest_token,
+                representative=self.status_lookout.fittest_keyword
             )
             extractor = self.get_extractor_instance(wrapper)
             exp = CompareExpression(
@@ -229,23 +229,23 @@ class ResponseErrorConverter(ResponseConverterBase):
     """
     This converter is responsible for checking the error message of a response.
     """
-    field_searcher_classes = []
+    field_lookout_classes = []
 
     def get_document_compatibility(self):
         compatibility = super().get_document_compatibility()
 
-        if not self.error_locator.fittest_token:
+        if not self.error_lookout.fittest_token:
             compatibility *= 0.2
 
         return compatibility
 
     def prepare_statements(self, statements):
-        if self.error_locator.fittest_token:
+        if self.error_lookout.fittest_token:
             response_var = self.get_referenced_response_variable()
 
             wrapper = ConverterInitArgumentWrapper(
-                token=self.error_locator.fittest_token,
-                representative=self.error_locator.fittest_keyword
+                token=self.error_lookout.fittest_token,
+                representative=self.error_lookout.fittest_keyword
             )
             extractor = self.get_extractor_instance(wrapper)
             exp = CompareExpression(
@@ -271,7 +271,7 @@ class ResponseConverter(ResponseConverterBase):
         compatibility = super().get_document_compatibility()
 
         # if the response is not explicitly named
-        if not self.response_locator.fittest_token:
+        if not self.response_lookout.fittest_token:
 
             # check if there is a model in the text, if not it is very unlikely to fit
             if self.model_in_text.token:
@@ -327,7 +327,7 @@ class ResponseConverter(ResponseConverterBase):
         super().handle_extractor(extractor, statements)
 
         chunk = get_noun_chunk_of_token(extractor.source, self.document)
-        compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
+        compare_lookout = ComparisonLookout(chunk or self.document, reverse=False)
         extracted_value = self.extract_and_handle_output(extractor)
 
         assert_statement = AssertStatement(
@@ -338,7 +338,7 @@ class ResponseConverter(ResponseConverterBase):
                     [Argument(extractor.field_name)],
                 ),
                 # ==
-                compare_locator.get_comparison_for_value(extracted_value),
+                compare_lookout.get_comparison_for_value(extracted_value),
                 # value
                 Argument(extracted_value),
             )
@@ -354,45 +354,45 @@ class ManyResponseConverter(ResponseConverterBase):
         super().__init__(document, related_object, django_project, test_case)
 
         # keywords to identify a list:
-        self.response_list_locator = NounLocator(self.document, 'list')
-        self.response_list_locator.locate()
+        self.response_list_lookout = NounLookout(self.document, 'list')
+        self.response_list_lookout.locate()
 
-        self.response_length_locator = NounLocator(self.document, 'length')
-        self.response_length_locator.locate()
+        self.response_length_lookout = NounLookout(self.document, 'length')
+        self.response_length_lookout.locate()
 
-        self.response_entry_locator = NounLocator(self.document, 'entry')
-        self.response_entry_locator.locate()
+        self.response_entry_lookout = NounLookout(self.document, 'entry')
+        self.response_entry_lookout.locate()
 
         # since we are trying to access the blocked tokens before even creating the statements, we need to prepare
         # the converter immediately
         self.prepare_converter()
 
     def prepare_converter(self):
-        self.block_token_as_argument(self.response_list_locator.fittest_token)
-        self.block_token_as_argument(self.response_length_locator.fittest_token)
-        self.block_token_as_argument(self.response_entry_locator.fittest_token)
+        self.block_token_as_argument(self.response_list_lookout.fittest_token)
+        self.block_token_as_argument(self.response_length_lookout.fittest_token)
+        self.block_token_as_argument(self.response_entry_lookout.fittest_token)
         # keep this at the end
         super().prepare_converter()
 
     def get_token_to_extractor_list(self):
-        token_locator_list = super().get_token_to_extractor_list()
+        token_lookout_list = super().get_token_to_extractor_list()
 
-        token_locator_list.append((self.response_length_locator.fittest_token, IntegerExtractor))
-        token_locator_list.append((self.response_entry_locator.fittest_token, IntegerExtractor))
+        token_lookout_list.append((self.response_length_lookout.fittest_token, IntegerExtractor))
+        token_lookout_list.append((self.response_entry_lookout.fittest_token, IntegerExtractor))
 
-        return token_locator_list
+        return token_lookout_list
 
     def get_document_compatibility(self):
         compatibility = super().get_document_compatibility()
 
         # if a list is mentioned, the response will most likely be a list
-        list_token = self.response_list_locator.fittest_token
+        list_token = self.response_list_lookout.fittest_token
 
         # if the length of the response is checked, most likely multiple objects are returned
-        length_token = self.response_length_locator.fittest_token
+        length_token = self.response_length_lookout.fittest_token
 
         # if there is the word `entry` it is likely that multiple objects are returned
-        entry_token = self.response_entry_locator.fittest_token
+        entry_token = self.response_entry_lookout.fittest_token
 
         if not list_token and not length_token and not entry_token:
             if not self.model_in_text_fits_request:
@@ -400,10 +400,10 @@ class ManyResponseConverter(ResponseConverterBase):
             else:
                 # if there is a model token that fits, check for a verb like contain or return that reference the
                 # request
-                verb_locator = VerbLocator(self.document, words=['to contain', 'to return'])
-                verb_locator.locate()
+                verb_lookout = VerbLookout(self.document, words=['to contain', 'to return'])
+                verb_lookout.locate()
 
-                if not verb_locator.fittest_token:
+                if not verb_lookout.fittest_token:
                     compatibility *= 0.8
 
         return compatibility
@@ -439,7 +439,7 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
 
     def get_entry_token(self):
         """Returns the token that represents the keyword entries in the doc."""
-        return self.response_entry_locator.fittest_token or self.model_in_text.token
+        return self.response_entry_lookout.fittest_token or self.model_in_text.token
 
     def get_entry_extractor(self) -> Optional[Extractor]:
         """
@@ -530,7 +530,7 @@ class ManyLengthResponseConverter(ManyResponseConverter):
     """
     This converter is used for cases where the length of the response is detected and turned into statements.
     """
-    field_searcher_classes = []
+    field_lookout_classes = []
 
     def get_token_to_extractor_list(self):
         token_extractor_list = super().get_token_to_extractor_list()
@@ -541,7 +541,7 @@ class ManyLengthResponseConverter(ManyResponseConverter):
         """
         Returns the token that represents the length of the response.
         """
-        fittest_token = self.response_length_locator.fittest_token or self.response_entry_locator.fittest_token
+        fittest_token = self.response_length_lookout.fittest_token or self.response_entry_lookout.fittest_token
 
         if fittest_token:
             return fittest_token
@@ -586,7 +586,7 @@ class ManyLengthResponseConverter(ManyResponseConverter):
         statements = super().prepare_statements(statements)
 
         chunk = get_noun_chunk_of_token(self.get_length_token(), self.document)
-        compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
+        compare_lookout = ComparisonLookout(chunk or self.document, reverse=False)
 
         length_extractor = self.get_length_extractor()
         extracted_value = self.extract_and_handle_output(length_extractor)
@@ -596,7 +596,7 @@ class ManyLengthResponseConverter(ManyResponseConverter):
 
         exp = CompareExpression(
             FunctionCallExpression('len', [Attribute(self.get_referenced_response_variable(), 'data')]),
-            compare_locator.get_comparison_for_value(extracted_value),
+            compare_lookout.get_comparison_for_value(extracted_value),
             Argument(extracted_value),
         )
         statements.append(AssertStatement(exp))
