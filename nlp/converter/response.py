@@ -427,7 +427,7 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
                 index = 0
 
             # use the index
-            self.entry_variable = Variable('entry_{}'.format(index), self.model_wrapper_from_request)
+            self.entry_variable = Variable('entry_{}'.format(index), self.model_wrapper_from_request.name)
         else:
             self.entry_variable = None
 

@@ -180,7 +180,7 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
             return ''
 
         # first set the test type and get the django project
-        Settings.test_type = GenerationType.PY_TEST
+        Settings.generate_test_type = GenerationType.PY_TEST
         project = DjangoProject(Settings.django_settings_path)
 
         # create a suite
