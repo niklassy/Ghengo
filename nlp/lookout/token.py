@@ -137,7 +137,8 @@ class FileExtensionLookout(TokenLookout):
     @property
     def fittest_keyword(self):
         """Since we always use the tuples, get the extension from that tuple"""
-        return super().fittest_keyword[0]
+        default = super().fittest_keyword
+        return default[0] if default else None
 
     def get_compare_variations(self, token, keyword):
         """Simplify the variations because it would cause a lot of calculations."""
