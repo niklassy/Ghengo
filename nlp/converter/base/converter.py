@@ -1,6 +1,5 @@
 from nlp.converter.wrapper import ConverterInitArgumentWrapper
 from nlp.generate.suite import TestCaseBase
-from nlp.lookout.exception import LookoutFoundNothing
 from nlp.lookout.nested import NestedLookout
 from nlp.utils import get_noun_chunks, get_non_stop_tokens, get_noun_chunk_of_token, token_is_verb, NoToken, \
     tokens_are_equal
