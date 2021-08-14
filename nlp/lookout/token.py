@@ -228,8 +228,8 @@ class ComparisonLookout(TokenLookout):
 class RestActionLookout(TokenLookout):
     """This lookout finds a token that indicates a special REST action."""
     GET_KEYWORDS = ['detail', 'list', 'get', 'fetch']
-    DELETE_KEYWORDS = ['remove', 'delete', 'clear', 'destroy']
-    UPDATE_KEYWORDS = ['change', 'update', 'modify', 'adjust']
+    DELETE_KEYWORDS = ['remove', 'delete', 'to clear', 'destroy']
+    UPDATE_KEYWORDS = ['to change', 'to update', 'to modify', 'adjust']
     CREATE_KEYWORDS = ['create', 'generate', 'add']
 
     @property
