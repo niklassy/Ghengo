@@ -6,8 +6,8 @@ from nlp.generate.argument import Argument, Kwarg
 from nlp.generate.attribute import Attribute
 from nlp.generate.expression import ModelSaveExpression, ModelFactoryExpression, Expression, CompareExpression
 from nlp.generate.statement import ModelFieldAssignmentStatement, AssignmentStatement, AssertStatement
-from nlp.locator import ComparisonLocator
-from nlp.searcher import ModelFieldSearcher
+from nlp.lookout.project import ModelFieldLookout
+from nlp.lookout.token import ComparisonLookout
 from nlp.utils import get_root_of_token, token_is_noun, token_is_plural, get_noun_chunk_of_token
 
 
@@ -15,7 +15,7 @@ class ModelConverter(ClassConverter):
     """
     This is the base converter for model related stuff.
     """
-    field_searcher_classes = [ModelFieldSearcher]
+    field_lookout_classes = [ModelFieldLookout]
 
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
@@ -27,9 +27,9 @@ class ModelConverter(ClassConverter):
         self.block_token_as_argument(self.model.token)
         self.block_token_as_argument(self.variable.token)
 
-    def get_searcher_kwargs(self):
-        """Add the model to the searcher."""
-        return {'model_adapter': self.model.value}
+    def get_lookout_kwargs(self):
+        """Add the model to the lookout."""
+        return {'model_wrapper': self.model.value}
 
     def get_extractor_class(self, argument_wrapper):
         """The extractor class needs to be determined based on the kwarg_representative which is a model field."""
@@ -38,8 +38,8 @@ class ModelConverter(ClassConverter):
     def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
         """Add the model and the field to the kwargs."""
         kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
-        kwargs['model_adapter'] = self.model.value
-        kwargs['field_adapter'] = argument_wrapper.representative
+        kwargs['model_wrapper'] = self.model.value
+        kwargs['field_wrapper'] = argument_wrapper.representative
         return kwargs
 
 
@@ -54,7 +54,7 @@ class ModelFactoryConverter(ModelConverter):
         Before working with the extractors, create an assignment statement with the model factory. That statement
         will be used to add the values of the extractors.
         """
-        expression = ModelFactoryExpression(model_adapter=self.model.value, factory_kwargs=[])
+        expression = ModelFactoryExpression(model_wrapper=self.model.value, factory_kwargs=[])
         variable = self.variable.value
         statement = AssignmentStatement(variable=variable, expression=expression)
         return [statement]
@@ -109,20 +109,20 @@ class ModelVariableReferenceConverter(ModelConverter):
         # the value of the variable is important for the model
         self.variable.calculate_value()
 
-    def get_variable_model_adapter(self):
+    def get_variable_model_wrapper(self):
         """
-        Returns the model adapter of the variable that this references. Returns none if there is no variable.
+        Returns the model wrapper of the variable that this references. Returns none if there is no variable.
         """
         if not self.variable.value:
             return None
 
         variable_instance = self.variable.value
-        return variable_instance.value.model_adapter
+        return variable_instance.value.model_wrapper
 
     def get_document_compatibility(self):
         """Only if a previous variable exists, this converter makes sense."""
-        variable_model_adapter = self.get_variable_model_adapter()
-        if variable_model_adapter and variable_model_adapter.models_are_equal(self.model_in_text.value):
+        variable_model_wrapper = self.get_variable_model_wrapper()
+        if variable_model_wrapper and variable_model_wrapper.models_are_equal(self.model_in_text.value):
             return 1
         return 0
 
@@ -182,12 +182,12 @@ class AssertPreviousModelConverter(ModelConverter):
     def handle_extractor(self, extractor, statements):
         """For each extractor, use the field to create a compare expression."""
         chunk = get_noun_chunk_of_token(extractor.source, self.document)
-        compare_locator = ComparisonLocator(chunk or self.document, reverse=False)
+        compare_lookout = ComparisonLookout(chunk or self.document, reverse=False)
         extracted_value = extractor.extract_value()
 
         exp = CompareExpression(
             Attribute(self.variable.value, extractor.field_name),
-            compare_locator.get_comparison_for_value(extracted_value),
+            compare_lookout.get_comparison_for_value(extracted_value),
             Argument(extracted_value),
         )
         statement = AssertStatement(exp)

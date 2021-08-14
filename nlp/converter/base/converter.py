@@ -1,6 +1,7 @@
 from nlp.converter.wrapper import ConverterInitArgumentWrapper
 from nlp.generate.suite import TestCaseBase
-from nlp.searcher import NoConversionFound
+from nlp.lookout.exception import LookoutFoundNothing
+from nlp.lookout.nested import NestedLookout
 from nlp.utils import get_noun_chunks, get_non_stop_tokens, get_noun_chunk_of_token, token_is_verb, NoToken, \
     tokens_are_equal
 
@@ -142,7 +143,7 @@ class ClassConverter(Converter):
     """
     This is a base class for any converter that wants to create a class instance.
     """
-    field_searcher_classes = []
+    field_lookout_classes = []
 
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
@@ -198,16 +199,16 @@ class ClassConverter(Converter):
 
         return True
 
-    def get_searcher_kwargs(self):
-        """Returns the kwargs that are passed to the `search` method from a searcher."""
+    def get_lookout_kwargs(self):
+        """Returns the kwargs that are passed to the `locate` method from a lookout."""
         return {}
 
     def search_for_init_argument(self, span, token):
         """
-        This method will use searcher to search for an argument of the class. It will observe the span and
-        the token and will return whatever the searcher returns.
+        This method will use lookouts to search for an argument of the class. It will observe the span and
+        the token and will return whatever the lookout instance returns.
         """
-        searcher_kwargs = self.get_searcher_kwargs()
+        lookout_kwargs = self.get_lookout_kwargs()
 
         search_texts = []
         if span:
@@ -216,34 +217,15 @@ class ClassConverter(Converter):
         if token and str(token) not in search_texts:
             search_texts.append(str(token))
 
-        for index, searcher_class in enumerate(self.field_searcher_classes):
-            last_searcher_class = index == len(self.field_searcher_classes) - 1
-
-            best_search_result = None
-            highest_similarity = 0
-
-            for search_text_index, search_text in enumerate(search_texts):
-                searcher = searcher_class(search_text, src_language=self.language)
-
-                # only raise no exception if it is the last searcher class and the last text to have a fallback
-                last_search_text = search_text_index == len(search_texts) - 1
-                raise_exception = not last_search_text or not last_searcher_class
-
-                try:
-                    search_result = searcher.search(**searcher_kwargs, raise_exception=raise_exception)
-                    if best_search_result is None or searcher.highest_similarity > highest_similarity:
-                        best_search_result = search_result
-                        highest_similarity = searcher.highest_similarity
-
-                        if highest_similarity > 0.9:
-                            break
-                except NoConversionFound:
-                    pass
-
-            if best_search_result is not None:
-                return best_search_result
-
-        return None
+        lookout = NestedLookout(
+            texts=search_texts,
+            language=self.language,
+            lookout_child_classes=self.field_lookout_classes,
+            locate_kwargs=lookout_kwargs,
+        )
+        lookout.locate()
+        best_lookout_result = lookout.fittest_output_object
+        return best_lookout_result
 
     def is_valid_search_result(self, search_result):
         """This method can be used to filter out specific search results before they are turned into extractors."""

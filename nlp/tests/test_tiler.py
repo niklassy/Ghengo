@@ -2,8 +2,8 @@ import pytest
 from django.contrib.auth.models import User
 
 from core.constants import Languages
-from django_meta.api import AbstractUrlPatternAdapter
-from django_meta.model import ModelAdapter
+from django_meta.api import AbstractUrlPatternWrapper
+from django_meta.model import ModelWrapper
 from django_meta.project import DjangoProject
 from gherkin.ast import Then
 from nlp.converter.model import AssertPreviousModelConverter
@@ -82,7 +82,7 @@ def test_then_tiler_best_converter(mocker, keyword, text, expected_converter_cls
     Settings.language = Languages.DE
 
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelAdapter(User, None), [Kwarg('bar', 123)]),
+        expression=PyTestModelFactoryExpression(ModelWrapper(User, None), [Kwarg('bar', 123)]),
         variable=Variable('Alice', 'User'),
     ))
 
@@ -94,7 +94,7 @@ def test_then_tiler_best_converter(mocker, keyword, text, expected_converter_cls
                 function_kwargs=[],
                 reverse_kwargs=[],
                 reverse_name='',
-                url_adapter=AbstractUrlPatternAdapter(ModelAdapter.create_with_model(User)),
+                url_wrapper=AbstractUrlPatternWrapper(ModelWrapper.create_with_model(User)),
                 client_variable=None,
             )
         )

@@ -9,7 +9,7 @@ from nlp.generate.expression import Expression, CompareExpression, ModelQueryset
     ModelQuerysetBaseExpression, ModelQuerysetFilterExpression, ModelQuerysetAllExpression
 from nlp.generate.statement import AssertStatement, AssignmentStatement
 from nlp.generate.variable import Variable
-from nlp.locator import ComparisonLocator, VerbLocator
+from nlp.lookout.token import ComparisonLookout
 from nlp.utils import token_is_plural, token_is_definite, token_is_indefinite, get_previous_token, token_is_noun, \
     tokens_are_equal
 
@@ -157,8 +157,8 @@ class CountQuerysetConverter(QuerysetConverter):
         """Since the count token is extracted by a IntegerExtractor, remove kwargs that it does not need."""
         kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
         if tokens_are_equal(argument_wrapper.token, self.count.token):
-            del kwargs['model_adapter']
-            del kwargs['field_adapter']
+            del kwargs['model_wrapper']
+            del kwargs['field_wrapper']
         return kwargs
 
     def prepare_converter(self):
@@ -202,12 +202,12 @@ class CountQuerysetConverter(QuerysetConverter):
         count_value = self.extract_and_handle_output(count_extractor)
 
         # get the _comparison value (==, <= etc.)
-        compare_locator = ComparisonLocator(self.count.chunk, reverse=False)
+        compare_lookout = ComparisonLookout(self.count.chunk, reverse=False)
 
         # create expression and statement
         expression = CompareExpression(
             Attribute(qs_statement.variable, 'count()'),
-            compare_locator.get_comparison_for_value(count_value),
+            compare_lookout.get_comparison_for_value(count_value),
             Argument(count_value),
         )
         statement = AssertStatement(expression)

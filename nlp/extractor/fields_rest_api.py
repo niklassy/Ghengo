@@ -3,7 +3,7 @@ from rest_framework.fields import Field as RestApiField, BooleanField, IntegerFi
 from rest_framework.relations import PrimaryKeyRelatedField, ManyRelatedField
 from rest_framework.serializers import Serializer
 
-from django_meta.api import AbstractApiFieldAdapter, ApiFieldAdapter
+from django_meta.api import AbstractApiFieldWrapper, ApiFieldWrapper
 from nlp.extractor.base import FieldExtractor, ManyExtractorMixin
 from nlp.extractor.exception import ExtractionError
 from nlp.extractor.fields_model import get_model_field_extractor
@@ -14,10 +14,10 @@ from nlp.generate.attribute import Attribute
 
 class ApiModelFieldExtractor(FieldExtractor):
     field_classes = (RestApiField,)
-    default_field_class = AbstractApiFieldAdapter
+    default_field_class = AbstractApiFieldWrapper
 
-    def __init__(self, test_case, source, field_adapter, document, representative=None):
-        super().__init__(test_case=test_case, source=source, field_adapter=field_adapter, document=document)
+    def __init__(self, test_case, source, field_wrapper, document, representative=None):
+        super().__init__(test_case=test_case, source=source, field_wrapper=field_wrapper, document=document)
         self.field_name = self.field.source
 
 
@@ -124,7 +124,7 @@ class ListApiFieldExtractor(ManyExtractorMixin, ApiModelFieldExtractor):
 
     def get_child_extractor_kwargs(self):
         kwargs = super().get_child_extractor_kwargs()
-        kwargs['field_adapter'] = ApiFieldAdapter(self.get_child_field())
+        kwargs['field_wrapper'] = ApiFieldWrapper(self.get_child_field())
         return kwargs
 
     def get_output_kwargs(self):

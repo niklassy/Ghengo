@@ -7,8 +7,8 @@ from nlp.extractor.base import StringExtractor
 from nlp.generate.argument import Kwarg
 from nlp.generate.expression import CreateUploadFileExpression
 from nlp.generate.statement import AssignmentStatement
-from nlp.locator import FileExtensionLocator
-from nlp.searcher import ClassArgumentSearcher
+from nlp.lookout.project import ClassArgumentLookout
+from nlp.lookout.token import FileExtensionLookout
 
 
 class FileConverter(ClassConverter):
@@ -16,7 +16,7 @@ class FileConverter(ClassConverter):
     This converter can create statements that are used to create files.
     """
     can_use_datatables = True
-    field_searcher_classes = [ClassArgumentSearcher]
+    field_lookout_classes = [ClassArgumentLookout]
 
     class ArgumentRepresentatives:
         """The names for the arguments from SimpleUploadedFile"""
@@ -30,15 +30,15 @@ class FileConverter(ClassConverter):
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
         # get the extension of the file
-        self.file_extension_locator = FileExtensionLocator(self.document)
+        self.file_extension_lookout = FileExtensionLookout(self.document)
 
         self.file = FileProperty(self)
         self.file_variable = NewFileVariableProperty(self)
 
     def prepare_converter(self):
-        self.file_extension_locator.locate()
+        self.file_extension_lookout.locate()
         # Reject tokens that represent the file, the variable or the extension.
-        for t in (self.file.token, self.file_variable.token, self.file_extension_locator.fittest_token):
+        for t in (self.file.token, self.file_variable.token, self.file_extension_lookout.fittest_token):
             self.block_token_as_argument(t)
 
     def get_document_compatibility(self):
@@ -52,7 +52,7 @@ class FileConverter(ClassConverter):
         """All the arguments for `SimpleUploadedFile` are strings. So always return a StringExtractor."""
         return StringExtractor
 
-    def get_searcher_kwargs(self):
+    def get_lookout_kwargs(self):
         """We are searching for the parameters of the init from SimpleUploadFile but want to exclude content_type."""
         return {'cls': SimpleUploadedFile, 'exclude_parameters': ['content_type']}
 
@@ -94,7 +94,7 @@ class FileConverter(ClassConverter):
         # ignore GenerationWarnings
         if representative == self.ArgumentRepresentatives.NAME and not extractor.generates_warning:
             # add the file extension to the extracted value
-            extracted_value = '{}.{}'.format(extracted_value, self.file_extension_locator.best_compare_value or 'txt')
+            extracted_value = '{}.{}'.format(extracted_value, self.file_extension_lookout.fittest_keyword or 'txt')
 
         kwarg = Kwarg(representative, extracted_value)
         expression.add_kwarg(kwarg)

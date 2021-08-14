@@ -5,7 +5,7 @@ from django_meta.base import ExistsInCode
 from nlp.generate.utils import to_function_name
 
 
-class AbstractModelAdapter(ExistsInCode):
+class AbstractModelWrapper(ExistsInCode):
     exists_in_code = False
 
     def __init__(self, name):
@@ -15,12 +15,12 @@ class AbstractModelAdapter(ExistsInCode):
     def get_field(self, name):
         return None
 
-    def models_are_equal(self, model_adapter):
-        """Can be used to check if the models from this and another model adapter are equal."""
-        if not isinstance(model_adapter, AbstractModelAdapter) or isinstance(model_adapter.model, ModelBase):
+    def models_are_equal(self, model_wrapper):
+        """Can be used to check if the models from this and another model wrapper are equal."""
+        if not isinstance(model_wrapper, AbstractModelWrapper) or isinstance(model_wrapper.model, ModelBase):
             return False
 
-        return self.model.__name__ == model_adapter.model.__name__
+        return self.model.__name__ == model_wrapper.model.__name__
 
     @property
     def fields(self):
@@ -31,7 +31,7 @@ class AbstractModelAdapter(ExistsInCode):
         return self.model.__name__
 
 
-class ModelAdapter(AbstractModelAdapter):
+class ModelWrapper(AbstractModelWrapper):
     """
     This class is a wrapper around a Django model with several functions and properties that are useful for the
     application.
@@ -43,11 +43,11 @@ class ModelAdapter(AbstractModelAdapter):
         self.model = model
         self.app = app
 
-    def models_are_equal(self, model_adapter):
-        if not isinstance(model_adapter, AbstractModelAdapter) or not isinstance(model_adapter.model, ModelBase):
+    def models_are_equal(self, model_wrapper):
+        if not isinstance(model_wrapper, AbstractModelWrapper) or not isinstance(model_wrapper.model, ModelBase):
             return False
 
-        return self.model == model_adapter.model
+        return self.model == model_wrapper.model
 
     @classmethod
     def create_with_model(cls, model):
@@ -55,7 +55,7 @@ class ModelAdapter(AbstractModelAdapter):
 
         for app in list(apps.get_app_configs()):
             if app.label == app_label:
-                return ModelAdapter(model, app)
+                return ModelWrapper(model, app)
 
         raise ValueError('No app was found.')
 
@@ -77,23 +77,23 @@ class ModelAdapter(AbstractModelAdapter):
     def fields(self):
         pk_field_name = self.model._meta.pk.name
         field = self.get_field(pk_field_name)
-        adapter = ModelFieldAdapter(field)
-        adapter.name = 'pk'
+        wrapper = ModelFieldWrapper(field)
+        wrapper.name = 'pk'
 
-        return [ModelFieldAdapter(field) for field in self.model._meta.get_fields()] + [adapter]
+        return [ModelFieldWrapper(field) for field in self.model._meta.get_fields()] + [wrapper]
 
     def get_field(self, name):
-        return ModelFieldAdapter(self.model._meta.get_field(name))
+        return ModelFieldWrapper(self.model._meta.get_field(name))
 
     @property
     def field_names(self):
         return [getattr(field, 'verbose_name', None) or field.name for field in self.fields]
 
     def __repr__(self):
-        return 'ModelAdapter - {}'.format(self.name)
+        return 'ModelWrapper - {}'.format(self.name)
 
 
-class AbstractModelFieldAdapter(ExistsInCode):
+class AbstractModelFieldWrapper(ExistsInCode):
     """
     This field can be used for a field in a model that does not exist yet.
     """
@@ -110,7 +110,7 @@ class AbstractModelFieldAdapter(ExistsInCode):
         return self.name == other.name
 
 
-class ModelFieldAdapter(AbstractModelFieldAdapter):
+class ModelFieldWrapper(AbstractModelFieldWrapper):
     exists_in_code = True
 
     def __init__(self, field):

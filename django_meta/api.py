@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 
 from django_meta.base import ExistsInCode
-from django_meta.model import ModelAdapter
+from django_meta.model import ModelWrapper
 from nlp.generate.utils import to_function_name
 
 
@@ -24,9 +24,9 @@ class Methods:
         return [cls.GET, cls.PUT, cls.POST, cls.DELETE, cls.PATCH]
 
 
-class AbstractUrlPatternAdapter(object):
-    def __init__(self, model_adapter):
-        self.model_adapter = model_adapter
+class AbstractUrlPatternWrapper(object):
+    def __init__(self, model_wrapper):
+        self.model_wrapper = model_wrapper
 
     def key_exists_in_route_kwargs(self, key):
         """
@@ -44,7 +44,7 @@ class AbstractUrlPatternAdapter(object):
     @property
     def methods(self):
         """
-        Returns all methods that this adapter supports. By default, all of them are returned.
+        Returns all methods that this wrapper supports. By default, all of them are returned.
         """
         return Methods.get_all()
 
@@ -65,7 +65,7 @@ class AbstractUrlPatternAdapter(object):
     @property
     def reverse_name(self):
         """Get a guessed reverse name for the pattern."""
-        return '{}-{}'.format(self.model_adapter.name.lower(), 'detail')
+        return '{}-{}'.format(self.model_wrapper.name.lower(), 'detail')
 
     def get_serializer_class(self, for_method):
         """
@@ -76,14 +76,14 @@ class AbstractUrlPatternAdapter(object):
         return None
 
 
-class UrlPatternAdapter(AbstractUrlPatternAdapter):
+class UrlPatternWrapper(AbstractUrlPatternWrapper):
     def __init__(self, url_pattern):
         self.url_pattern = url_pattern
         self._view_set_cached = None
         self._api_view_cached = None
         self._view_set_determined = False
         self._api_view_determined = False
-        super().__init__(model_adapter=self._get_model_adapter())
+        super().__init__(model_wrapper=self._get_model_wrapper())
 
     def key_exists_in_route_kwargs(self, key):
         """
@@ -98,7 +98,7 @@ class UrlPatternAdapter(AbstractUrlPatternAdapter):
         """
         return self.url_pattern.name
 
-    def _get_model_adapter(self):
+    def _get_model_wrapper(self):
         view_cls = self._get_view_cls()
         try:
             view = view_cls(request=None, format_kwarg=None)
@@ -113,7 +113,7 @@ class UrlPatternAdapter(AbstractUrlPatternAdapter):
         if not issubclass(serializer_cls, ModelSerializer):
             return None
 
-        return ModelAdapter.create_with_model(serializer_cls.Meta.model)
+        return ModelWrapper.create_with_model(serializer_cls.Meta.model)
 
     @property
     def _route_kwargs(self):
@@ -204,7 +204,7 @@ class UrlPatternAdapter(AbstractUrlPatternAdapter):
             is_view_set = issubclass(view_cls, GenericViewSet)
 
             if inspect.isclass(view_cls) and is_valid_api_view and not is_view_set:
-                self._api_view_cached = ApiViewAdapter(view_cls(request=None, format_kwargs=None))
+                self._api_view_cached = ApiViewWrapper(view_cls(request=None, format_kwargs=None))
             else:
                 self._api_view_cached = None
 
@@ -224,7 +224,7 @@ class UrlPatternAdapter(AbstractUrlPatternAdapter):
             view_cls = self._get_view_cls()
 
             if inspect.isclass(view_cls) and issubclass(view_cls, GenericViewSet):
-                self._view_set_cached = ViewSetAdapter(view_cls(request=None, format_kwarg=None))
+                self._view_set_cached = ViewSetWrapper(view_cls(request=None, format_kwarg=None))
             else:
                 self._view_set_cached = None
 
@@ -233,7 +233,7 @@ class UrlPatternAdapter(AbstractUrlPatternAdapter):
         return self._view_set_cached
 
 
-class ApiViewAdapter(object):
+class ApiViewWrapper(object):
     def __init__(self, api_view):
         self.api_view = api_view
 
@@ -254,7 +254,7 @@ class ApiViewAdapter(object):
         return actions
 
 
-class ViewSetAdapter(object):
+class ViewSetWrapper(object):
     def __init__(self, view_set):
         self.view_set = view_set
 
@@ -283,7 +283,7 @@ class ViewSetAdapter(object):
         return actions
 
 
-class AbstractApiFieldAdapter(ExistsInCode):
+class AbstractApiFieldWrapper(ExistsInCode):
     exists_in_code = False
 
     def __init__(self, name):
@@ -300,7 +300,7 @@ class AbstractApiFieldAdapter(ExistsInCode):
         return self.name == other.name
 
 
-class ApiFieldAdapter(AbstractApiFieldAdapter):
+class ApiFieldWrapper(AbstractApiFieldWrapper):
     exists_in_code = True
 
     def __init__(self, api_field):

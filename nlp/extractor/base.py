@@ -221,11 +221,11 @@ class FieldExtractor(Extractor):
     default_field_class = None
     field_classes = ()
 
-    def __init__(self, test_case, source, field_adapter, document, representative=None):
+    def __init__(self, test_case, source, field_wrapper, document, representative=None):
         # representative in kwargs to have the same signature as the init from the parent
-        super().__init__(test_case=test_case, source=source, document=document, representative=field_adapter)
-        self.field_adapter = field_adapter
-        self.field = field_adapter.field
+        super().__init__(test_case=test_case, source=source, document=document, representative=field_wrapper)
+        self.field_wrapper = field_wrapper
+        self.field = field_wrapper.field
 
     @classmethod
     def fits_input(cls, field, *args, **kwargs):

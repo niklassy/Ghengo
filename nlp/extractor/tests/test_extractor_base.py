@@ -1,15 +1,15 @@
 import pytest
 
 from core.constants import Languages
-from django_meta.model import AbstractModelFieldAdapter, AbstractModelAdapter
+from django_meta.model import AbstractModelFieldWrapper, AbstractModelWrapper
 from nlp.extractor.base import Extractor, ManyExtractor
 from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.setup import Nlp
 
 suite = PyTestTestSuite('bar')
 default_test_case = suite.create_and_add_test_case('foo')
-model_adapter = AbstractModelAdapter('Order')
-field = AbstractModelFieldAdapter('name')
+model_wrapper = AbstractModelWrapper('Order')
+field = AbstractModelFieldWrapper('name')
 nlp = Nlp.for_language(Languages.DE)
 document = nlp('Sie hat 3 Äpfel.')
 
