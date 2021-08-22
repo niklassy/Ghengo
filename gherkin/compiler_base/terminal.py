@@ -66,7 +66,7 @@ class TerminalSymbol(IndentMixin, RecursiveValidationBase):
                 message,
                 terminal_symbol=self,
                 sequence_index=index,
-                rule=self,
+                comes_from=self,
                 suggested_tokens=self.get_next_valid_tokens(),
             )
 
@@ -80,7 +80,7 @@ class TerminalSymbol(IndentMixin, RecursiveValidationBase):
                 message,
                 terminal_symbol=self,
                 sequence_index=index,
-                rule=self,
+                comes_from=self,
                 suggested_tokens=self.get_next_valid_tokens(),
             )
 

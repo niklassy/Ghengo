@@ -162,7 +162,7 @@ class OneOf(RuleOperator):
             str(errors[0][0]),
             sequence_index=index,
             terminal_symbol=errors[0][1],
-            rule=self,
+            comes_from=self,
             # flatten the list
             suggested_tokens=[item for sublist in suggested_tokens for item in sublist],
         )
@@ -207,7 +207,7 @@ class Repeatable(RuleOperator):
                         str(e),
                         sequence_index=index,
                         terminal_symbol=e.terminal_symbol,
-                        rule=e.rule,
+                        comes_from=e.comes_from,
                         suggested_tokens=e.suggested_tokens,
                     )
                 else:
@@ -307,7 +307,7 @@ class Chain(RuleOperator):
                     str(e),
                     terminal_symbol=e.terminal_symbol,
                     sequence_index=e.sequence_index,
-                    rule=e.rule,
+                    comes_from=e.comes_from,
                     suggested_tokens=e.suggested_tokens,
                 )
 

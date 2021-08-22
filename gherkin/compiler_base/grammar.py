@@ -100,7 +100,12 @@ class Grammar(IndentMixin, RecursiveValidationBase):
 
             if not self.used_by_sequence_area(sequence, index, e.sequence_index):
                 raise GrammarNotUsed(
-                    message, terminal_symbol=e.terminal_symbol, sequence_index=e.sequence_index, rule=e.rule, grammar=self)
+                    message,
+                    terminal_symbol=e.terminal_symbol,
+                    sequence_index=e.sequence_index,
+                    comes_from=e.comes_from,
+                    grammar=self,
+                )
 
             raise GrammarInvalid(message, grammar=self, suggested_tokens=e.suggested_tokens)
 

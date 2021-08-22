@@ -42,7 +42,7 @@ class RecursiveValidationBase(object):
                 str(e),
                 sequence_index=e.sequence_index,
                 terminal_symbol=e.terminal_symbol,
-                rule=e.rule,
+                comes_from=e.comes_from,
                 suggested_tokens=e.suggested_tokens,
             )
 
