@@ -1,14 +1,13 @@
 from abc import ABC
-from typing import Union
 
-from gherkin.compiler_base.exception import SequenceEnded, RuleNotFulfilled, SequenceNotFinished, GrammarNotUsed
+from gherkin.compiler_base.exception import SequenceEnded, RuleNotFulfilled, GrammarNotUsed
 from gherkin.compiler_base.grammar import Grammar
-from gherkin.compiler_base.mixin import SequenceToObjectMixin, IndentMixin
+from gherkin.compiler_base.mixin import IndentMixin
+from gherkin.compiler_base.recursive import RecursiveValidationBase
 from gherkin.compiler_base.terminal import TerminalSymbol
-from gherkin.compiler_base.wrapper import TokenWrapper
 
 
-class Rule(IndentMixin, SequenceToObjectMixin, ABC):
+class Rule(IndentMixin, RecursiveValidationBase, ABC):
     supports_list_as_children = False
 
     def __init__(self, child_rule):
@@ -33,133 +32,9 @@ class Rule(IndentMixin, SequenceToObjectMixin, ABC):
         if not isinstance(child, Rule) and not isinstance(child, TerminalSymbol) and not isinstance(child, Grammar):
             raise ValueError('You cannot use other children than Rule objects or RuleObjects around your own objects.')
 
-    def _validate_sequence(self, sequence, index) -> int:
-        """
-        Implemented by each rule. Does the validation of a given sequence. Can be called recursively.
-        The index represents the current index at which the sequence is checked.
-        """
-        raise NotImplementedError()
-
-    def _build_error_message(self, keywords, token_wrapper=None, message=''):
-        """Builds the message for RuleNotFulfilled and SequenceEnded exceptions."""
-        if len(keywords) == 1:
-            message += 'Expected {}.'.format(keywords[0])
-        elif len(keywords) > 1:
-            message += 'Expected one of: {}.'.format(', '.join(['"{}"'.format(k) for k in keywords]))
-
-        if token_wrapper:
-            if not keywords:
-                message += '{} is invalid. {}'.format(token_wrapper.get_text(), token_wrapper.get_place_to_search())
-            else:
-                message += ' Got {} instead. {}'.format(token_wrapper.get_text(), token_wrapper.get_place_to_search())
-
-        return message
-
-    def _validate_token_wrapper(self, sequence: [TokenWrapper], terminal_symbol: TerminalSymbol, index: int):
-        """
-        Validates if a given rule token belongs to a rule class.
-
-        :raises SequenceEnded: if the sequence ends abruptly this error is risen
-        :raises RuleNotFulfilled: if the token_wrapper in the sequence does not match the terminal_symbol
-        """
-        keywords = terminal_symbol.get_keywords()
-        suggested_tokens = terminal_symbol.get_next_valid_tokens()
-
-        try:
-            token_wrapper = sequence[index]
-        except IndexError:
-            message = self._build_error_message(keywords, message='Input ended abruptely. ')
-            raise SequenceEnded(
-                message,
-                terminal_symbol=terminal_symbol,
-                sequence_index=index,
-                rule=self,
-                suggested_tokens=suggested_tokens,
-            )
-
-        assert isinstance(token_wrapper, TokenWrapper)
-        assert isinstance(terminal_symbol, TerminalSymbol)
-
-        if not terminal_symbol.token_wrapper_is_valid(token_wrapper):
-            message = self._build_error_message(keywords, token_wrapper)
-
-            raise RuleNotFulfilled(
-                message,
-                terminal_symbol=terminal_symbol,
-                sequence_index=index,
-                rule=self,
-                suggested_tokens=suggested_tokens,
-            )
-
-        self.on_token_wrapper_valid(token_wrapper)
-
-    def on_token_wrapper_valid(self, token_wrapper: TokenWrapper):
-        token_wrapper.token.set_grammar_meta_value('suggested_indent_level', self.get_suggested_indent_level())
-
-    def _get_valid_index_for_child(
-            self,
-            child: Union['Rule', 'TerminalSymbol', 'Grammar'],
-            sequence: ['TokenWrapper'],
-            index: int,
-    ) -> int:
-        """
-        This function is used in the validation. It will return the next valid index in the sequence for the
-        current rule (this instance) for a given child.
-
-        :raises RuleNotFulfilled (see _validate_token_wrapper)
-        :raises SequenceEnded (see _validate_token_wrapper)
-
-        :param child: a child of a rule - can be a Rule or a RuleClass
-        :param sequence: the sequence that is validated
-        :param index: the index in the sequence right now
-        :return:
-        """
-        # if a Rule is given, let is handle the sequence instead
-        if isinstance(child, Rule):
-            return child._validate_sequence(sequence, index)
-
-        if isinstance(child, Grammar):
-            # noinspection PyProtectedMember
-            return child._validate_sequence(sequence, index)
-
-        # if a RuleClass is given, validate the rule token against that class
-        if isinstance(child, TerminalSymbol):
-            self._validate_token_wrapper(sequence, child, index)
-
-            # if it is valid, go to the next token in the sequence
-            return index + 1
-
-        raise ValueError('This should not happen.')
-
-    def convert(self, sequence):
-        """
-        Can be called to convert a given sequence to an object. The returned object depends on the Rule.
-        """
-        self.validate_sequence(sequence)
-        return self.sequence_to_object(sequence)
-
-    def validate_sequence(self, sequence: ['TokenWrapper'], index=0):
-        """
-        Public function to validate a given sequence. May raise a RuleNotFulfilled or a SequenceNotFinished.
-        """
-        assert all([isinstance(el, TokenWrapper) for el in sequence]), 'Every entry in the passed sequence must be of ' \
-                                                                       'class "RuleToken"'
-
-        try:
-            result_index = self._validate_sequence(sequence, index)
-        except SequenceEnded as e:
-            raise RuleNotFulfilled(
-                str(e),
-                sequence_index=e.sequence_index,
-                terminal_symbol=e.terminal_symbol,
-                rule=e.rule,
-                suggested_tokens=e.suggested_tokens,
-            )
-
-        if result_index < len(sequence):
-            raise SequenceNotFinished()
-
-        return result_index
+    def get_next_pointer_index(self, child, sequence, current_index) -> int:
+        # noinspection PyProtectedMember
+        return child._validate_sequence(sequence, current_index)
 
     def __str__(self):
         return 'Rule {} - {}'.format(self.__class__.__name__, self.child_rule)
@@ -193,7 +68,7 @@ class Optional(Rule):
     def _validate_sequence(self, sequence, index) -> int:
         # try to get the next index. If that fails, just ignore, since it is optional
         try:
-            return self._get_valid_index_for_child(self.child_rule, sequence, index)
+            return self.get_next_pointer_index(self.child_rule, sequence, index)
         except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded):
             # if not valid, continue at current index
             return index
@@ -209,7 +84,7 @@ class Optional(Rule):
 
         # check if the child exists - if not return None
         try:
-            self._get_valid_index_for_child(self.child_rule, sequence, index)
+            self.get_next_pointer_index(self.child_rule, sequence, index)
         except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded):
             return None
 
@@ -256,7 +131,7 @@ class OneOf(Rule):
 
         for child in self.child_rule:
             try:
-                self._get_valid_index_for_child(child, sequence, index)
+                self.get_next_pointer_index(child, sequence, index)
             except (RuleNotFulfilled, SequenceEnded, GrammarNotUsed):
                 continue
 
@@ -279,7 +154,7 @@ class OneOf(Rule):
         # go through each child and validate it for the child; collect all errors
         for child in self.child_rule:
             try:
-                return self._get_valid_index_for_child(child, sequence, index)
+                return self.get_next_pointer_index(child, sequence, index)
             except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded) as e:
                 errors.append((e, child))
 
@@ -327,7 +202,7 @@ class Repeatable(Rule):
         # try to validate the children as long as there are no errors
         while True:
             try:
-                index = self._get_valid_index_for_child(self.child_rule, sequence, index)
+                index = self.get_next_pointer_index(self.child_rule, sequence, index)
             except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded) as e:
                 if isinstance(e, GrammarNotUsed):
                     break_error = RuleNotFulfilled(
@@ -359,7 +234,7 @@ class Repeatable(Rule):
 
         while True:
             try:
-                next_round_index = self._get_valid_index_for_child(self.child_rule, sequence, index)
+                next_round_index = self.get_next_pointer_index(self.child_rule, sequence, index)
                 output.append(self.child_rule.sequence_to_object(sequence, index))
                 index = next_round_index
             except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded):
@@ -415,7 +290,7 @@ class Chain(Rule):
         for child in self.child_rule:
             # get the index where we will end
             try:
-                next_round_index = self._get_valid_index_for_child(child, sequence, index)
+                next_round_index = self.get_next_pointer_index(child, sequence, index)
             except (GrammarNotUsed, RuleNotFulfilled):
                 continue
 
@@ -428,7 +303,7 @@ class Chain(Rule):
         # validate each child and get the index
         for child in self.child_rule:
             try:
-                index = self._get_valid_index_for_child(child, sequence, index)
+                index = self.get_next_pointer_index(child, sequence, index)
             except GrammarNotUsed as e:
                 raise RuleNotFulfilled(
                     str(e),

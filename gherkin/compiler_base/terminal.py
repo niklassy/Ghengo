@@ -1,3 +1,6 @@
+from typing import Optional
+
+from gherkin.compiler_base.exception import SequenceEnded, RuleNotFulfilled
 from gherkin.compiler_base.symbol import Symbol
 
 
@@ -33,6 +36,67 @@ class TerminalSymbol(Symbol):
         for this class? How can this token be represented as a string?
         """
         return self.token_cls.get_keywords()
+
+    def _build_error_message(self, keywords, token_wrapper=None, message=''):
+        """Builds the message for RuleNotFulfilled and SequenceEnded exceptions."""
+        if len(keywords) == 1:
+            message += 'Expected {}.'.format(keywords[0])
+        elif len(keywords) > 1:
+            message += 'Expected one of: {}.'.format(', '.join(['"{}"'.format(k) for k in keywords]))
+
+        if token_wrapper:
+            if not keywords:
+                message += '{} is invalid. {}'.format(token_wrapper.get_text(), token_wrapper.get_place_to_search())
+            else:
+                message += ' Got {} instead. {}'.format(token_wrapper.get_text(), token_wrapper.get_place_to_search())
+
+        return message
+
+    def _validate_sequence(self, sequence, index):
+        """
+        Validates if a given rule token belongs to a rule class.
+
+        :raises SequenceEnded: if the sequence ends abruptly this error is risen
+        :raises RuleNotFulfilled: if the token_wrapper in the sequence does not match the terminal_symbol
+        """
+        keywords = self.get_keywords()
+        suggested_tokens = self.get_next_valid_tokens()
+
+        try:
+            token_wrapper = sequence[index]
+        except IndexError:
+            message = self._build_error_message(keywords, message='Input ended abruptely. ')
+            raise SequenceEnded(
+                message,
+                terminal_symbol=self,
+                sequence_index=index,
+                rule=self,
+                suggested_tokens=suggested_tokens,
+            )
+
+        from gherkin.compiler_base.wrapper import TokenWrapper
+        assert isinstance(token_wrapper, TokenWrapper)
+
+        if not self.token_wrapper_is_valid(token_wrapper):
+            message = self._build_error_message(keywords, token_wrapper)
+
+            raise RuleNotFulfilled(
+                message,
+                terminal_symbol=self,
+                sequence_index=index,
+                rule=self,
+                suggested_tokens=suggested_tokens,
+            )
+
+        self.on_token_wrapper_valid(token_wrapper)
+
+        return self._get_valid_index_for_child(child=None, sequence=sequence, index=index)
+
+    def _get_valid_index_for_child(self, child: Optional['Symbol'], sequence, index: int) -> int:
+        return index + 1
+
+    def on_token_wrapper_valid(self, token_wrapper):
+        token_wrapper.token.set_grammar_meta_value('suggested_indent_level', self.get_suggested_indent_level())
 
     def __str__(self):
         return str(self.token_cls)

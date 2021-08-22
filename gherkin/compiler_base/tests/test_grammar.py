@@ -1,6 +1,7 @@
 from gherkin.compiler_base.exception import GrammarInvalid, GrammarNotUsed
-from gherkin.compiler_base.rule import Optional, TokenWrapper, Grammar, Chain, OneOf, Repeatable
+from gherkin.compiler_base.rule import Optional, Grammar, Chain, OneOf, Repeatable
 from gherkin.compiler_base.terminal import TerminalSymbol
+from gherkin.compiler_base.wrapper import TokenWrapper
 from gherkin.token import DescriptionToken, EndOfLineToken, EOFToken, FeatureToken
 from test_utils import assert_callable_raises
 
