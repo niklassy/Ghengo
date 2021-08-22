@@ -1,5 +1,4 @@
 from gherkin.compiler_base.exception import SequenceEnded, RuleNotFulfilled, SequenceNotFinished
-from gherkin.compiler_base.wrapper import TokenWrapper
 
 
 class RecursiveValidationBase(object):
@@ -32,6 +31,7 @@ class RecursiveValidationBase(object):
         """
         Public function to validate a given sequence. May raise a RuleNotFulfilled or a SequenceNotFinished.
         """
+        from gherkin.compiler_base.wrapper import TokenWrapper
         assert all([isinstance(el, TokenWrapper) for el in sequence]), 'Every entry in the passed sequence must be of ' \
                                                                        'class "TokenWrapper"'
 

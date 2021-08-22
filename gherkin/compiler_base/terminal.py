@@ -1,10 +1,9 @@
-from typing import Optional
-
 from gherkin.compiler_base.exception import SequenceEnded, RuleNotFulfilled
-from gherkin.compiler_base.symbol import Symbol
+from gherkin.compiler_base.mixin import IndentMixin
+from gherkin.compiler_base.recursive import RecursiveValidationBase
 
 
-class TerminalSymbol(Symbol):
+class TerminalSymbol(IndentMixin, RecursiveValidationBase):
     """
     This is a wrapper for defining rules. It is a wrapper around any custom class that is used while defining
     rules. For this project, the class could be removed, but it is a nice wrapper for future usage.
@@ -30,6 +29,9 @@ class TerminalSymbol(Symbol):
         """
         return isinstance(token_wrapper.token, self.token_cls)
 
+    def get_next_pointer_index(self, child, sequence, current_index) -> int:
+        return current_index + 1
+
     def get_keywords(self) -> [str]:
         """
         Return a list of keywords. Used by rules to see what keywords are expected. So: what is expected to be found
@@ -37,8 +39,10 @@ class TerminalSymbol(Symbol):
         """
         return self.token_cls.get_keywords()
 
-    def _build_error_message(self, keywords, token_wrapper=None, message=''):
+    def _build_error_message(self, token_wrapper=None, message=''):
         """Builds the message for RuleNotFulfilled and SequenceEnded exceptions."""
+        keywords = self.get_keywords()
+
         if len(keywords) == 1:
             message += 'Expected {}.'.format(keywords[0])
         elif len(keywords) > 1:
@@ -53,47 +57,37 @@ class TerminalSymbol(Symbol):
         return message
 
     def _validate_sequence(self, sequence, index):
-        """
-        Validates if a given rule token belongs to a rule class.
-
-        :raises SequenceEnded: if the sequence ends abruptly this error is risen
-        :raises RuleNotFulfilled: if the token_wrapper in the sequence does not match the terminal_symbol
-        """
-        keywords = self.get_keywords()
-        suggested_tokens = self.get_next_valid_tokens()
-
         try:
             token_wrapper = sequence[index]
         except IndexError:
-            message = self._build_error_message(keywords, message='Input ended abruptely. ')
+            message = self._build_error_message(message='Input ended abruptely. ')
+
             raise SequenceEnded(
                 message,
                 terminal_symbol=self,
                 sequence_index=index,
                 rule=self,
-                suggested_tokens=suggested_tokens,
+                suggested_tokens=self.get_next_valid_tokens(),
             )
 
         from gherkin.compiler_base.wrapper import TokenWrapper
         assert isinstance(token_wrapper, TokenWrapper)
 
         if not self.token_wrapper_is_valid(token_wrapper):
-            message = self._build_error_message(keywords, token_wrapper)
+            message = self._build_error_message(token_wrapper)
 
             raise RuleNotFulfilled(
                 message,
                 terminal_symbol=self,
                 sequence_index=index,
                 rule=self,
-                suggested_tokens=suggested_tokens,
+                suggested_tokens=self.get_next_valid_tokens(),
             )
 
+        # --- everything is valid from here on -----
         self.on_token_wrapper_valid(token_wrapper)
 
-        return self._get_valid_index_for_child(child=None, sequence=sequence, index=index)
-
-    def _get_valid_index_for_child(self, child: Optional['Symbol'], sequence, index: int) -> int:
-        return index + 1
+        return self.get_next_pointer_index(child=None, sequence=sequence, current_index=index)
 
     def on_token_wrapper_valid(self, token_wrapper):
         token_wrapper.token.set_grammar_meta_value('suggested_indent_level', self.get_suggested_indent_level())
