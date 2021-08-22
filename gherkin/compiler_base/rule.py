@@ -1,7 +1,6 @@
 from abc import ABC
 
 from gherkin.compiler_base.exception import SequenceEnded, RuleNotFulfilled, GrammarNotUsed
-from gherkin.compiler_base.grammar import Grammar
 from gherkin.compiler_base.mixin import IndentMixin
 from gherkin.compiler_base.recursive import RecursiveValidationBase
 from gherkin.compiler_base.terminal import TerminalSymbol
@@ -29,6 +28,8 @@ class Rule(IndentMixin, RecursiveValidationBase, ABC):
 
     def _validate_init_child(self, child):
         """Validation on __init__"""
+        # TODO: replace with validate base
+        from gherkin.compiler_base.grammar import Grammar
         if not isinstance(child, Rule) and not isinstance(child, TerminalSymbol) and not isinstance(child, Grammar):
             raise ValueError('You cannot use other children than Rule objects or RuleObjects around your own objects.')
 

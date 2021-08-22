@@ -1,32 +1,11 @@
-from gherkin.compiler_base.exception import RuleNotFulfilled, SequenceEnded, GrammarNotUsed, GrammarInvalid, \
-    SequenceNotFinished
-from gherkin.compiler_base.mixin import SequenceToObjectMixin, IndentMixin
+from gherkin.compiler_base.exception import RuleNotFulfilled, SequenceEnded, GrammarNotUsed, GrammarInvalid
+from gherkin.compiler_base.mixin import IndentMixin
+from gherkin.compiler_base.recursive import RecursiveValidationBase
+from gherkin.compiler_base.rule import Rule
 from gherkin.compiler_base.terminal import TerminalSymbol
-from gherkin.compiler_base.wrapper import TokenWrapper
 
 
-class Grammar(IndentMixin, SequenceToObjectMixin):
-    """
-    A grammar represents a combination of rules that has a special criterion to recognize it with.
-    This criterion is a RuleAlias. If there is an error while validating a grammar object,
-    it will check:
-        - am i optional? - if yes, continue normally
-
-        - did the error occur AFTER the defined RuleAlias was validated?
-            -> if yes, it means that the input `tries` to create this Grammar
-        - was the error raised by that exact RuleAlias?
-            -> if yes, it means again that the input `tried` to create this Grammar
-
-        => if either of those cases are true, this will raise a GrammarInvalid exception.
-
-    This is useful to differentiate between:
-        - is the grammar optional?
-        - did the input actually try to create this Grammar?
-        - should the validation continue?
-
-    Grammar objects separate Rules from each other and isolate each "Area" of grammar. If
-    a rule raises an error, the grammar catches and handles it.
-    """
+class Grammar(IndentMixin, RecursiveValidationBase):
     name = None
     rule = None
     criterion_terminal_symbol: TerminalSymbol = None
@@ -60,7 +39,7 @@ class Grammar(IndentMixin, SequenceToObjectMixin):
             tokens = [tokens]
         return tokens
 
-    def get_rule(self):
+    def get_rule(self) -> Rule:
         """Returns the rule of this grammar."""
         return self.rule
 
@@ -86,6 +65,9 @@ class Grammar(IndentMixin, SequenceToObjectMixin):
         non_committed = sequence[start_index:end_index]
 
         return criterion in [t.terminal_symbol for t in non_committed]
+
+    def get_next_pointer_index(self, child, sequence, current_index) -> int:
+        return self.get_rule().get_next_pointer_index(child, sequence, current_index)
 
     def _validate_sequence(self, sequence, index):
         """
@@ -122,27 +104,9 @@ class Grammar(IndentMixin, SequenceToObjectMixin):
 
             raise GrammarInvalid(message, grammar=self, suggested_tokens=e.suggested_tokens)
 
-    def validate_sequence(self, sequence: [TokenWrapper]):
-        """
-        The entrypoint to the validation. Call this function to start the validation of a sequence.
-
-        :raises SequenceNotFinished - all rules were fulfilled, but there are still elements in the sequence that were
-                                    not validated.
-        :raises GrammarInvalid  - The grammar was used but is not valid. It is also thrown when the grammar that
-                                used this method is not used in the sequence.
-        :raises GrammarNotUsed  - This grammar could not be identified and is not used in the sequence. This is only
-                                risen if the top level Grammar is not recognized.
-        """
-        assert all([isinstance(el, TokenWrapper) for el in sequence]), 'Every entry in the passed sequence must be ' \
-                                                                       'of class "TokenWrapper"'
-
-        result_index = self._validate_sequence(sequence, 0)
-
-        if result_index < len(sequence):
-            raise SequenceNotFinished()
-
+    def validate_sequence(self, sequence, index=0):
+        result_index = super().validate_sequence(sequence, 0)
         self.validated_sequence = sequence
-
         return result_index
 
     def get_convert_kwargs(self, rule_output):
@@ -170,9 +134,3 @@ class Grammar(IndentMixin, SequenceToObjectMixin):
         obj = self.convert_cls(**kwargs)
 
         return self.prepare_converted_object(object_of_rule, obj)
-
-    def convert(self, sequence):
-        """Converts a given sequence into an object that can be used as an ast."""
-        self.validate_sequence(sequence)
-
-        return self.sequence_to_object(sequence, 0)
