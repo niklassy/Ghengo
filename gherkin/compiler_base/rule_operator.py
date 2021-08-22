@@ -5,7 +5,7 @@ from gherkin.compiler_base.mixin import IndentMixin
 from gherkin.compiler_base.recursive import RecursiveValidationBase
 
 
-class Rule(IndentMixin, RecursiveValidationBase, ABC):
+class RuleOperator(IndentMixin, RecursiveValidationBase, ABC):
     supports_list_as_children = False
 
     def __init__(self, child_rule):
@@ -38,7 +38,7 @@ class Rule(IndentMixin, RecursiveValidationBase, ABC):
         return 'Rule {} - {}'.format(self.__class__.__name__, self.child_rule)
 
 
-class Optional(Rule):
+class Optional(RuleOperator):
     """
     Can be used to mark something a token as optional.
     """
@@ -89,7 +89,7 @@ class Optional(Rule):
         return self.child_rule.sequence_to_object(sequence, index)
 
 
-class OneOf(Rule):
+class OneOf(RuleOperator):
     """
     Can be used as an OR operation: Any token that is passed is valid. If none exists, an error is thrown.
     """
@@ -168,7 +168,7 @@ class OneOf(Rule):
         )
 
 
-class Repeatable(Rule):
+class Repeatable(RuleOperator):
     """Allows any amount of repetition of the passed child. If it is optional, minimum=0 can be passed."""
 
     def __init__(self, child, minimum=1, important=False):
@@ -240,7 +240,7 @@ class Repeatable(Rule):
         return output
 
 
-class Chain(Rule):
+class Chain(RuleOperator):
     """
     Allows a specific order of tokens to be checked. If the exact order is not correct, an error is thrown.
     """
@@ -314,7 +314,8 @@ class Chain(Rule):
         return index
 
 
-class IndentBlock(Rule):
+class IndentBlock(RuleOperator):
+    # TODO: this does not really fit here -> move it somewhere else
     supports_list_as_children = True
 
     def __init__(self, child):

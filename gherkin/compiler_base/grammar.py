@@ -1,7 +1,7 @@
 from gherkin.compiler_base.exception import RuleNotFulfilled, SequenceEnded, GrammarNotUsed, GrammarInvalid
 from gherkin.compiler_base.mixin import IndentMixin
 from gherkin.compiler_base.recursive import RecursiveValidationBase
-from gherkin.compiler_base.rule import Rule
+from gherkin.compiler_base.rule_operator import RuleOperator
 from gherkin.compiler_base.terminal import TerminalSymbol
 
 
@@ -17,7 +17,7 @@ class Grammar(IndentMixin, RecursiveValidationBase):
         if self.get_rule() is None:
             raise ValueError('You must provide a rule')
 
-        from gherkin.compiler_base.rule import Chain
+        from gherkin.compiler_base.rule_operator import Chain
         if not isinstance(self.get_rule(), Chain):
             raise ValueError('You must only use Chain on Grammar objects as its rule.')
 
@@ -39,7 +39,7 @@ class Grammar(IndentMixin, RecursiveValidationBase):
             tokens = [tokens]
         return tokens
 
-    def get_rule(self) -> Rule:
+    def get_rule(self) -> RuleOperator:
         """Returns the rule of this grammar."""
         return self.rule
 

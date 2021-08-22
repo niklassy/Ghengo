@@ -1,6 +1,6 @@
 from gherkin.compiler_base.exception import GrammarInvalid, RuleNotFulfilled, SequenceNotFinished
 from gherkin.compiler_base.grammar import Grammar
-from gherkin.compiler_base.rule import Optional, Chain, OneOf, Repeatable
+from gherkin.compiler_base.rule_operator import Optional, Chain, OneOf, Repeatable
 from gherkin.compiler_base.terminal import TerminalSymbol
 from gherkin.compiler_base.wrapper import TokenWrapper
 from gherkin.token import DescriptionToken, EndOfLineToken, EOFToken, FeatureToken
