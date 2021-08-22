@@ -50,3 +50,23 @@ class RecursiveValidationBase(object):
             raise SequenceNotFinished()
 
         return result_index
+
+
+class RecursiveValidationContainer(RecursiveValidationBase):
+    def get_child_validator(self) -> RecursiveValidationBase:
+        raise NotImplementedError()
+
+    def get_next_pointer_index(self, child, sequence, current_index) -> int:
+        return self.get_child_validator().get_next_pointer_index(child, sequence, current_index)
+
+    def sequence_to_object(self, sequence, index=0):
+        return self.get_child_validator().sequence_to_object(sequence, index)
+
+    def _validate_sequence(self, sequence, index) -> int:
+        return self.get_child_validator()._validate_sequence(sequence, index)
+
+    def validate_sequence(self, sequence, index=0):
+        return self.get_child_validator().validate_sequence(sequence, index)
+
+    def convert(self, sequence):
+        return self.get_child_validator().convert(sequence)
