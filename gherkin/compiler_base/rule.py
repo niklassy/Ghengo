@@ -4,7 +4,8 @@ from typing import Union
 from gherkin.compiler_base.exception import SequenceEnded, RuleNotFulfilled, SequenceNotFinished, GrammarNotUsed
 from gherkin.compiler_base.grammar import Grammar
 from gherkin.compiler_base.mixin import SequenceToObjectMixin, IndentMixin
-from gherkin.compiler_base.wrapper import RuleAlias, TokenWrapper
+from gherkin.compiler_base.terminal import TerminalSymbol
+from gherkin.compiler_base.wrapper import TokenWrapper
 
 
 class Rule(IndentMixin, SequenceToObjectMixin, ABC):
@@ -29,7 +30,7 @@ class Rule(IndentMixin, SequenceToObjectMixin, ABC):
 
     def _validate_init_child(self, child):
         """Validation on __init__"""
-        if not isinstance(child, Rule) and not isinstance(child, RuleAlias) and not isinstance(child, Grammar):
+        if not isinstance(child, Rule) and not isinstance(child, TerminalSymbol) and not isinstance(child, Grammar):
             raise ValueError('You cannot use other children than Rule objects or RuleObjects around your own objects.')
 
     def _validate_sequence(self, sequence, index) -> int:
@@ -54,15 +55,15 @@ class Rule(IndentMixin, SequenceToObjectMixin, ABC):
 
         return message
 
-    def _validate_token_wrapper(self, sequence: [TokenWrapper], rule_alias: RuleAlias, index: int):
+    def _validate_token_wrapper(self, sequence: [TokenWrapper], terminal_symbol: TerminalSymbol, index: int):
         """
         Validates if a given rule token belongs to a rule class.
 
         :raises SequenceEnded: if the sequence ends abruptly this error is risen
-        :raises RuleNotFulfilled: if the token_wrapper in the sequence does not match the rule_alias
+        :raises RuleNotFulfilled: if the token_wrapper in the sequence does not match the terminal_symbol
         """
-        keywords = rule_alias.get_keywords()
-        suggested_tokens = rule_alias.get_next_valid_tokens()
+        keywords = terminal_symbol.get_keywords()
+        suggested_tokens = terminal_symbol.get_next_valid_tokens()
 
         try:
             token_wrapper = sequence[index]
@@ -70,21 +71,21 @@ class Rule(IndentMixin, SequenceToObjectMixin, ABC):
             message = self._build_error_message(keywords, message='Input ended abruptely. ')
             raise SequenceEnded(
                 message,
-                rule_alias=rule_alias,
+                terminal_symbol=terminal_symbol,
                 sequence_index=index,
                 rule=self,
                 suggested_tokens=suggested_tokens,
             )
 
         assert isinstance(token_wrapper, TokenWrapper)
-        assert isinstance(rule_alias, RuleAlias)
+        assert isinstance(terminal_symbol, TerminalSymbol)
 
-        if not rule_alias.token_wrapper_is_valid(token_wrapper):
+        if not terminal_symbol.token_wrapper_is_valid(token_wrapper):
             message = self._build_error_message(keywords, token_wrapper)
 
             raise RuleNotFulfilled(
                 message,
-                rule_alias=rule_alias,
+                terminal_symbol=terminal_symbol,
                 sequence_index=index,
                 rule=self,
                 suggested_tokens=suggested_tokens,
@@ -95,7 +96,12 @@ class Rule(IndentMixin, SequenceToObjectMixin, ABC):
     def on_token_wrapper_valid(self, token_wrapper: TokenWrapper):
         token_wrapper.token.set_grammar_meta_value('suggested_indent_level', self.get_suggested_indent_level())
 
-    def _get_valid_index_for_child(self, child: Union['Rule', 'RuleAlias', 'Grammar'], sequence: ['TokenWrapper'], index: int) -> int:
+    def _get_valid_index_for_child(
+            self,
+            child: Union['Rule', 'TerminalSymbol', 'Grammar'],
+            sequence: ['TokenWrapper'],
+            index: int,
+    ) -> int:
         """
         This function is used in the validation. It will return the next valid index in the sequence for the
         current rule (this instance) for a given child.
@@ -117,7 +123,7 @@ class Rule(IndentMixin, SequenceToObjectMixin, ABC):
             return child._validate_sequence(sequence, index)
 
         # if a RuleClass is given, validate the rule token against that class
-        if isinstance(child, RuleAlias):
+        if isinstance(child, TerminalSymbol):
             self._validate_token_wrapper(sequence, child, index)
 
             # if it is valid, go to the next token in the sequence
@@ -145,7 +151,7 @@ class Rule(IndentMixin, SequenceToObjectMixin, ABC):
             raise RuleNotFulfilled(
                 str(e),
                 sequence_index=e.sequence_index,
-                rule_alias=e.rule_alias,
+                terminal_symbol=e.terminal_symbol,
                 rule=e.rule,
                 suggested_tokens=e.suggested_tokens,
             )
@@ -282,7 +288,7 @@ class OneOf(Rule):
         raise RuleNotFulfilled(
             str(errors[0][0]),
             sequence_index=index,
-            rule_alias=errors[0][1],
+            terminal_symbol=errors[0][1],
             rule=self,
             # flatten the list
             suggested_tokens=[item for sublist in suggested_tokens for item in sublist],
@@ -327,7 +333,7 @@ class Repeatable(Rule):
                     break_error = RuleNotFulfilled(
                         str(e),
                         sequence_index=index,
-                        rule_alias=e.rule_alias,
+                        terminal_symbol=e.terminal_symbol,
                         rule=e.rule,
                         suggested_tokens=e.suggested_tokens,
                     )
@@ -426,7 +432,7 @@ class Chain(Rule):
             except GrammarNotUsed as e:
                 raise RuleNotFulfilled(
                     str(e),
-                    rule_alias=e.rule_alias,
+                    terminal_symbol=e.terminal_symbol,
                     sequence_index=e.sequence_index,
                     rule=e.rule,
                     suggested_tokens=e.suggested_tokens,

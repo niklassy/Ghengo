@@ -1,5 +1,6 @@
 from gherkin.compiler_base.exception import GrammarInvalid
-from gherkin.compiler_base.rule import Chain, OneOf, Repeatable, Optional, RuleAlias, Grammar, TokenWrapper, IndentBlock
+from gherkin.compiler_base.rule import Chain, OneOf, Repeatable, Optional, Grammar, TokenWrapper, IndentBlock
+from gherkin.compiler_base.terminal import TerminalSymbol
 from gherkin.token import LanguageToken, FeatureToken, EOFToken, DescriptionToken, RuleToken, ScenarioToken, \
     EndOfLineToken, TagToken, GivenToken, AndToken, ButToken, WhenToken, ThenToken, BackgroundToken, \
     DocStringToken, DataTableToken, ExamplesToken, ScenarioOutlineToken
@@ -18,10 +19,10 @@ wie Kommentare behalten wollen, für weitere Informationen in der Zukunft.
 
 
 class DescriptionGrammar(Grammar):
-    criterion_rule_alias = RuleAlias(DescriptionToken)
+    criterion_terminal_symbol = TerminalSymbol(DescriptionToken)
     rule = Chain([
-        criterion_rule_alias,
-        RuleAlias(EndOfLineToken),
+        criterion_terminal_symbol,
+        TerminalSymbol(EndOfLineToken),
     ])
     convert_cls = Description
 
@@ -61,10 +62,10 @@ class DescriptionGrammar(Grammar):
 
 
 class TagsGrammar(Grammar):
-    criterion_rule_alias = RuleAlias(TagToken)
+    criterion_terminal_symbol = TerminalSymbol(TagToken)
     rule = Chain([
-        Repeatable(criterion_rule_alias),
-        RuleAlias(EndOfLineToken),
+        Repeatable(criterion_terminal_symbol),
+        TerminalSymbol(EndOfLineToken),
     ])
     convert_cls = Tag
 
@@ -79,13 +80,13 @@ class TagsGrammar(Grammar):
 
 
 class DocStringGrammar(Grammar):
-    criterion_rule_alias = RuleAlias(DocStringToken)
+    criterion_terminal_symbol = TerminalSymbol(DocStringToken)
     rule = Chain([
-        criterion_rule_alias,
-        RuleAlias(EndOfLineToken),
+        criterion_terminal_symbol,
+        TerminalSymbol(EndOfLineToken),
         Repeatable(DescriptionGrammar(), minimum=0),
-        criterion_rule_alias,
-        RuleAlias(EndOfLineToken),
+        criterion_terminal_symbol,
+        TerminalSymbol(EndOfLineToken),
     ])
     convert_cls = DocString
 
@@ -101,11 +102,11 @@ class DocStringGrammar(Grammar):
 
 
 class DataTableGrammar(Grammar):
-    criterion_rule_alias = RuleAlias(DataTableToken)
+    criterion_terminal_symbol = TerminalSymbol(DataTableToken)
     rule = Chain([
         Repeatable(Chain([
-            criterion_rule_alias,
-            RuleAlias(EndOfLineToken),
+            criterion_terminal_symbol,
+            TerminalSymbol(EndOfLineToken),
         ]), minimum=2),
     ])
     convert_cls = DataTable
@@ -173,9 +174,9 @@ class DataTableGrammar(Grammar):
 class AndButGrammarBase(Grammar):
     def get_rule(self):
         return Chain([
-            self.criterion_rule_alias,
-            RuleAlias(DescriptionToken),
-            RuleAlias(EndOfLineToken),
+            self.criterion_terminal_symbol,
+            TerminalSymbol(DescriptionToken),
+            TerminalSymbol(EndOfLineToken),
             IndentBlock(
                 Optional(OneOf([
                     DocStringGrammar(),
@@ -193,12 +194,12 @@ class AndButGrammarBase(Grammar):
 
 
 class AndGrammar(AndButGrammarBase):
-    criterion_rule_alias = RuleAlias(AndToken)
+    criterion_terminal_symbol = TerminalSymbol(AndToken)
     convert_cls = And
 
 
 class ButGrammar(AndButGrammarBase):
-    criterion_rule_alias = RuleAlias(ButToken)
+    criterion_terminal_symbol = TerminalSymbol(ButToken)
     convert_cls = But
 
 
@@ -215,12 +216,12 @@ class TagsGrammarMixin(object):
 
 
 class ExamplesGrammar(TagsGrammarMixin, Grammar):
-    criterion_rule_alias = RuleAlias(ExamplesToken)
+    criterion_terminal_symbol = TerminalSymbol(ExamplesToken)
     rule = Chain([
         Optional(TagsGrammar()),
-        criterion_rule_alias,
+        criterion_terminal_symbol,
         OneOf([
-            Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
+            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
         IndentBlock(
@@ -262,11 +263,11 @@ class GivenWhenThenBase(Grammar):
 
 
 class GivenGrammar(GivenWhenThenBase):
-    criterion_rule_alias = RuleAlias(GivenToken)
+    criterion_terminal_symbol = TerminalSymbol(GivenToken)
     rule = Chain([
-        criterion_rule_alias,
-        RuleAlias(DescriptionToken),
-        RuleAlias(EndOfLineToken),
+        criterion_terminal_symbol,
+        TerminalSymbol(DescriptionToken),
+        TerminalSymbol(EndOfLineToken),
         Optional(OneOf([
             DocStringGrammar(),
             DataTableGrammar(),
@@ -281,11 +282,11 @@ class GivenGrammar(GivenWhenThenBase):
 
 
 class WhenGrammar(GivenWhenThenBase):
-    criterion_rule_alias = RuleAlias(WhenToken)
+    criterion_terminal_symbol = TerminalSymbol(WhenToken)
     rule = Chain([
-        criterion_rule_alias,
-        RuleAlias(DescriptionToken),
-        RuleAlias(EndOfLineToken),
+        criterion_terminal_symbol,
+        TerminalSymbol(DescriptionToken),
+        TerminalSymbol(EndOfLineToken),
         Optional(OneOf([
             DocStringGrammar(),
             DataTableGrammar(),
@@ -300,11 +301,11 @@ class WhenGrammar(GivenWhenThenBase):
 
 
 class ThenGrammar(GivenWhenThenBase):
-    criterion_rule_alias = RuleAlias(ThenToken)
+    criterion_terminal_symbol = TerminalSymbol(ThenToken)
     rule = Chain([
-        criterion_rule_alias,
-        RuleAlias(DescriptionToken),
-        RuleAlias(EndOfLineToken),
+        criterion_terminal_symbol,
+        TerminalSymbol(DescriptionToken),
+        TerminalSymbol(EndOfLineToken),
         Optional(OneOf([
             DocStringGrammar(),
             DataTableGrammar(),
@@ -419,12 +420,12 @@ class ScenarioDefinitionGrammar(Grammar):
 
 
 class ScenarioOutlineGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
-    criterion_rule_alias = RuleAlias(ScenarioOutlineToken)
+    criterion_terminal_symbol = TerminalSymbol(ScenarioOutlineToken)
     rule = Chain([
         Optional(TagsGrammar()),
-        criterion_rule_alias,
+        criterion_terminal_symbol,
         OneOf([
-            Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
+            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
         IndentBlock([
@@ -455,12 +456,12 @@ class ScenarioOutlineGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
 
 
 class ScenarioGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
-    criterion_rule_alias = RuleAlias(ScenarioToken)
+    criterion_terminal_symbol = TerminalSymbol(ScenarioToken)
     rule = Chain([
         Optional(TagsGrammar()),
-        criterion_rule_alias,
+        criterion_terminal_symbol,
         OneOf([
-            Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
+            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
         IndentBlock(
@@ -479,11 +480,11 @@ class ScenarioGrammar(TagsGrammarMixin, ScenarioDefinitionGrammar):
 
 class BackgroundGrammar(ScenarioDefinitionGrammar):
     description_index = 1
-    criterion_rule_alias = RuleAlias(BackgroundToken)
+    criterion_terminal_symbol = TerminalSymbol(BackgroundToken)
     rule = Chain([
-        criterion_rule_alias,
+        criterion_terminal_symbol,
         OneOf([
-            Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
+            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
         IndentBlock(
@@ -501,12 +502,12 @@ class BackgroundGrammar(ScenarioDefinitionGrammar):
 
 
 class RuleGrammar(TagsGrammarMixin, Grammar):
-    criterion_rule_alias = RuleAlias(RuleToken)
+    criterion_terminal_symbol = TerminalSymbol(RuleToken)
     rule = Chain([
         Optional(TagsGrammar()),    # support was added some time ago (https://github.com/cucumber/common/pull/1356)
-        criterion_rule_alias,
+        criterion_terminal_symbol,
         OneOf([
-            Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
+            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
         IndentBlock([
@@ -546,12 +547,12 @@ class RuleGrammar(TagsGrammarMixin, Grammar):
 
 
 class FeatureGrammar(TagsGrammarMixin, Grammar):
-    criterion_rule_alias = RuleAlias(FeatureToken)
+    criterion_terminal_symbol = TerminalSymbol(FeatureToken)
     rule = Chain([
         Optional(TagsGrammar()),
-        criterion_rule_alias,
+        criterion_terminal_symbol,
         OneOf([
-            Chain([RuleAlias(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
+            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionGrammar(), minimum=0)]),
             Repeatable(DescriptionGrammar()),
         ]),
         IndentBlock([
@@ -595,10 +596,10 @@ class FeatureGrammar(TagsGrammarMixin, Grammar):
 
 
 class LanguageGrammar(Grammar):
-    criterion_rule_alias = RuleAlias(LanguageToken)
+    criterion_terminal_symbol = TerminalSymbol(LanguageToken)
     rule = Chain([
-        criterion_rule_alias,
-        RuleAlias(EndOfLineToken),
+        criterion_terminal_symbol,
+        TerminalSymbol(EndOfLineToken),
     ])
     convert_cls = Language
 
@@ -610,7 +611,7 @@ class GherkinDocumentGrammar(Grammar):
     rule = Chain([
         Optional(LanguageGrammar()),
         Optional(FeatureGrammar(), important=True),
-        RuleAlias(EOFToken),
+        TerminalSymbol(EOFToken),
     ])
     name = 'Gherkin document'
     convert_cls = GherkinDocument

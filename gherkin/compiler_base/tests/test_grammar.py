@@ -1,5 +1,6 @@
 from gherkin.compiler_base.exception import GrammarInvalid, GrammarNotUsed
-from gherkin.compiler_base.rule import Optional, RuleAlias, TokenWrapper, Grammar, Chain, OneOf, Repeatable
+from gherkin.compiler_base.rule import Optional, TokenWrapper, Grammar, Chain, OneOf, Repeatable
+from gherkin.compiler_base.terminal import TerminalSymbol
 from gherkin.token import DescriptionToken, EndOfLineToken, EOFToken, FeatureToken
 from test_utils import assert_callable_raises
 
@@ -19,21 +20,21 @@ def test_grammar_invalid_input():
         rule = None
 
     class Grammar2(Grammar):
-        rule = Repeatable(RuleAlias(EOFToken))
+        rule = Repeatable(TerminalSymbol(EOFToken))
 
     class Grammar3(Grammar):
-        rule = Optional(RuleAlias(EOFToken))
+        rule = Optional(TerminalSymbol(EOFToken))
 
     class Grammar6(Grammar):
-        rule = OneOf([RuleAlias(EOFToken)])
+        rule = OneOf([TerminalSymbol(EOFToken)])
 
     class Grammar4(Grammar):
-        criterion_rule_alias = EOFToken
-        rule = Chain([RuleAlias(EOFToken)])
+        criterion_terminal_symbol = EOFToken
+        rule = Chain([TerminalSymbol(EOFToken)])
 
     class Grammar5(Grammar):
-        criterion_rule_alias = Chain([RuleAlias(EOFToken)])
-        rule = Chain([RuleAlias(EOFToken)])
+        criterion_terminal_symbol = Chain([TerminalSymbol(EOFToken)])
+        rule = Chain([TerminalSymbol(EOFToken)])
 
     assert_callable_raises(Grammar1, ValueError)
     assert_callable_raises(Grammar2, ValueError)
@@ -46,11 +47,11 @@ def test_grammar_invalid_input():
 def test_grammar_chain():
     """Check that the grammar handles a chain as a rule correctly."""
     class MyGrammar(Grammar):
-        criterion_rule_alias = RuleAlias(EOFToken)
+        criterion_terminal_symbol = TerminalSymbol(EOFToken)
         rule = Chain([
-            RuleAlias(EOFToken),
-            RuleAlias(EndOfLineToken),
-            RuleAlias(FeatureToken),
+            TerminalSymbol(EOFToken),
+            TerminalSymbol(EndOfLineToken),
+            TerminalSymbol(FeatureToken),
         ])
 
     grammar = MyGrammar()
@@ -61,7 +62,7 @@ def test_grammar_chain():
     assert_callable_raises(
         grammar.validate_sequence,
         GrammarNotUsed,
-        args=[token_sequence([FeatureToken('', None), DescriptionToken('', None)])]   # <- criterion_rule_alias missing
+        args=[token_sequence([FeatureToken('', None), DescriptionToken('', None)])]   # <- criterion_terminal_symbol missing
     )
 
     # the grammar is not valid
@@ -80,20 +81,20 @@ def test_grammar_chain():
 def test_grammar_nested():
     """Check what happens if a grammars are nested."""
     class NestedGrammar(Grammar):
-        criterion_rule_alias = RuleAlias(DescriptionToken)
+        criterion_terminal_symbol = TerminalSymbol(DescriptionToken)
         rule = Chain([
-            RuleAlias(DescriptionToken),
-            RuleAlias(EndOfLineToken),
+            TerminalSymbol(DescriptionToken),
+            TerminalSymbol(EndOfLineToken),
         ])
 
     nested_grammar = NestedGrammar()
 
     class ParentGrammar(Grammar):
-        criterion_rule_alias = RuleAlias(FeatureToken)
+        criterion_terminal_symbol = TerminalSymbol(FeatureToken)
         rule = Chain([
-            RuleAlias(FeatureToken),
+            TerminalSymbol(FeatureToken),
             nested_grammar,
-            RuleAlias(EOFToken),
+            TerminalSymbol(EOFToken),
         ])
 
     grammar = ParentGrammar()

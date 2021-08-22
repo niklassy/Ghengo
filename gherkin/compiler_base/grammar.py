@@ -1,7 +1,8 @@
 from gherkin.compiler_base.exception import RuleNotFulfilled, SequenceEnded, GrammarNotUsed, GrammarInvalid, \
     SequenceNotFinished
 from gherkin.compiler_base.mixin import SequenceToObjectMixin, IndentMixin
-from gherkin.compiler_base.wrapper import RuleAlias, TokenWrapper
+from gherkin.compiler_base.terminal import TerminalSymbol
+from gherkin.compiler_base.wrapper import TokenWrapper
 
 
 class Grammar(IndentMixin, SequenceToObjectMixin):
@@ -28,7 +29,7 @@ class Grammar(IndentMixin, SequenceToObjectMixin):
     """
     name = None
     rule = None
-    criterion_rule_alias: RuleAlias = None
+    criterion_terminal_symbol: TerminalSymbol = None
     convert_cls = None
 
     def __init__(self):
@@ -41,8 +42,9 @@ class Grammar(IndentMixin, SequenceToObjectMixin):
         if not isinstance(self.get_rule(), Chain):
             raise ValueError('You must only use Chain on Grammar objects as its rule.')
 
-        if self.criterion_rule_alias is not None and not isinstance(self.criterion_rule_alias, RuleAlias):
-            raise ValueError('You must either use None or a RuleAlias instance for criterion_rule_alias.')
+        criterion_terminal_symbol = self.criterion_terminal_symbol
+        if criterion_terminal_symbol is not None and not isinstance(criterion_terminal_symbol, TerminalSymbol):
+            raise ValueError('You must either use None or a RuleAlias instance for criterion_terminal_symbol.')
 
         self.validated_sequence = None
 
@@ -64,15 +66,15 @@ class Grammar(IndentMixin, SequenceToObjectMixin):
 
     def get_name(self):
         """
-        Returns the name of the grammar. By default it uses the name of the token class in the criterion_rule_alias
+        Returns the name of the grammar. By default it uses the name of the token class in the criterion_terminal_symbol
         """
-        return self.criterion_rule_alias.token_cls.__name__.replace('Token', '') if not self.name else self.name
+        return self.criterion_terminal_symbol.token_cls.__name__.replace('Token', '') if not self.name else self.name
 
-    def get_grammar_criterion(self) -> RuleAlias:
+    def get_grammar_criterion(self) -> TerminalSymbol:
         """
         Returns the criterion that defines this grammar/ that makes this grammar recognizable.
         """
-        return self.criterion_rule_alias
+        return self.criterion_terminal_symbol
 
     def used_by_sequence_area(self, sequence, start_index, end_index):
         """Checks if this grammar is used in a given area in a sequence of RuleTokens."""
@@ -83,7 +85,7 @@ class Grammar(IndentMixin, SequenceToObjectMixin):
 
         non_committed = sequence[start_index:end_index]
 
-        return criterion in [t.rule_alias for t in non_committed]
+        return criterion in [t.terminal_symbol for t in non_committed]
 
     def _validate_sequence(self, sequence, index):
         """
@@ -116,7 +118,7 @@ class Grammar(IndentMixin, SequenceToObjectMixin):
 
             if not self.used_by_sequence_area(sequence, index, e.sequence_index):
                 raise GrammarNotUsed(
-                    message, rule_alias=e.rule_alias, sequence_index=e.sequence_index, rule=e.rule, grammar=self)
+                    message, terminal_symbol=e.terminal_symbol, sequence_index=e.sequence_index, rule=e.rule, grammar=self)
 
             raise GrammarInvalid(message, grammar=self, suggested_tokens=e.suggested_tokens)
 

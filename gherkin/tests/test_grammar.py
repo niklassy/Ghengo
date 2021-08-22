@@ -1,9 +1,10 @@
 import pytest
 
 from core.constants import Languages
-from gherkin.compiler_base.exception import GrammarNotUsed, GrammarInvalid, SequenceNotFinished
+from gherkin.compiler_base.exception import GrammarNotUsed, GrammarInvalid
 from gherkin.compiler_base.line import Line
-from gherkin.compiler_base.wrapper import TokenWrapper, RuleAlias
+from gherkin.compiler_base.terminal import TerminalSymbol
+from gherkin.compiler_base.wrapper import TokenWrapper
 from gherkin.grammar import DescriptionGrammar, TagsGrammar, DocStringGrammar, DataTableGrammar, AndGrammar, ButGrammar, \
     ExamplesGrammar, GivenGrammar, WhenGrammar, ThenGrammar, StepsGrammar, ScenarioOutlineGrammar, ScenarioGrammar, \
     BackgroundGrammar, RuleGrammar, FeatureGrammar, LanguageGrammar, GherkinDocumentGrammar
@@ -25,12 +26,12 @@ class CustomTokenWrapper(TokenWrapper):
 
 def append_eof_to_chain(chain):
     """Can be used to apply eof to a grammar. If you use it, remember to call remove_eof_from_chain."""
-    chain.child_rule.append(RuleAlias(EOFToken))
+    chain.child_rule.append(TerminalSymbol(EOFToken))
 
 
 def remove_eof_from_chain(chain):
     """Can be used to remove eof of a grammar."""
-    if chain.child_rule[-1] == RuleAlias(EOFToken):
+    if chain.child_rule[-1] == TerminalSymbol(EOFToken):
         chain.child_rule = chain.child_rule[:len(chain.child_rule) - 1]
     return chain
 

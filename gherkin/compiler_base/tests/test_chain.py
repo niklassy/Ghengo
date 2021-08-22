@@ -1,5 +1,6 @@
 from gherkin.compiler_base.exception import GrammarInvalid, RuleNotFulfilled, SequenceNotFinished
-from gherkin.compiler_base.rule import Optional, RuleAlias, TokenWrapper, Grammar, Chain, OneOf, Repeatable
+from gherkin.compiler_base.rule import Optional, TokenWrapper, Grammar, Chain, OneOf, Repeatable
+from gherkin.compiler_base.terminal import TerminalSymbol
 from gherkin.token import DescriptionToken, EndOfLineToken, EOFToken, FeatureToken
 from test_utils import assert_callable_raises
 
@@ -16,14 +17,14 @@ def token_sequence(sequence):
 def test_chain_invalid_input():
     """Check if invalid input to chain is handled."""
     assert_callable_raises(Chain, ValueError, args=(DescriptionToken,))
-    assert_callable_raises(Chain, ValueError, args=(RuleAlias(DescriptionToken),))
+    assert_callable_raises(Chain, ValueError, args=(TerminalSymbol(DescriptionToken),))
 
 
-def test_chain_rule_alias():
+def test_chain_terminal_symbol():
     """Check if chain handles RuleAlias correctly."""
     chain = Chain([
-        RuleAlias(EndOfLineToken),
-        RuleAlias(EOFToken),
+        TerminalSymbol(EndOfLineToken),
+        TerminalSymbol(EOFToken),
     ])
     chain.validate_sequence(token_sequence([EndOfLineToken(None), EOFToken(None)]))
     assert_callable_raises(
@@ -41,8 +42,8 @@ def test_chain_rule_alias():
 def test_chain_repeatable():
     """Check that Chain handles Repeatable as a child correctly."""
     chain = Chain([
-        Repeatable(RuleAlias(EOFToken)),
-        Repeatable(RuleAlias(EndOfLineToken), minimum=0),
+        Repeatable(TerminalSymbol(EOFToken)),
+        Repeatable(TerminalSymbol(EndOfLineToken), minimum=0),
     ])
     # first repeatable is valid
     chain.validate_sequence(token_sequence([EOFToken(None)]))
@@ -69,8 +70,8 @@ def test_chain_repeatable():
 def test_chain_one_of():
     """Check that Chain handles OneOf as a child correctly."""
     chain = Chain([
-        OneOf([RuleAlias(EOFToken), RuleAlias(FeatureToken)]),
-        OneOf([RuleAlias(EndOfLineToken), RuleAlias(EOFToken)]),
+        OneOf([TerminalSymbol(EOFToken), TerminalSymbol(FeatureToken)]),
+        OneOf([TerminalSymbol(EndOfLineToken), TerminalSymbol(EOFToken)]),
     ])
 
     # both one of are valid
@@ -104,17 +105,17 @@ def test_chain_one_of():
 def test_chain_grammar():
     """Check that Chain handles Grammars as children correctly."""
     class Grammar1(Grammar):
-        criterion_rule_alias = RuleAlias(DescriptionToken)
+        criterion_terminal_symbol = TerminalSymbol(DescriptionToken)
         rule = Chain([
-            criterion_rule_alias,
-            RuleAlias(EndOfLineToken),
+            criterion_terminal_symbol,
+            TerminalSymbol(EndOfLineToken),
         ])
 
     class Grammar2(Grammar):
-        criterion_rule_alias = RuleAlias(EOFToken)
+        criterion_terminal_symbol = TerminalSymbol(EOFToken)
         rule = Chain([
-            criterion_rule_alias,
-            RuleAlias(EndOfLineToken),
+            criterion_terminal_symbol,
+            TerminalSymbol(EndOfLineToken),
         ])
 
     chain = Chain([Grammar1(), Grammar2()])
@@ -149,10 +150,10 @@ def test_chain_grammar():
 def test_chain_optional():
     """Check that Chain handles Optional as a child correctly."""
     chain = Chain([
-        RuleAlias(EOFToken),
-        Optional(RuleAlias(EndOfLineToken)),
-        RuleAlias(EOFToken),
-        Optional(RuleAlias(EOFToken)),
+        TerminalSymbol(EOFToken),
+        Optional(TerminalSymbol(EndOfLineToken)),
+        TerminalSymbol(EOFToken),
+        Optional(TerminalSymbol(EOFToken)),
     ])
     chain.validate_sequence(token_sequence([EOFToken(None), EOFToken(None)]))
     chain.validate_sequence(token_sequence([EOFToken(None), EndOfLineToken(None), EOFToken(None)]))

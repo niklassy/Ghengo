@@ -75,7 +75,7 @@ def get_token_suggestion_after_line(sequence, line_index, return_full_sequence=F
         except (GrammarInvalid, GrammarNotUsed):
             continue
         else:
-            criterion_token_cls = suggested_grammar.criterion_rule_alias.token_cls
+            criterion_token_cls = suggested_grammar.criterion_terminal_symbol.token_cls
 
             if not return_full_sequence:
                 valid_suggestions.append(criterion_token_cls)
