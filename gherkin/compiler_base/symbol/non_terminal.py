@@ -14,10 +14,10 @@ class NonTerminal(IndentMixin, RecursiveValidationBase):
     def __init__(self):
         super().__init__()
 
-        if self.get_rule() is None:
+        if self.get_clean_rule() is None:
             raise ValueError('You must provide a rule')
 
-        if not isinstance(self.get_rule(), (TerminalSymbol, RuleOperator)):
+        if not isinstance(self.get_clean_rule(), (TerminalSymbol, RuleOperator)):
             raise ValueError('You must only use a TerminalSymbol or a RuleOperator on NonTerminal objects as its rule.')
 
         criterion_terminal_symbol = self.criterion_terminal_symbol
@@ -26,21 +26,30 @@ class NonTerminal(IndentMixin, RecursiveValidationBase):
 
         self.validated_sequence = None
 
-        self.get_rule().set_parent(self)
-
     @classmethod
     def get_minimal_sequence(cls):
         return []
 
     def get_next_valid_tokens(self):
-        tokens = self.get_rule().get_next_valid_tokens()
+        tokens = self.get_clean_rule().get_next_valid_tokens()
         if not isinstance(tokens, list):
             tokens = [tokens]
         return tokens
 
-    def get_rule(self) -> RuleOperator:
-        """Returns the rule of this grammar."""
+    def _get_rule(self):
+        """
+        Can be overwritten on how to access the rule of the non_terminal.
+        """
         return self.rule
+
+    def get_clean_rule(self) -> RuleOperator:
+        """Returns the rule of this grammar with all preparations."""
+        rule = self._get_rule()
+
+        if rule:
+            rule.set_parent(self)
+
+        return rule
 
     def get_name(self):
         """
@@ -66,7 +75,7 @@ class NonTerminal(IndentMixin, RecursiveValidationBase):
         return criterion in [t.terminal_symbol for t in non_committed]
 
     def get_next_pointer_index(self, child, sequence, current_index) -> int:
-        return self.get_rule().get_next_pointer_index(child, sequence, current_index)
+        return self.get_clean_rule().get_next_pointer_index(child, sequence, current_index)
 
     def _validate_sequence(self, sequence, index):
         """
@@ -82,7 +91,7 @@ class NonTerminal(IndentMixin, RecursiveValidationBase):
         """
         try:
             # noinspection PyProtectedMember
-            return self.get_rule()._validate_sequence(sequence, index)
+            return self.get_clean_rule()._validate_sequence(sequence, index)
         except (RuleNotFulfilled, SequenceEnded) as e:
             next_valid_tokens = e.suggested_tokens
             valid_keywords = []
@@ -118,8 +127,8 @@ class NonTerminal(IndentMixin, RecursiveValidationBase):
         return {}
 
     def get_rule_sequence_to_object(self, sequence, index):
-        """Returns the tree that is returned by self.get_rule"""
-        return self.get_rule().sequence_to_object(sequence, index)
+        """Returns the tree that is returned by self.get_clean_rule"""
+        return self.get_clean_rule().sequence_to_object(sequence, index)
 
     def prepare_converted_object(self, rule_convert_obj, grammar_obj):
         """Can be used to modify the object before it is returned by `convert`."""

@@ -174,7 +174,7 @@ class DataTableNonTerminal(NonTerminal):
 
 
 class AndButNonTerminalBase(NonTerminal):
-    def get_rule(self):
+    def _get_rule(self):
         return Chain([
             self.criterion_terminal_symbol,
             TerminalSymbol(DescriptionToken),
