@@ -2,7 +2,7 @@ from gherkin.compiler_base.exception import RuleNotFulfilled, SequenceEnded, Gra
 from gherkin.compiler_base.mixin import IndentMixin
 from gherkin.compiler_base.recursive import RecursiveValidationBase
 from gherkin.compiler_base.rule_operator import RuleOperator
-from gherkin.compiler_base.terminal import TerminalSymbol
+from gherkin.compiler_base.symbol.terminal import TerminalSymbol
 
 
 class NonTerminal(IndentMixin, RecursiveValidationBase):
@@ -17,13 +17,12 @@ class NonTerminal(IndentMixin, RecursiveValidationBase):
         if self.get_rule() is None:
             raise ValueError('You must provide a rule')
 
-        from gherkin.compiler_base.rule_operator import Chain
-        if not isinstance(self.get_rule(), Chain):
-            raise ValueError('You must only use Chain on Grammar objects as its rule.')
+        if not isinstance(self.get_rule(), (TerminalSymbol, RuleOperator)):
+            raise ValueError('You must only use a TerminalSymbol or a RuleOperator on NonTerminal objects as its rule.')
 
         criterion_terminal_symbol = self.criterion_terminal_symbol
         if criterion_terminal_symbol is not None and not isinstance(criterion_terminal_symbol, TerminalSymbol):
-            raise ValueError('You must either use None or a RuleAlias instance for criterion_terminal_symbol.')
+            raise ValueError('You must either use None or a TerminalSymbol instance for criterion_terminal_symbol.')
 
         self.validated_sequence = None
 

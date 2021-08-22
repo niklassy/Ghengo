@@ -3,7 +3,7 @@ import pytest
 from core.constants import Languages
 from gherkin.compiler_base.exception import GrammarNotUsed, GrammarInvalid
 from gherkin.compiler_base.line import Line
-from gherkin.compiler_base.terminal import TerminalSymbol
+from gherkin.compiler_base.symbol.terminal import TerminalSymbol
 from gherkin.compiler_base.wrapper import TokenWrapper
 from gherkin.non_terminal import DescriptionNonTerminal, TagsNonTerminal, DocStringNonTerminal, DataTableNonTerminal, AndGrammar, ButGrammar, \
     ExamplesNonTerminal, GivenGrammar, WhenGrammar, ThenGrammar, StepsNonTerminal, ScenarioOutlineGrammar, ScenarioGrammar, \

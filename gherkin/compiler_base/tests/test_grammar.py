@@ -1,7 +1,7 @@
 from gherkin.compiler_base.exception import GrammarInvalid, GrammarNotUsed
-from gherkin.compiler_base.non_terminal import NonTerminal
+from gherkin.compiler_base.symbol.non_terminal import NonTerminal
 from gherkin.compiler_base.rule_operator import Optional, Chain, OneOf, Repeatable
-from gherkin.compiler_base.terminal import TerminalSymbol
+from gherkin.compiler_base.symbol.terminal import TerminalSymbol
 from gherkin.compiler_base.wrapper import TokenWrapper
 from gherkin.token import DescriptionToken, EndOfLineToken, EOFToken, FeatureToken
 from test_utils import assert_callable_raises
@@ -16,8 +16,8 @@ def token_sequence(sequence):
     return [CustomTokenWrapper(t) for t in sequence]
 
 
-def test_grammar_invalid_input():
-    """Check if invalid input to grammar is handled."""
+def test_grammar_validation():
+    """Check if different input to grammar is handled correctly."""
     class NonTerminal1(NonTerminal):
         rule = None
 
@@ -38,12 +38,12 @@ def test_grammar_invalid_input():
         criterion_terminal_symbol = Chain([TerminalSymbol(EOFToken)])
         rule = Chain([TerminalSymbol(EOFToken)])
 
-    assert_callable_raises(NonTerminal1, ValueError)
-    assert_callable_raises(NonTerminal2, ValueError)
-    assert_callable_raises(NonTerminal3, ValueError)
-    assert_callable_raises(NonTerminal4, ValueError)
-    assert_callable_raises(NonTerminal5, ValueError)
-    assert_callable_raises(NonTerminal6, ValueError)
+    assert_callable_raises(NonTerminal1, ValueError)    # <- no rule provided
+    NonTerminal2()
+    NonTerminal3()
+    assert_callable_raises(NonTerminal4, ValueError)    # <- criterion_terminal_symbol is not wrapped
+    assert_callable_raises(NonTerminal5, ValueError)    # <- criterion_terminal_symbol is not a terminal
+    NonTerminal6()
 
 
 def test_grammar_chain():

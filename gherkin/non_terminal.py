@@ -1,7 +1,7 @@
 from gherkin.compiler_base.exception import GrammarInvalid
-from gherkin.compiler_base.non_terminal import NonTerminal
+from gherkin.compiler_base.symbol.non_terminal import NonTerminal
 from gherkin.compiler_base.rule_operator import Chain, OneOf, Repeatable, Optional, IndentBlock
-from gherkin.compiler_base.terminal import TerminalSymbol
+from gherkin.compiler_base.symbol.terminal import TerminalSymbol
 from gherkin.compiler_base.wrapper import TokenWrapper
 from gherkin.token import LanguageToken, FeatureToken, EOFToken, DescriptionToken, RuleToken, ScenarioToken, \
     EndOfLineToken, TagToken, GivenToken, AndToken, ButToken, WhenToken, ThenToken, BackgroundToken, \

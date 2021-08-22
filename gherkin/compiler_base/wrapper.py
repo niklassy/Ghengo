@@ -1,4 +1,4 @@
-from gherkin.compiler_base.terminal import TerminalSymbol
+from gherkin.compiler_base.symbol.terminal import TerminalSymbol
 
 
 class TokenWrapper(object):
