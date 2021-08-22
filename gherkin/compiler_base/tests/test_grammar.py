@@ -1,5 +1,5 @@
 from gherkin.compiler_base.exception import GrammarInvalid, GrammarNotUsed
-from gherkin.compiler_base.grammar import Grammar
+from gherkin.compiler_base.non_terminal import NonTerminal
 from gherkin.compiler_base.rule_operator import Optional, Chain, OneOf, Repeatable
 from gherkin.compiler_base.terminal import TerminalSymbol
 from gherkin.compiler_base.wrapper import TokenWrapper
@@ -18,37 +18,37 @@ def token_sequence(sequence):
 
 def test_grammar_invalid_input():
     """Check if invalid input to grammar is handled."""
-    class Grammar1(Grammar):
+    class NonTerminal1(NonTerminal):
         rule = None
 
-    class Grammar2(Grammar):
+    class NonTerminal2(NonTerminal):
         rule = Repeatable(TerminalSymbol(EOFToken))
 
-    class Grammar3(Grammar):
+    class NonTerminal3(NonTerminal):
         rule = Optional(TerminalSymbol(EOFToken))
 
-    class Grammar6(Grammar):
+    class NonTerminal6(NonTerminal):
         rule = OneOf([TerminalSymbol(EOFToken)])
 
-    class Grammar4(Grammar):
+    class NonTerminal4(NonTerminal):
         criterion_terminal_symbol = EOFToken
         rule = Chain([TerminalSymbol(EOFToken)])
 
-    class Grammar5(Grammar):
+    class NonTerminal5(NonTerminal):
         criterion_terminal_symbol = Chain([TerminalSymbol(EOFToken)])
         rule = Chain([TerminalSymbol(EOFToken)])
 
-    assert_callable_raises(Grammar1, ValueError)
-    assert_callable_raises(Grammar2, ValueError)
-    assert_callable_raises(Grammar3, ValueError)
-    assert_callable_raises(Grammar4, ValueError)
-    assert_callable_raises(Grammar5, ValueError)
-    assert_callable_raises(Grammar6, ValueError)
+    assert_callable_raises(NonTerminal1, ValueError)
+    assert_callable_raises(NonTerminal2, ValueError)
+    assert_callable_raises(NonTerminal3, ValueError)
+    assert_callable_raises(NonTerminal4, ValueError)
+    assert_callable_raises(NonTerminal5, ValueError)
+    assert_callable_raises(NonTerminal6, ValueError)
 
 
 def test_grammar_chain():
     """Check that the grammar handles a chain as a rule correctly."""
-    class MyGrammar(Grammar):
+    class MyNonTerminal(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(EOFToken)
         rule = Chain([
             TerminalSymbol(EOFToken),
@@ -56,7 +56,7 @@ def test_grammar_chain():
             TerminalSymbol(FeatureToken),
         ])
 
-    grammar = MyGrammar()
+    grammar = MyNonTerminal()
     # valid input
     grammar.validate_sequence(token_sequence([EOFToken(None), EndOfLineToken(None), FeatureToken('', None)]))
 
@@ -82,16 +82,16 @@ def test_grammar_chain():
 
 def test_grammar_nested():
     """Check what happens if a grammars are nested."""
-    class NestedGrammar(Grammar):
+    class NestedNonTerminal(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(DescriptionToken)
         rule = Chain([
             TerminalSymbol(DescriptionToken),
             TerminalSymbol(EndOfLineToken),
         ])
 
-    nested_grammar = NestedGrammar()
+    nested_grammar = NestedNonTerminal()
 
-    class ParentGrammar(Grammar):
+    class ParentNonTerminal(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(FeatureToken)
         rule = Chain([
             TerminalSymbol(FeatureToken),
@@ -99,7 +99,7 @@ def test_grammar_nested():
             TerminalSymbol(EOFToken),
         ])
 
-    grammar = ParentGrammar()
+    grammar = ParentNonTerminal()
 
     # valid input
     grammar.validate_sequence(token_sequence([FeatureToken('', None), DescriptionToken('', None), EndOfLineToken(None), EOFToken(None)]))

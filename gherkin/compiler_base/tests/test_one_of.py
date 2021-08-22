@@ -1,5 +1,5 @@
 from gherkin.compiler_base.exception import GrammarInvalid, RuleNotFulfilled, SequenceNotFinished
-from gherkin.compiler_base.grammar import Grammar
+from gherkin.compiler_base.non_terminal import NonTerminal
 from gherkin.compiler_base.rule_operator import Optional, Chain, OneOf, Repeatable
 from gherkin.compiler_base.terminal import TerminalSymbol
 from gherkin.compiler_base.wrapper import TokenWrapper
@@ -37,15 +37,15 @@ def test_one_of_terminal_symbol():
 
 def test_one_of_grammar():
     """Checks that OneOf correctly handles a list of grammars."""
-    class TestGrammar(Grammar):
+    class TestNonTerminal(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(DescriptionToken)
         rule = Chain([criterion_terminal_symbol, TerminalSymbol(EndOfLineToken)])
 
-    class Test2Grammar(Grammar):
+    class Test2NonTerminal(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(FeatureToken)
         rule = Chain([criterion_terminal_symbol, TerminalSymbol(EndOfLineToken)])
 
-    grammar_one_of = OneOf([TestGrammar(), Test2Grammar()])
+    grammar_one_of = OneOf([TestNonTerminal(), Test2NonTerminal()])
     # grammar 1 is recognized and works
     grammar_one_of.validate_sequence(token_sequence([DescriptionToken('', None), EndOfLineToken(None)]))
     # grammar 2 is recognized and works
@@ -72,11 +72,11 @@ def test_one_of_grammar():
 
 def test_one_of_grammar_and_terminal_symbol():
     """Checks that OneOf correctly handles a list of combination of grammars and rule aliases."""
-    class TestGrammar(Grammar):
+    class TestNonTerminal(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(DescriptionToken)
         rule = Chain([criterion_terminal_symbol, TerminalSymbol(EndOfLineToken)])
 
-    one_of = OneOf([TestGrammar(), TerminalSymbol(EOFToken)])
+    one_of = OneOf([TestNonTerminal(), TerminalSymbol(EOFToken)])
     # rule alias is valid
     one_of.validate_sequence(token_sequence([EOFToken(None)]))
     # both are not valid
@@ -88,11 +88,11 @@ def test_one_of_grammar_and_terminal_symbol():
 
 def test_one_of_grammar_and_rules():
     """Checks that OneOf correctly handles a list of combination of grammars and other rules."""
-    class TestGrammar(Grammar):
+    class TestNonTerminal(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(DescriptionToken)
         rule = Chain([criterion_terminal_symbol, TerminalSymbol(EndOfLineToken)])
 
-    one_of = OneOf([TestGrammar(), OneOf([TerminalSymbol(EOFToken), TerminalSymbol(FeatureToken)])])
+    one_of = OneOf([TestNonTerminal(), OneOf([TerminalSymbol(EOFToken), TerminalSymbol(FeatureToken)])])
     # rule is valid
     one_of.validate_sequence(token_sequence([EOFToken(None)]))
     one_of.validate_sequence(token_sequence([FeatureToken('', None)]))

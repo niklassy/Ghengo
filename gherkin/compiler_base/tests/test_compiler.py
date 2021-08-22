@@ -1,5 +1,6 @@
 from gherkin.compiler_base.compiler import Lexer, Parser
 from gherkin.compiler_base.grammar import Grammar
+from gherkin.compiler_base.non_terminal import NonTerminal
 from gherkin.compiler_base.rule_operator import Chain
 from gherkin.compiler_base.token import Token
 from test_utils import assert_callable_raises
@@ -106,7 +107,7 @@ def test_parser_init():
     assert parser.tokens == []
 
 
-class CustomGrammar(Grammar):
+class CustomNonTerminal(NonTerminal):
     rule = Chain([])
 
     def convert(self, sequence):
@@ -115,6 +116,9 @@ class CustomGrammar(Grammar):
 
 def test_parser_parse_valid():
     """Check that parsing is possible."""
+    class CustomGrammar(Grammar):
+        start_non_terminal = CustomNonTerminal()
+
     class CustomParser(Parser):
         grammar = CustomGrammar
 
@@ -136,7 +140,7 @@ def test_parser_invalid():
 
     class InvalidRuleParser(Parser):
         token_wrapper_cls = 'asdasd'
-        grammar = CustomGrammar
+        grammar = CustomNonTerminal
 
     assert_callable_raises(InvalidRuleParser(None).parse, ValueError, args=[[]])
 

@@ -5,9 +5,9 @@ from gherkin.compiler_base.exception import GrammarNotUsed, GrammarInvalid
 from gherkin.compiler_base.line import Line
 from gherkin.compiler_base.terminal import TerminalSymbol
 from gherkin.compiler_base.wrapper import TokenWrapper
-from gherkin.grammar import DescriptionGrammar, TagsGrammar, DocStringGrammar, DataTableGrammar, AndGrammar, ButGrammar, \
-    ExamplesGrammar, GivenGrammar, WhenGrammar, ThenGrammar, StepsGrammar, ScenarioOutlineGrammar, ScenarioGrammar, \
-    BackgroundGrammar, RuleGrammar, FeatureGrammar, LanguageGrammar, GherkinDocumentGrammar
+from gherkin.non_terminal import DescriptionNonTerminal, TagsNonTerminal, DocStringNonTerminal, DataTableNonTerminal, AndGrammar, ButGrammar, \
+    ExamplesNonTerminal, GivenGrammar, WhenGrammar, ThenGrammar, StepsNonTerminal, ScenarioOutlineGrammar, ScenarioGrammar, \
+    BackgroundGrammar, RuleNonTerminal, FeatureNonTerminal, LanguageNonTerminal, GherkinDocumentNonTerminal
 from gherkin.tests.valid_token_sequences import examples_sequence, given_sequence, when_sequence, then_sequence, \
     scenario_sequence, scenario_outline_sequence, background_sequence, feature_sequence
 from gherkin.token import EOFToken, DescriptionToken, EndOfLineToken, RuleToken, TagToken, DocStringToken, \
@@ -53,7 +53,7 @@ def get_sequence(sequence, add_end_of=False):
 
 def test_description_grammar_convert():
     """Check that the description grammar works as expected when converting."""
-    grammar = DescriptionGrammar()
+    grammar = DescriptionNonTerminal()
     append_eof_to_chain(grammar.rule)
 
     # check a valid sequence
@@ -75,14 +75,14 @@ def test_description_get_name_and_description():
     """Check that the DescriptionGrammar helps building the name and description of other grammars."""
     descriptions = [Description(text='val1'), Description(text='val2'), Description(text='val3')]
 
-    name, description = DescriptionGrammar.get_name_and_description(descriptions)
+    name, description = DescriptionNonTerminal.get_name_and_description(descriptions)
     assert name == 'val1'
     assert description == 'val2 val3'
 
 
 def test_tags_grammar():
     """Check that TagsGrammar converts just as expected."""
-    grammar = TagsGrammar()
+    grammar = TagsNonTerminal()
     append_eof_to_chain(grammar.rule)
 
     # valid 1
@@ -114,7 +114,7 @@ def test_tags_grammar():
 
 def test_doc_string_grammar():
     """Check that DocStrings work as expecting when converting."""
-    grammar = DocStringGrammar()
+    grammar = DocStringNonTerminal()
     append_eof_to_chain(grammar.rule)
 
     # check valid input
@@ -149,7 +149,7 @@ def test_doc_string_grammar():
 
 def test_data_table():
     """Check that data tables are converted correctly."""
-    grammar = DataTableGrammar()
+    grammar = DataTableNonTerminal()
     append_eof_to_chain(grammar.rule)
 
     # check a valid sequence
@@ -256,7 +256,7 @@ def test_and_but_grammar(grammar_cls, token_cls):
 
 def test_examples_grammar_valid():
     """Check that the examples grammar converts the tokens correctly."""
-    grammar = ExamplesGrammar()
+    grammar = ExamplesNonTerminal()
 
     # check valid sequence without tags
     sequence = get_sequence([
@@ -312,7 +312,7 @@ def test_examples_grammar_valid():
 
 def test_examples_grammar_invalid():
     """Check that the examples grammar handles invalid input correctly."""
-    grammar = ExamplesGrammar()
+    grammar = ExamplesNonTerminal()
 
     assert_callable_raises(
         grammar.convert,
@@ -419,7 +419,7 @@ def test_given_when_then_grammar_invalid(grammar_cls, token_cls):
 
 def test_steps_grammar_valid():
     """Check that the steps grammar converts valid input correctly."""
-    grammar = StepsGrammar()
+    grammar = StepsNonTerminal()
 
     sequence = get_sequence(given_sequence + when_sequence + then_sequence)
     output = grammar.convert(sequence)
@@ -452,7 +452,7 @@ def test_steps_grammar_valid():
 
 def test_steps_grammar_invalid():
     """Check that the steps grammar handles invalid input correctly."""
-    grammar = StepsGrammar()
+    grammar = StepsNonTerminal()
 
     assert_callable_raises(
         grammar.convert,
@@ -736,7 +736,7 @@ def test_background_grammar_invalid():
 
 def test_rule_grammar_valid():
     """Check that rule grammar handles valid input correctly."""
-    grammar = RuleGrammar()
+    grammar = RuleNonTerminal()
 
     base_sequence = [
         RuleToken(None, None),
@@ -800,7 +800,7 @@ def test_rule_grammar_valid():
 
 def test_rule_grammar_invalid():
     """Check that the rule grammar handles invalid input correctly."""
-    grammar = RuleGrammar()
+    grammar = RuleNonTerminal()
 
     assert_callable_raises(
         grammar.convert,
@@ -826,7 +826,7 @@ def test_rule_grammar_invalid():
 
 def test_feature_grammar_valid():
     """Check that feature grammar handles valid input correctly."""
-    grammar = FeatureGrammar()
+    grammar = FeatureNonTerminal()
 
     base_sequence = [
         FeatureToken(None, None),
@@ -894,7 +894,7 @@ def test_feature_grammar_valid():
 
 def test_feature_grammar_invalid():
     """Check that the feature grammar handles invalid input correctly."""
-    grammar = FeatureGrammar()
+    grammar = FeatureNonTerminal()
 
     assert_callable_raises(
         grammar.convert,
@@ -930,7 +930,7 @@ def test_feature_grammar_invalid():
 
 def test_language_grammar():
     """Check that language grammar handles all forms of input correctly"""
-    grammar = LanguageGrammar()
+    grammar = LanguageNonTerminal()
 
     # valid input
     output = grammar.convert(get_sequence([LanguageToken(None, Line('# language: en', 1)), EndOfLineToken(None, None)]))
@@ -961,7 +961,7 @@ def test_language_grammar():
 
 def test_gherkin_doc_grammar_valid():
     """Check that Gherkin document handles all input correctly."""
-    grammar = GherkinDocumentGrammar()
+    grammar = GherkinDocumentNonTerminal()
 
     # empty doc
     output = grammar.convert(get_sequence([EOFToken(None, None)]))
@@ -984,7 +984,7 @@ def test_gherkin_doc_grammar_valid():
 
 def test_gherkin_doc_grammar_invalid():
     """Check that gherkin doc grammar handles invalid input."""
-    grammar = GherkinDocumentGrammar()
+    grammar = GherkinDocumentNonTerminal()
     assert_callable_raises(
         grammar.convert,
         GrammarNotUsed,

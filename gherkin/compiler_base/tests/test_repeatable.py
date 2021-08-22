@@ -1,5 +1,5 @@
 from gherkin.compiler_base.exception import GrammarInvalid, RuleNotFulfilled, SequenceNotFinished
-from gherkin.compiler_base.grammar import Grammar
+from gherkin.compiler_base.non_terminal import NonTerminal
 from gherkin.compiler_base.rule_operator import Optional, Chain, OneOf, Repeatable
 from gherkin.compiler_base.terminal import TerminalSymbol
 from gherkin.compiler_base.wrapper import TokenWrapper
@@ -107,14 +107,14 @@ def test_repeatable_one_of():
 
 def test_repeatable_grammar():
     """Check that Repeatable handles Grammar objects as children correctly."""
-    class MyGrammar(Grammar):
+    class MyNonTerminal(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(EOFToken)
         rule = Chain([
             criterion_terminal_symbol,
             TerminalSymbol(EndOfLineToken),
         ])
 
-    repeatable = Repeatable(MyGrammar())
+    repeatable = Repeatable(MyNonTerminal())
     # valid values
     repeatable.validate_sequence(token_sequence([EOFToken(None), EndOfLineToken(None), EOFToken(None), EndOfLineToken(None)]))
     repeatable.validate_sequence(token_sequence([EOFToken(None), EndOfLineToken(None)]))

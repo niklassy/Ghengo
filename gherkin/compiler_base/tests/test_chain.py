@@ -1,5 +1,5 @@
 from gherkin.compiler_base.exception import GrammarInvalid, RuleNotFulfilled, SequenceNotFinished
-from gherkin.compiler_base.grammar import Grammar
+from gherkin.compiler_base.non_terminal import NonTerminal
 from gherkin.compiler_base.rule_operator import Optional, Chain, OneOf, Repeatable
 from gherkin.compiler_base.terminal import TerminalSymbol
 from gherkin.compiler_base.wrapper import TokenWrapper
@@ -106,21 +106,21 @@ def test_chain_one_of():
 
 def test_chain_grammar():
     """Check that Chain handles Grammars as children correctly."""
-    class Grammar1(Grammar):
+    class NonTerminal1(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(DescriptionToken)
         rule = Chain([
             criterion_terminal_symbol,
             TerminalSymbol(EndOfLineToken),
         ])
 
-    class Grammar2(Grammar):
+    class NonTerminal2(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(EOFToken)
         rule = Chain([
             criterion_terminal_symbol,
             TerminalSymbol(EndOfLineToken),
         ])
 
-    chain = Chain([Grammar1(), Grammar2()])
+    chain = Chain([NonTerminal1(), NonTerminal2()])
     # both valid
     chain.validate_sequence(token_sequence([DescriptionToken('', None), EndOfLineToken(None), EOFToken(None), EndOfLineToken(None)]))
     # grammar 1 recognized and invalid
