@@ -1,7 +1,7 @@
 from gherkin.compiler_base.exception import RuleNotFulfilled, SequenceEnded, GrammarNotUsed, GrammarInvalid
 from gherkin.compiler_base.mixin import IndentMixin
 from gherkin.compiler_base.recursive import RecursiveValidationBase
-from gherkin.compiler_base.rule_operator import RuleOperator
+from gherkin.compiler_base.rule.operator import RuleOperator
 from gherkin.compiler_base.symbol.terminal import TerminalSymbol
 
 

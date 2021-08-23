@@ -1,7 +1,7 @@
 from gherkin.compiler_base.compiler import Lexer, Parser
 from gherkin.compiler_base.grammar import Grammar
 from gherkin.compiler_base.symbol.non_terminal import NonTerminal
-from gherkin.compiler_base.rule_operator import Chain
+from gherkin.compiler_base.rule.operator import Chain
 from gherkin.compiler_base.token import Token
 from test_utils import assert_callable_raises
 
