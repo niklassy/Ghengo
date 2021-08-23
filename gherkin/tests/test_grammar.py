@@ -26,13 +26,13 @@ class CustomTokenWrapper(TokenWrapper):
 
 def append_eof_to_chain(chain):
     """Can be used to apply eof to a grammar. If you use it, remember to call remove_eof_from_chain."""
-    chain.child_rule.append(TerminalSymbol(EOFToken))
+    chain.children.append(TerminalSymbol(EOFToken))
 
 
 def remove_eof_from_chain(chain):
     """Can be used to remove eof of a grammar."""
-    if chain.child_rule[-1] == TerminalSymbol(EOFToken):
-        chain.child_rule = chain.child_rule[:len(chain.child_rule) - 1]
+    if chain.children[-1] == TerminalSymbol(EOFToken):
+        chain.children = chain.children[:len(chain.children) - 1]
     return chain
 
 

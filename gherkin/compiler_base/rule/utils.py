@@ -12,12 +12,12 @@ class IndentBlock(IndentMixin, RecursiveValidationContainer):
             child = Chain(child)
 
         super().__init__()
-        self.child_rule = child
-        self.child_rule.set_parent(self)
+        self.child = child
+        self.child.set_parent(self)
 
     def get_child_validator(self) -> RecursiveValidationBase:
         """Simply pass all validation to the child."""
-        return self.child_rule
+        return self.child
 
     def get_suggested_indent_level(self):
         """

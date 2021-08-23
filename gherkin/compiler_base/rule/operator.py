@@ -8,19 +8,20 @@ from gherkin.compiler_base.recursive import RecursiveValidationBase
 class RuleOperator(IndentMixin, RecursiveValidationBase, ABC):
     supports_list_as_children = False
 
-    def __init__(self, child_rule):
+    def __init__(self, child):
         super().__init__()
-        self.child_rule = child_rule
 
-        if isinstance(child_rule, list) and not self.supports_list_as_children:
+        if isinstance(child, list) and not self.supports_list_as_children:
             raise ValueError('A {} does not support a list of objects as a child'.format(self.__class__.__name__))
 
         # validate the given child
-        if isinstance(child_rule, list):
-            for c in child_rule:
+        if isinstance(child, list):
+            self.children = child
+            for c in child:
                 self._validate_init_child(c)
         else:
-            self._validate_init_child(child_rule)
+            self.child = child
+            self._validate_init_child(child)
 
     def get_next_valid_tokens(self):
         raise NotImplementedError()
@@ -35,7 +36,7 @@ class RuleOperator(IndentMixin, RecursiveValidationBase, ABC):
         return child._validate_sequence(sequence, current_index)
 
     def __str__(self):
-        return 'Rule {} - {}'.format(self.__class__.__name__, self.child_rule)
+        return 'Rule {} - {}'.format(self.__class__.__name__, self.child)
 
 
 class Optional(RuleOperator):
@@ -46,13 +47,13 @@ class Optional(RuleOperator):
         super().__init__(child)
         self.important = important
 
-        self.child_rule.set_parent(self)
+        self.child.set_parent(self)
 
     def get_next_valid_tokens(self):
         if not self.important:
             return []
 
-        tokens = self.child_rule.get_next_valid_tokens()
+        tokens = self.child.get_next_valid_tokens()
         if not isinstance(tokens, list):
             tokens = [tokens]
         return tokens
@@ -66,7 +67,7 @@ class Optional(RuleOperator):
     def _validate_sequence(self, sequence, index) -> int:
         # try to get the next index. If that fails, just ignore, since it is optional
         try:
-            return self.get_next_pointer_index(self.child_rule, sequence, index)
+            return self.get_next_pointer_index(self.child, sequence, index)
         except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded):
             # if not valid, continue at current index
             return index
@@ -82,11 +83,11 @@ class Optional(RuleOperator):
 
         # check if the child exists - if not return None
         try:
-            self.get_next_pointer_index(self.child_rule, sequence, index)
+            self.get_next_pointer_index(self.child, sequence, index)
         except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded):
             return None
 
-        return self.child_rule.sequence_to_object(sequence, index)
+        return self.child.sequence_to_object(sequence, index)
 
 
 class OneOf(RuleOperator):
@@ -101,13 +102,13 @@ class OneOf(RuleOperator):
         if not isinstance(child, list):
             raise ValueError('You must use a list for OneOf')
 
-        for child in self.child_rule:
+        for child in self.children:
             child.set_parent(self)
 
     def get_next_valid_tokens(self):
         output = []
 
-        for child in self.child_rule:
+        for child in self.children:
             tokens = child.get_next_valid_tokens()
             if not tokens:
                 continue
@@ -127,7 +128,7 @@ class OneOf(RuleOperator):
         """
         self._validate_sequence(sequence, index)
 
-        for child in self.child_rule:
+        for child in self.children:
             try:
                 self.get_next_pointer_index(child, sequence, index)
             except (RuleNotFulfilled, SequenceEnded, GrammarNotUsed):
@@ -150,7 +151,7 @@ class OneOf(RuleOperator):
         errors = []
 
         # go through each child and validate it for the child; collect all errors
-        for child in self.child_rule:
+        for child in self.children:
             try:
                 return self.get_next_pointer_index(child, sequence, index)
             except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded) as e:
@@ -176,13 +177,13 @@ class Repeatable(RuleOperator):
         self.minimum = minimum
         self.important = important
 
-        self.child_rule.set_parent(self)
+        self.child.set_parent(self)
 
     def get_next_valid_tokens(self):
         if self.minimum == 0 and not self.important:
             return []
 
-        tokens = self.child_rule.get_next_valid_tokens()
+        tokens = self.child.get_next_valid_tokens()
         if not isinstance(tokens, list):
             tokens = [tokens]
 
@@ -200,7 +201,7 @@ class Repeatable(RuleOperator):
         # try to validate the children as long as there are no errors
         while True:
             try:
-                index = self.get_next_pointer_index(self.child_rule, sequence, index)
+                index = self.get_next_pointer_index(self.child, sequence, index)
             except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded) as e:
                 if isinstance(e, GrammarNotUsed):
                     break_error = RuleNotFulfilled(
@@ -232,8 +233,8 @@ class Repeatable(RuleOperator):
 
         while True:
             try:
-                next_round_index = self.get_next_pointer_index(self.child_rule, sequence, index)
-                output.append(self.child_rule.sequence_to_object(sequence, index))
+                next_round_index = self.get_next_pointer_index(self.child, sequence, index)
+                output.append(self.child.sequence_to_object(sequence, index))
                 index = next_round_index
             except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded):
                 break
@@ -252,16 +253,16 @@ class Chain(RuleOperator):
         if not isinstance(child, list):
             raise ValueError('You must use a list for a Chain')
 
-        for child in self.child_rule:
+        for child in self.children:
             child.set_parent(self)
 
     def get_next_valid_tokens(self):
-        if len(self.child_rule) == 0:
+        if len(self.children) == 0:
             return []
 
         output = []
-        for child_rule in self.child_rule:
-            valid_tokens = child_rule.get_next_valid_tokens()
+        for child in self.children:
+            valid_tokens = child.get_next_valid_tokens()
 
             if valid_tokens:
                 if not isinstance(valid_tokens, list):
@@ -269,7 +270,7 @@ class Chain(RuleOperator):
 
                 output += valid_tokens
 
-            if not isinstance(child_rule, (Optional, Repeatable)):
+            if not isinstance(child, (Optional, Repeatable)):
                 break
 
         return output
@@ -285,7 +286,7 @@ class Chain(RuleOperator):
         output = []
         self._validate_sequence(sequence, index)
 
-        for child in self.child_rule:
+        for child in self.children:
             # get the index where we will end
             try:
                 next_round_index = self.get_next_pointer_index(child, sequence, index)
@@ -299,7 +300,7 @@ class Chain(RuleOperator):
 
     def _validate_sequence(self, sequence, index):
         # validate each child and get the index
-        for child in self.child_rule:
+        for child in self.children:
             try:
                 index = self.get_next_pointer_index(child, sequence, index)
             except GrammarNotUsed as e:
