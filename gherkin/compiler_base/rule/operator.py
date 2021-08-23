@@ -6,6 +6,9 @@ from gherkin.compiler_base.recursive import RecursiveValidationBase
 
 
 class RuleOperator(IndentMixin, RecursiveValidationBase, ABC):
+    """
+    This is a base class for all operations that can be used inside of rules.
+    """
     supports_list_as_children = False
 
     def __init__(self, child):
@@ -24,6 +27,10 @@ class RuleOperator(IndentMixin, RecursiveValidationBase, ABC):
             self._validate_init_child(child)
 
     def get_next_valid_tokens(self):
+        """
+        Returns all tokens that can be valid (basically like follow). This is mainly used when there is an error
+        to returns suggestions which Token should come next.
+        """
         raise NotImplementedError()
 
     def _validate_init_child(self, child):
@@ -32,6 +39,9 @@ class RuleOperator(IndentMixin, RecursiveValidationBase, ABC):
             raise ValueError('You cannot use other children than Rule objects or RuleObjects around your own objects.')
 
     def get_next_pointer_index(self, child, sequence, current_index) -> int:
+        """
+        An operator always lets the child handle which pointer index comes next.
+        """
         # noinspection PyProtectedMember
         return child._validate_sequence(sequence, current_index)
 
@@ -41,11 +51,11 @@ class RuleOperator(IndentMixin, RecursiveValidationBase, ABC):
 
 class Optional(RuleOperator):
     """
-    Can be used to mark something a token as optional.
+    Can be used to mark something as optional.
     """
-    def __init__(self, child, important=False):
+    def __init__(self, child, show_in_autocomplete=False):
         super().__init__(child)
-        self.important = important
+        self.show_in_autocomplete = show_in_autocomplete
 
         self.child.set_parent(self)
 
@@ -56,7 +66,7 @@ class Optional(RuleOperator):
         return '[{}]'.format(self.child.to_ebnf(ebnf_entries))
 
     def get_next_valid_tokens(self):
-        if not self.important:
+        if not self.show_in_autocomplete:
             return []
 
         tokens = self.child.get_next_valid_tokens()
@@ -82,8 +92,8 @@ class Optional(RuleOperator):
         """
         Transforms an entry of a sequence at an index into an object. This will either return:
             -> None if the requirement of the child is not met
-            -> a RuleToken if the child is a RuleAlias
-            -> Whatever the child has defined if the child is a Grammar or a Rule
+            -> a Token if the child is a `TerminalSymbol`
+            -> Whatever the child has defined if the child is a NonTerminal or RuleOperator
         """
         self._validate_sequence(sequence, index)
 
@@ -184,10 +194,10 @@ class OneOf(RuleOperator):
 class Repeatable(RuleOperator):
     """Allows any amount of repetition of the passed child. If it is optional, minimum=0 can be passed."""
 
-    def __init__(self, child, minimum=1, important=False):
+    def __init__(self, child, minimum=1, show_in_autocomplete=False):
         super().__init__(child)
         self.minimum = minimum
-        self.important = important
+        self.show_in_autocomplete = show_in_autocomplete
 
         self.child.set_parent(self)
 
@@ -205,7 +215,7 @@ class Repeatable(RuleOperator):
         return '{}{}{}{}'.format(base_string, '{', child_ebnf, '}')
 
     def get_next_valid_tokens(self):
-        if self.minimum == 0 and not self.important:
+        if self.minimum == 0 and not self.show_in_autocomplete:
             return []
 
         tokens = self.child.get_next_valid_tokens()
@@ -310,9 +320,6 @@ class Chain(RuleOperator):
         """
         Returns a list of objects that represent an area at a starting index of a given sequence. The list will
         contain entries where each entry of the list is determined by the child.
-            -> If a child is a rule, look at its implementation of `sequence_to_object`
-            -> If a child is a grammar, look at its implementation of `sequence_to_object`
-            -> If a child is RuleAlias, the entry will be the current RuleToken at the given index
         """
         output = []
         self._validate_sequence(sequence, index)

@@ -4,6 +4,9 @@ from gherkin.compiler_base.exception import SequenceEnded, RuleNotFulfilled, Seq
 
 
 class RecursiveValidationBase(object):
+    """
+    This is the base class that is used throughout the recursive parser to validate data and pass data around.
+    """
     def to_ebnf(self, ebnf_entries=None):
         """
         This function can be used to get the definition as EBNF. ebnf_entries can be used to create additional
@@ -17,6 +20,11 @@ class RecursiveValidationBase(object):
     def sequence_to_object(self, sequence, index=0):
         """
         Defines how a sequence at a given index is transformed into an object.
+
+        You should:
+            - call `_validate_sequence` just to make sure that everything is fine
+            - do everything that is needed to determine the object (like calling `get_next_pointer_index` again)
+            - return the object by maybe calling `sequence_to_object` of the child
 
         This function may return a TerminalSymbol, None, [TerminalSymbol] or a custom object.
         """
@@ -39,6 +47,9 @@ class RecursiveValidationBase(object):
         """
         Implemented by each child. Does the validation of a given sequence. Can be called recursively.
         The index represents the current index at which the sequence is checked.
+
+        This should probably call `self.get_next_pointer_index` in some way to validate. It can also call
+        `_validate_sequence` of its child.
         """
         raise NotImplementedError()
 
@@ -68,7 +79,12 @@ class RecursiveValidationBase(object):
 
 
 class RecursiveValidationContainer(RecursiveValidationBase, ABC):
+    """
+    This is a base class that can be used to simply let a child handle the recursive validation. It will pass
+    all functions to its child.
+    """
     def get_child_validator(self) -> RecursiveValidationBase:
+        """Return the child validator that will handle everything."""
         raise NotImplementedError()
 
     def get_next_pointer_index(self, child, sequence, current_index) -> int:

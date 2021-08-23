@@ -324,9 +324,9 @@ class ThenNonTerminal(GivenWhenThenBase):
 
 class StepsNonTerminal(NonTerminal):
     rule = Chain([
-        Repeatable(GivenNonTerminal(), minimum=0, important=True),
-        Repeatable(WhenNonTerminal(), minimum=0, important=True),
-        Repeatable(ThenNonTerminal(), minimum=0, important=True),
+        Repeatable(GivenNonTerminal(), minimum=0, show_in_autocomplete=True),
+        Repeatable(WhenNonTerminal(), minimum=0, show_in_autocomplete=True),
+        Repeatable(ThenNonTerminal(), minimum=0, show_in_autocomplete=True),
     ])
     name = 'Steps'
 
@@ -613,7 +613,7 @@ class LanguageNonTerminal(NonTerminal):
 class GherkinDocumentNonTerminal(NonTerminal):
     rule = Chain([
         Optional(LanguageNonTerminal()),
-        Optional(FeatureNonTerminal(), important=True),
+        Optional(FeatureNonTerminal(), show_in_autocomplete=True),
         TerminalSymbol(EOFToken),
     ])
     name = 'Gherkin document'
