@@ -15,6 +15,9 @@ class IndentBlock(IndentMixin, RecursiveValidationContainer):
         self.child = child
         self.child.set_parent(self)
 
+    def to_ebnf(self, ebnf_entries=None):
+        return self.child.to_ebnf(ebnf_entries)
+
     def get_child_validator(self) -> RecursiveValidationBase:
         """Simply pass all validation to the child."""
         return self.child

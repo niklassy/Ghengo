@@ -12,6 +12,12 @@ class TerminalSymbol(IndentMixin, RecursiveValidationBase):
         super().__init__()
         self.token_cls = token_cls
 
+    def to_ebnf(self, ebnf_entries=None):
+        """
+        Simply return the name of the token that this represents.
+        """
+        return self.token_cls.__name__
+
     def get_next_valid_tokens(self):
         return [self.token_cls]
 

@@ -1,16 +1,31 @@
+from abc import ABC
+
 from gherkin.compiler_base.exception import SequenceEnded, RuleNotFulfilled, SequenceNotFinished
 
 
 class RecursiveValidationBase(object):
+    def to_ebnf(self, ebnf_entries=None):
+        """
+        This function can be used to get the definition as EBNF. ebnf_entries can be used to create additional
+        entries that need to be handled later on.
+
+        :argument: ebnf_entries: a list of strings that hold more entries
+        :returns: a string that represents this object in EBNF
+        """
+        raise NotImplementedError()
+
     def sequence_to_object(self, sequence, index=0):
         """
         Defines how a sequence at a given index is transformed into an object.
 
-        This function may return a RuleToken, None, [RuleToken] or a custom object.
+        This function may return a TerminalSymbol, None, [TerminalSymbol] or a custom object.
         """
         raise NotImplementedError()
 
     def get_next_pointer_index(self, child, sequence, current_index) -> int:
+        """
+        Returns the next index the pointer points to in the sequence.
+        """
         raise NotImplementedError()
 
     def convert(self, sequence):
@@ -52,7 +67,7 @@ class RecursiveValidationBase(object):
         return result_index
 
 
-class RecursiveValidationContainer(RecursiveValidationBase):
+class RecursiveValidationContainer(RecursiveValidationBase, ABC):
     def get_child_validator(self) -> RecursiveValidationBase:
         raise NotImplementedError()
 

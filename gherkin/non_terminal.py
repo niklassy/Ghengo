@@ -196,12 +196,12 @@ class AndButNonTerminalBase(NonTerminal):
         }
 
 
-class AndGrammar(AndButNonTerminalBase):
+class AndNonTerminal(AndButNonTerminalBase):
     criterion_terminal_symbol = TerminalSymbol(AndToken)
     convert_cls = And
 
 
-class ButGrammar(AndButNonTerminalBase):
+class ButNonTerminal(AndButNonTerminalBase):
     criterion_terminal_symbol = TerminalSymbol(ButToken)
     convert_cls = But
 
@@ -265,7 +265,7 @@ class GivenWhenThenBase(NonTerminal):
         return grammar_obj
 
 
-class GivenGrammar(GivenWhenThenBase):
+class GivenNonTerminal(GivenWhenThenBase):
     criterion_terminal_symbol = TerminalSymbol(GivenToken)
     rule = Chain([
         criterion_terminal_symbol,
@@ -275,7 +275,7 @@ class GivenGrammar(GivenWhenThenBase):
             DocStringNonTerminal(),
             DataTableNonTerminal(),
         ])),
-        Repeatable(OneOf([AndGrammar(), ButGrammar()]), minimum=0),
+        Repeatable(OneOf([AndNonTerminal(), ButNonTerminal()]), minimum=0),
     ])
     convert_cls = Given
 
@@ -284,7 +284,7 @@ class GivenGrammar(GivenWhenThenBase):
         return [GivenToken, DescriptionToken, EndOfLineToken]
 
 
-class WhenGrammar(GivenWhenThenBase):
+class WhenNonTerminal(GivenWhenThenBase):
     criterion_terminal_symbol = TerminalSymbol(WhenToken)
     rule = Chain([
         criterion_terminal_symbol,
@@ -294,7 +294,7 @@ class WhenGrammar(GivenWhenThenBase):
             DocStringNonTerminal(),
             DataTableNonTerminal(),
         ])),
-        Repeatable(OneOf([AndGrammar(), ButGrammar()]), minimum=0),
+        Repeatable(OneOf([AndNonTerminal(), ButNonTerminal()]), minimum=0),
     ])
     convert_cls = When
 
@@ -303,7 +303,7 @@ class WhenGrammar(GivenWhenThenBase):
         return [WhenToken, DescriptionToken, EndOfLineToken]
 
 
-class ThenGrammar(GivenWhenThenBase):
+class ThenNonTerminal(GivenWhenThenBase):
     criterion_terminal_symbol = TerminalSymbol(ThenToken)
     rule = Chain([
         criterion_terminal_symbol,
@@ -313,7 +313,7 @@ class ThenGrammar(GivenWhenThenBase):
             DocStringNonTerminal(),
             DataTableNonTerminal(),
         ])),
-        Repeatable(OneOf([AndGrammar(), ButGrammar()]), minimum=0),
+        Repeatable(OneOf([AndNonTerminal(), ButNonTerminal()]), minimum=0),
     ])
     convert_cls = Then
 
@@ -324,9 +324,9 @@ class ThenGrammar(GivenWhenThenBase):
 
 class StepsNonTerminal(NonTerminal):
     rule = Chain([
-        Repeatable(GivenGrammar(), minimum=0, important=True),
-        Repeatable(WhenGrammar(), minimum=0, important=True),
-        Repeatable(ThenGrammar(), minimum=0, important=True),
+        Repeatable(GivenNonTerminal(), minimum=0, important=True),
+        Repeatable(WhenNonTerminal(), minimum=0, important=True),
+        Repeatable(ThenNonTerminal(), minimum=0, important=True),
     ])
     name = 'Steps'
 
@@ -350,9 +350,9 @@ class StepsNonTerminal(NonTerminal):
         return new_index
 
     def used_by_sequence_area(self, sequence, start_index, end_index):
-        given = GivenGrammar().used_by_sequence_area(sequence, start_index, end_index)
-        when = WhenGrammar().used_by_sequence_area(sequence, start_index, end_index)
-        then = ThenGrammar().used_by_sequence_area(sequence, start_index, end_index)
+        given = GivenNonTerminal().used_by_sequence_area(sequence, start_index, end_index)
+        when = WhenNonTerminal().used_by_sequence_area(sequence, start_index, end_index)
+        then = ThenNonTerminal().used_by_sequence_area(sequence, start_index, end_index)
 
         return given or when or then
 
@@ -422,7 +422,7 @@ class ScenarioDefinitionNonTerminal(NonTerminal):
         return grammar_obj
 
 
-class ScenarioOutlineGrammar(TagsGrammarMixin, ScenarioDefinitionNonTerminal):
+class ScenarioOutlineNonTerminal(TagsGrammarMixin, ScenarioDefinitionNonTerminal):
     criterion_terminal_symbol = TerminalSymbol(ScenarioOutlineToken)
     rule = Chain([
         Optional(TagsNonTerminal()),
@@ -441,7 +441,7 @@ class ScenarioOutlineGrammar(TagsGrammarMixin, ScenarioDefinitionNonTerminal):
     @classmethod
     def get_minimal_sequence(cls):
         outline_sequence = [ScenarioOutlineToken, EndOfLineToken]
-        return outline_sequence + GivenGrammar.get_minimal_sequence() + ExamplesNonTerminal.get_minimal_sequence()
+        return outline_sequence + GivenNonTerminal.get_minimal_sequence() + ExamplesNonTerminal.get_minimal_sequence()
 
     def get_steps_from_convert_obj(self, rule_convert_obj):
         return rule_convert_obj[3][0]
@@ -458,7 +458,7 @@ class ScenarioOutlineGrammar(TagsGrammarMixin, ScenarioDefinitionNonTerminal):
         return grammar_obj
 
 
-class ScenarioGrammar(TagsGrammarMixin, ScenarioDefinitionNonTerminal):
+class ScenarioNonTerminal(TagsGrammarMixin, ScenarioDefinitionNonTerminal):
     criterion_terminal_symbol = TerminalSymbol(ScenarioToken)
     rule = Chain([
         Optional(TagsNonTerminal()),
@@ -475,13 +475,13 @@ class ScenarioGrammar(TagsGrammarMixin, ScenarioDefinitionNonTerminal):
 
     @classmethod
     def get_minimal_sequence(cls):
-        return [ScenarioToken, EndOfLineToken] + GivenGrammar.get_minimal_sequence()
+        return [ScenarioToken, EndOfLineToken] + GivenNonTerminal.get_minimal_sequence()
 
     def get_steps_from_convert_obj(self, rule_convert_obj):
         return rule_convert_obj[3]
 
 
-class BackgroundGrammar(ScenarioDefinitionNonTerminal):
+class BackgroundNonTerminal(ScenarioDefinitionNonTerminal):
     description_index = 1
     criterion_terminal_symbol = TerminalSymbol(BackgroundToken)
     rule = Chain([
@@ -491,7 +491,7 @@ class BackgroundGrammar(ScenarioDefinitionNonTerminal):
             Repeatable(DescriptionNonTerminal()),
         ]),
         IndentBlock(
-            Repeatable(GivenGrammar()),
+            Repeatable(GivenNonTerminal()),
         ),
     ])
     convert_cls = Background
@@ -501,7 +501,7 @@ class BackgroundGrammar(ScenarioDefinitionNonTerminal):
 
     @classmethod
     def get_minimal_sequence(cls):
-        return [BackgroundToken, EndOfLineToken] + GivenGrammar.get_minimal_sequence()
+        return [BackgroundToken, EndOfLineToken] + GivenNonTerminal.get_minimal_sequence()
 
 
 class RuleNonTerminal(TagsGrammarMixin, NonTerminal):
@@ -514,10 +514,10 @@ class RuleNonTerminal(TagsGrammarMixin, NonTerminal):
             Repeatable(DescriptionNonTerminal()),
         ]),
         IndentBlock([
-            Optional(BackgroundGrammar()),
+            Optional(BackgroundNonTerminal()),
             Repeatable(OneOf([
-                ScenarioGrammar(),
-                ScenarioOutlineGrammar(),
+                ScenarioNonTerminal(),
+                ScenarioOutlineNonTerminal(),
             ]))
         ]),
     ])
@@ -525,7 +525,7 @@ class RuleNonTerminal(TagsGrammarMixin, NonTerminal):
 
     @classmethod
     def get_minimal_sequence(cls):
-        return [RuleToken, EndOfLineToken] + ScenarioGrammar.get_minimal_sequence()
+        return [RuleToken, EndOfLineToken] + ScenarioNonTerminal.get_minimal_sequence()
 
     def get_convert_kwargs(self, rule_output):
         name, description = DescriptionNonTerminal.get_name_and_description(rule_output[2])
@@ -559,12 +559,12 @@ class FeatureNonTerminal(TagsGrammarMixin, NonTerminal):
             Repeatable(DescriptionNonTerminal()),
         ]),
         IndentBlock([
-            Optional(BackgroundGrammar()),
+            Optional(BackgroundNonTerminal()),
             OneOf([
                 Repeatable(RuleNonTerminal()),
                 Repeatable(OneOf([
-                    ScenarioGrammar(),
-                    ScenarioOutlineGrammar(),
+                    ScenarioNonTerminal(),
+                    ScenarioOutlineNonTerminal(),
                 ])),
             ]),
         ]),

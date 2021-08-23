@@ -26,6 +26,24 @@ class NonTerminal(IndentMixin, RecursiveValidationBase):
 
         self.validated_sequence = None
 
+    def to_ebnf(self, ebnf_entries=None):
+        """
+        Returns its EBNF which is just its name. Before that it will create a Rule for this NonTerminal if not
+        already present.
+
+        <name> = <value>
+        """
+        if ebnf_entries is None:
+            raise ValueError('You must wrap this NonTerminal into a grammar to get the EBNF.')
+
+        clean_name = self.__class__.__name__.replace('NonTerminal', '')
+        new_rule = '{} = {}'.format(clean_name, self.get_clean_rule().to_ebnf(ebnf_entries))
+
+        if new_rule not in ebnf_entries:
+            ebnf_entries.append(new_rule)
+
+        return clean_name
+
     @classmethod
     def get_minimal_sequence(cls):
         return []

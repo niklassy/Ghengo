@@ -5,9 +5,9 @@ from gherkin.compiler_base.exception import GrammarNotUsed, GrammarInvalid
 from gherkin.compiler_base.line import Line
 from gherkin.compiler_base.symbol.terminal import TerminalSymbol
 from gherkin.compiler_base.wrapper import TokenWrapper
-from gherkin.non_terminal import DescriptionNonTerminal, TagsNonTerminal, DocStringNonTerminal, DataTableNonTerminal, AndGrammar, ButGrammar, \
-    ExamplesNonTerminal, GivenGrammar, WhenGrammar, ThenGrammar, StepsNonTerminal, ScenarioOutlineGrammar, ScenarioGrammar, \
-    BackgroundGrammar, RuleNonTerminal, FeatureNonTerminal, LanguageNonTerminal, GherkinDocumentNonTerminal
+from gherkin.non_terminal import DescriptionNonTerminal, TagsNonTerminal, DocStringNonTerminal, DataTableNonTerminal, AndNonTerminal, ButNonTerminal, \
+    ExamplesNonTerminal, GivenNonTerminal, WhenNonTerminal, ThenNonTerminal, StepsNonTerminal, ScenarioOutlineNonTerminal, ScenarioNonTerminal, \
+    BackgroundNonTerminal, RuleNonTerminal, FeatureNonTerminal, LanguageNonTerminal, GherkinDocumentNonTerminal
 from gherkin.tests.valid_token_sequences import examples_sequence, given_sequence, when_sequence, then_sequence, \
     scenario_sequence, scenario_outline_sequence, background_sequence, feature_sequence
 from gherkin.token import EOFToken, DescriptionToken, EndOfLineToken, RuleToken, TagToken, DocStringToken, \
@@ -191,7 +191,7 @@ def test_data_table():
 
 
 @pytest.mark.parametrize(
-    'grammar_cls, token_cls', [(AndGrammar, AndToken), (ButGrammar, ButToken)]
+    'grammar_cls, token_cls', [(AndNonTerminal, AndToken), (ButNonTerminal, ButToken)]
 )
 def test_and_but_grammar(grammar_cls, token_cls):
     """Check that the AND and BUT grammar work correctly and convert everything correctly."""
@@ -333,9 +333,9 @@ def test_examples_grammar_invalid():
 
 @pytest.mark.parametrize(
     'grammar_cls, token_cls', [
-        (GivenGrammar, GivenToken),
-        (WhenGrammar, WhenToken),
-        (ThenGrammar, ThenToken),
+        (GivenNonTerminal, GivenToken),
+        (WhenNonTerminal, WhenToken),
+        (ThenNonTerminal, ThenToken),
     ]
 )
 def test_given_when_then_grammar_valid(grammar_cls, token_cls):
@@ -386,9 +386,9 @@ def test_given_when_then_grammar_valid(grammar_cls, token_cls):
 
 @pytest.mark.parametrize(
     'grammar_cls, token_cls', [
-        (GivenGrammar, GivenToken),
-        (WhenGrammar, WhenToken),
-        (ThenGrammar, ThenToken),
+        (GivenNonTerminal, GivenToken),
+        (WhenNonTerminal, WhenToken),
+        (ThenNonTerminal, ThenToken),
     ]
 )
 def test_given_when_then_grammar_invalid(grammar_cls, token_cls):
@@ -494,7 +494,7 @@ def test_steps_grammar_invalid():
 
 def test_scenario_outline_grammar_valid():
     """Check that the scenario outline handles valid input correctly."""
-    grammar = ScenarioOutlineGrammar()
+    grammar = ScenarioOutlineNonTerminal()
 
     base_sequence = [
         ScenarioOutlineToken(None, None),
@@ -547,7 +547,7 @@ def test_scenario_outline_grammar_valid():
 
 def test_scenario_outline_grammar_invalid():
     """Check that the scenario outline handles invalid input correctly."""
-    grammar = ScenarioOutlineGrammar()
+    grammar = ScenarioOutlineNonTerminal()
 
     assert_callable_raises(
         grammar.convert,
@@ -586,7 +586,7 @@ def test_scenario_outline_grammar_invalid():
 
 def test_scenario_grammar_valid():
     """Check that the scenario grammar converts valid input correctly."""
-    grammar = ScenarioGrammar()
+    grammar = ScenarioNonTerminal()
 
     base_sequence = [
         ScenarioToken(None, None),
@@ -642,7 +642,7 @@ def test_scenario_grammar_valid():
 
 def test_scenario_grammar_invalid():
     """Check that the scenario grammar handles invalid input correctly."""
-    grammar = ScenarioGrammar()
+    grammar = ScenarioNonTerminal()
 
     assert_callable_raises(
         grammar.convert,
@@ -681,7 +681,7 @@ def test_scenario_grammar_invalid():
 
 def test_background_grammar_valid():
     """Check that the background handles valid input correctly."""
-    grammar = BackgroundGrammar()
+    grammar = BackgroundNonTerminal()
 
     base_sequence = [
         BackgroundToken(None, None),
@@ -700,7 +700,7 @@ def test_background_grammar_valid():
 
 def test_background_grammar_invalid():
     """Check that background grammar handles invalid input correctly."""
-    grammar = BackgroundGrammar()
+    grammar = BackgroundNonTerminal()
 
     assert_callable_raises(
         grammar.convert,

@@ -49,6 +49,12 @@ class Optional(RuleOperator):
 
         self.child.set_parent(self)
 
+    def to_ebnf(self, ebnf_entries=None):
+        """
+        Optional is represented as `[<value>]`
+        """
+        return '[{}]'.format(self.child.to_ebnf(ebnf_entries))
+
     def get_next_valid_tokens(self):
         if not self.important:
             return []
@@ -104,6 +110,12 @@ class OneOf(RuleOperator):
 
         for child in self.children:
             child.set_parent(self)
+
+    def to_ebnf(self, ebnf_entries=None):
+        """
+        OneOf is represented as (a | b | c)
+        """
+        return ' | '.join('({})'.format(child.to_ebnf(ebnf_entries)) for child in self.children)
 
     def get_next_valid_tokens(self):
         output = []
@@ -178,6 +190,19 @@ class Repeatable(RuleOperator):
         self.important = important
 
         self.child.set_parent(self)
+
+    def to_ebnf(self, ebnf_entries=None):
+        """
+        Repeatable is represented as `{<value>}` for minimum=0, `<value>, {<value>}` for minimum=1 and so on.
+        """
+        base_string = ''
+        child_ebnf = self.child.to_ebnf(ebnf_entries)
+
+        if self.minimum > 0:
+            for _ in range(self.minimum):
+                base_string += '{}, '.format(child_ebnf)
+
+        return '{}{}{}{}'.format(base_string, '{', child_ebnf, '}')
 
     def get_next_valid_tokens(self):
         if self.minimum == 0 and not self.important:
@@ -255,6 +280,12 @@ class Chain(RuleOperator):
 
         for child in self.children:
             child.set_parent(self)
+
+    def to_ebnf(self, ebnf_entries=None):
+        """
+        Chain is represented as `<value_1>, <value_2>`
+        """
+        return ', '.join(child.to_ebnf(ebnf_entries) for child in self.children)
 
     def get_next_valid_tokens(self):
         if len(self.children) == 0:

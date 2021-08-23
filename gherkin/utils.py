@@ -2,8 +2,8 @@ from gherkin.compiler import GherkinParser
 from gherkin.compiler_base.exception import GrammarInvalid, GrammarNotUsed
 from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
-from gherkin.non_terminal import ExamplesNonTerminal, GivenGrammar, WhenGrammar, ThenGrammar, ScenarioOutlineGrammar, \
-    ScenarioGrammar, BackgroundGrammar, RuleNonTerminal, FeatureNonTerminal
+from gherkin.non_terminal import ExamplesNonTerminal, GivenNonTerminal, WhenNonTerminal, ThenNonTerminal, ScenarioOutlineNonTerminal, \
+    ScenarioNonTerminal, BackgroundNonTerminal, RuleNonTerminal, FeatureNonTerminal
 from gherkin.token import EndOfLineToken, EOFToken
 from settings import GHERKIN_INDENT_SPACES
 
@@ -28,15 +28,15 @@ def get_token_suggestion_after_line(sequence, line_index, return_full_sequence=F
     sequence = [token.copy() for token in sequence]
 
     suggested_grammars = [
-        GivenGrammar,
-        WhenGrammar,
-        ThenGrammar,
-        ScenarioGrammar,
+        GivenNonTerminal,
+        WhenNonTerminal,
+        ThenNonTerminal,
+        ScenarioNonTerminal,
         ExamplesNonTerminal,
-        ScenarioOutlineGrammar,
+        ScenarioOutlineNonTerminal,
         # next two cases are needed to enable autocomplete of Background since it always needs scenarios
-        [BackgroundGrammar, ScenarioGrammar],
-        [GivenGrammar, ScenarioGrammar],
+        [BackgroundNonTerminal, ScenarioNonTerminal],
+        [GivenNonTerminal, ScenarioNonTerminal],
         RuleNonTerminal,
         FeatureNonTerminal,
     ]
