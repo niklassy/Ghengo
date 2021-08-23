@@ -313,28 +313,3 @@ class Chain(RuleOperator):
 
         return index
 
-
-class IndentBlock(RuleOperator):
-    # TODO: this does not really fit here -> move it somewhere else
-    supports_list_as_children = True
-
-    def __init__(self, child):
-        if isinstance(child, list):
-            child = Chain(child)
-
-        super().__init__(child)
-        self.child_rule.set_parent(self)
-
-    def get_suggested_indent_level(self):
-        level = super().get_suggested_indent_level()
-
-        return level + 1
-
-    def _validate_sequence(self, sequence, index):
-        return self.child_rule._validate_sequence(sequence, index)
-
-    def sequence_to_object(self, sequence, index=0):
-        return self.child_rule.sequence_to_object(sequence, index)
-
-    def get_next_valid_tokens(self):
-        return self.child_rule.get_next_valid_tokens()
