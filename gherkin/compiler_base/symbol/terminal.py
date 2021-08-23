@@ -5,8 +5,8 @@ from gherkin.compiler_base.recursive import RecursiveValidationBase
 
 class TerminalSymbol(IndentMixin, RecursiveValidationBase):
     """
-    This is a wrapper for defining rules. It is a wrapper around any custom class that is used while defining
-    rules. For this project, the class could be removed, but it is a nice wrapper for future usage.
+    Can be used to define a TerminalSymbol in a rule. This represents a symbol in a rule that cannot be further
+    expanded.
     """
     def __init__(self, token_cls):
         super().__init__()

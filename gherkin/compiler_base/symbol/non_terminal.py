@@ -6,6 +6,9 @@ from gherkin.compiler_base.symbol.terminal import TerminalSymbol
 
 
 class NonTerminal(IndentMixin, RecursiveValidationBase):
+    """
+    Represents a NonTerminal symbol in a rule. It holds a rule that is saved in a NonTerminal / Variable.
+    """
     name = None
     rule = None
     criterion_terminal_symbol: TerminalSymbol = None
