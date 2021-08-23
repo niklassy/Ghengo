@@ -1,5 +1,6 @@
 from core.constants import Languages
 from django_meta.project import DjangoProject
+from gherkin.grammar import GherkinGrammar
 from nlp.generate.pytest.decorator import PyTestMarkDecorator, PyTestParametrizeDecorator
 from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.translator import CacheTranslator
@@ -11,7 +12,7 @@ from gherkin.ast import Comment as ASTComment, ScenarioOutline, Then, When, Give
 from gherkin.compiler_base.exception import GrammarInvalid, GrammarNotUsed
 from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
-from gherkin.grammar import GherkinDocumentGrammar, LanguageGrammar
+from gherkin.non_terminal import LanguageNonTerminal
 from gherkin.token import FeatureToken, RuleToken, DescriptionToken, EOFToken, BackgroundToken, ScenarioToken, \
     CommentToken, GivenToken, ThenToken, WhenToken, EmptyToken, AndToken, ButToken, TagsToken, LanguageToken, \
     EndOfLineToken, ScenarioOutlineToken, DocStringToken, DataTableToken, ExamplesToken
@@ -53,7 +54,7 @@ class GherkinLexer(Lexer):
             if not token.at_valid_position:
                 raise GherkinInvalid(
                     'You may only set the language in the first line of the document',
-                    grammar=LanguageGrammar(),
+                    grammar=LanguageNonTerminal(),
                     suggested_tokens=[],
                 )
 
@@ -71,7 +72,7 @@ class GherkinLexer(Lexer):
 
 
 class GherkinParser(Parser):
-    grammar = GherkinDocumentGrammar
+    grammar = GherkinGrammar
 
     def prepare_tokens(self, tokens):
         """Remove any empty lines or comments because they can be everywhere in the Grammar of Gherkin."""

@@ -1,5 +1,8 @@
 from gherkin.compiler_base.exception import GrammarInvalid, RuleNotFulfilled, SequenceNotFinished
-from gherkin.compiler_base.rule import Optional, RuleAlias, TokenWrapper, Grammar, Chain, OneOf, Repeatable
+from gherkin.compiler_base.symbol.non_terminal import NonTerminal
+from gherkin.compiler_base.rule.operator import Optional, Chain, OneOf, Repeatable
+from gherkin.compiler_base.symbol.terminal import TerminalSymbol
+from gherkin.compiler_base.wrapper import TokenWrapper
 from gherkin.token import DescriptionToken, EndOfLineToken, EOFToken, FeatureToken
 from test_utils import assert_callable_raises
 
@@ -19,26 +22,26 @@ def test_repeatable_invalid_input():
     assert_callable_raises(
         Repeatable,
         ValueError,
-        args=(Optional(RuleAlias(DescriptionToken)),),
+        args=(Optional(TerminalSymbol(DescriptionToken)),),
         message='You must not use Optional as a child of Repeatable. Use minimum=0 instead.',
     )
-    assert_callable_raises(Repeatable, ValueError, args=([RuleAlias(DescriptionToken)],))
+    assert_callable_raises(Repeatable, ValueError, args=([TerminalSymbol(DescriptionToken)],))
 
 
-def test_repeatable_rule_alias():
+def test_repeatable_terminal_symbol():
     """Check if repeatable handles RuleAlias correctly."""
-    repeatable = Repeatable(RuleAlias(EOFToken))
+    repeatable = Repeatable(TerminalSymbol(EOFToken))
     repeatable.validate_sequence(token_sequence([EOFToken(None), EOFToken(None), EOFToken(None)]))
     assert_callable_raises(repeatable.validate_sequence, RuleNotFulfilled, args=[token_sequence([])])
 
-    repeatable = Repeatable(RuleAlias(EOFToken), minimum=0)
+    repeatable = Repeatable(TerminalSymbol(EOFToken), minimum=0)
     repeatable.validate_sequence(token_sequence([EOFToken(None), EOFToken(None), EOFToken(None)]))
     repeatable.validate_sequence(token_sequence([]))
 
 
 def test_repeatable_chain():
     """Check that Repeatable handles Chains correctly as children."""
-    repeatable = Repeatable(Chain([RuleAlias(EOFToken), RuleAlias(EndOfLineToken)]))
+    repeatable = Repeatable(Chain([TerminalSymbol(EOFToken), TerminalSymbol(EndOfLineToken)]))
     # 1 & 2 repetitions
     repeatable.validate_sequence(token_sequence([EOFToken(None), EndOfLineToken(None)]))
     repeatable.validate_sequence(token_sequence([EOFToken(None), EndOfLineToken(None), EOFToken(None), EndOfLineToken(None)]))
@@ -65,7 +68,7 @@ def test_repeatable_chain():
         args=[token_sequence([EOFToken(None), EndOfLineToken(None), EndOfLineToken(None)])]
     )
 
-    repeatable = Repeatable(Chain([RuleAlias(EOFToken), RuleAlias(EndOfLineToken)]), minimum=0)
+    repeatable = Repeatable(Chain([TerminalSymbol(EOFToken), TerminalSymbol(EndOfLineToken)]), minimum=0)
     repeatable.validate_sequence(token_sequence([]))
     repeatable.validate_sequence(token_sequence([EOFToken(None), EndOfLineToken(None)]))
     repeatable.validate_sequence(token_sequence([EOFToken(None), EndOfLineToken(None), EOFToken(None), EndOfLineToken(None)]))
@@ -74,8 +77,8 @@ def test_repeatable_chain():
 def test_repeatable_one_of():
     """Check that Repeatable handles OneOf correctly as a child."""
     repeatable = Repeatable(OneOf([
-        RuleAlias(EOFToken),
-        RuleAlias(EndOfLineToken),
+        TerminalSymbol(EOFToken),
+        TerminalSymbol(EndOfLineToken),
     ]))
     # several valid repetitions
     repeatable.validate_sequence(token_sequence([EOFToken(None), EOFToken(None), EndOfLineToken(None), EOFToken(None)]))
@@ -93,8 +96,8 @@ def test_repeatable_one_of():
 
     # do the same thing but with no minimum
     repeatable = Repeatable(OneOf([
-        RuleAlias(EOFToken),
-        RuleAlias(EndOfLineToken),
+        TerminalSymbol(EOFToken),
+        TerminalSymbol(EndOfLineToken),
     ]), minimum=0)
     repeatable.validate_sequence(token_sequence([]))
     repeatable.validate_sequence(token_sequence([EOFToken(None), EOFToken(None)]))
@@ -104,14 +107,14 @@ def test_repeatable_one_of():
 
 def test_repeatable_grammar():
     """Check that Repeatable handles Grammar objects as children correctly."""
-    class MyGrammar(Grammar):
-        criterion_rule_alias = RuleAlias(EOFToken)
+    class MyNonTerminal(NonTerminal):
+        criterion_terminal_symbol = TerminalSymbol(EOFToken)
         rule = Chain([
-            criterion_rule_alias,
-            RuleAlias(EndOfLineToken),
+            criterion_terminal_symbol,
+            TerminalSymbol(EndOfLineToken),
         ])
 
-    repeatable = Repeatable(MyGrammar())
+    repeatable = Repeatable(MyNonTerminal())
     # valid values
     repeatable.validate_sequence(token_sequence([EOFToken(None), EndOfLineToken(None), EOFToken(None), EndOfLineToken(None)]))
     repeatable.validate_sequence(token_sequence([EOFToken(None), EndOfLineToken(None)]))

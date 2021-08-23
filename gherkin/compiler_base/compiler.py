@@ -1,9 +1,9 @@
 import inspect
 
 from gherkin.compiler_base.grammar import Grammar
-from gherkin.compiler_base.rule import TokenWrapper
 from gherkin.compiler_base.line import Line
 from gherkin.compiler_base.token import Token
+from gherkin.compiler_base.wrapper import TokenWrapper
 
 
 class Lexer(object):

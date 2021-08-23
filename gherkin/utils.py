@@ -2,8 +2,8 @@ from gherkin.compiler import GherkinParser
 from gherkin.compiler_base.exception import GrammarInvalid, GrammarNotUsed
 from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
-from gherkin.grammar import ExamplesGrammar, GivenGrammar, WhenGrammar, ThenGrammar, ScenarioOutlineGrammar, \
-    ScenarioGrammar, BackgroundGrammar, RuleGrammar, FeatureGrammar
+from gherkin.non_terminal import ExamplesNonTerminal, GivenNonTerminal, WhenNonTerminal, ThenNonTerminal, ScenarioOutlineNonTerminal, \
+    ScenarioNonTerminal, BackgroundNonTerminal, RuleNonTerminal, FeatureNonTerminal
 from gherkin.token import EndOfLineToken, EOFToken
 from settings import GHERKIN_INDENT_SPACES
 
@@ -28,17 +28,17 @@ def get_token_suggestion_after_line(sequence, line_index, return_full_sequence=F
     sequence = [token.copy() for token in sequence]
 
     suggested_grammars = [
-        GivenGrammar,
-        WhenGrammar,
-        ThenGrammar,
-        ScenarioGrammar,
-        ExamplesGrammar,
-        ScenarioOutlineGrammar,
+        GivenNonTerminal,
+        WhenNonTerminal,
+        ThenNonTerminal,
+        ScenarioNonTerminal,
+        ExamplesNonTerminal,
+        ScenarioOutlineNonTerminal,
         # next two cases are needed to enable autocomplete of Background since it always needs scenarios
-        [BackgroundGrammar, ScenarioGrammar],
-        [GivenGrammar, ScenarioGrammar],
-        RuleGrammar,
-        FeatureGrammar,
+        [BackgroundNonTerminal, ScenarioNonTerminal],
+        [GivenNonTerminal, ScenarioNonTerminal],
+        RuleNonTerminal,
+        FeatureNonTerminal,
     ]
     valid_suggestions = []
 
@@ -75,7 +75,7 @@ def get_token_suggestion_after_line(sequence, line_index, return_full_sequence=F
         except (GrammarInvalid, GrammarNotUsed):
             continue
         else:
-            criterion_token_cls = suggested_grammar.criterion_rule_alias.token_cls
+            criterion_token_cls = suggested_grammar.criterion_terminal_symbol.token_cls
 
             if not return_full_sequence:
                 valid_suggestions.append(criterion_token_cls)
