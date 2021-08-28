@@ -24,6 +24,9 @@ class Variable(ReferencedVariablesMixin, Replaceable):
         return bool(self.name)
 
     def __eq__(self, other):
+        if isinstance(other, VariableReference):
+            return other.variable == self
+
         if not isinstance(other, self.__class__):
             return False
 
@@ -126,7 +129,10 @@ class VariableReference(ReferencedVariablesMixin, Replaceable):
         if item == 'variable':
             return self.variable
 
-        return getattr(self.variable, item)
+        try:
+            return getattr(self.variable, item)
+        except AttributeError:
+            return getattr(self, item)
 
     def get_referenced_variables(self):
         return [self.variable]
