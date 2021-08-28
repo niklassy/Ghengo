@@ -98,7 +98,10 @@ class Variable(ReferencedVariablesMixin, Replaceable):
 
 class VariableReference(ReferencedVariablesMixin, Replaceable):
     """
-    This class represents a reference to an existing variable. It will pass everything to the variable.
+    This class represents a reference to an existing variable. It will pass everything to the variable. So:
+
+    foo = 1   # <- `foo` is a variable
+    bar = foo  # <- `foo` is a variable reference, bar another variable
     """
     def __init__(self, variable):
         self.variable = variable
