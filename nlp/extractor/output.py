@@ -449,7 +449,7 @@ class VariableOutput(ExtractorOutput):
                 continue
 
             if self.statement_matches_output(statement, str(python_value)):
-                return statement.variable.copy()
+                return statement.variable.get_reference()
 
         raise ExtractionError(VARIABLE_NOT_FOUND)
 

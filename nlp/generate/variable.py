@@ -36,6 +36,10 @@ class Variable(ReferencedVariablesMixin, Replaceable):
     def __str__(self):
         return self.name
 
+    def get_reference(self):
+        """Returns a reference to this variable."""
+        return VariableReference(self)
+
     def get_referenced_variables(self):
         """Overwrite the default behaviour here since this is a variable."""
         return [self]
@@ -90,3 +94,36 @@ class Variable(ReferencedVariablesMixin, Replaceable):
             return '{}_{}'.format(self.clean_reference_string.lower(), predetermined_name[0])
 
         return ''
+
+
+class VariableReference(ReferencedVariablesMixin, Replaceable):
+    """
+    This class represents a reference to an existing variable. It will pass everything to the variable.
+    """
+    def __init__(self, variable):
+        self.variable = variable
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.variable == other.variable
+
+        if isinstance(other, Variable):
+            return self.variable == other
+
+        return False
+
+    def __bool__(self):
+        return bool(self.variable)
+
+    def __str__(self):
+        return str(self.variable)
+
+    def __getattr__(self, item):
+        """If the variable is referenced, return it. Else ask the variable for the item."""
+        if item == 'variable':
+            return self.variable
+
+        return getattr(self.variable, item)
+
+    def get_referenced_variables(self):
+        return [self.variable]

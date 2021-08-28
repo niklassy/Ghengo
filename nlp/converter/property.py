@@ -239,7 +239,7 @@ class ReferenceModelVariableProperty(NewModelVariableProperty):
             future_name = token_to_function_name(self.token)
 
             if statement.string_matches_variable(future_name, model.name):
-                return statement.variable.copy()
+                return statement.variable.get_reference()
 
         return None
 

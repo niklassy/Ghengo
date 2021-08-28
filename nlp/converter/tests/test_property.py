@@ -12,7 +12,7 @@ from nlp.converter.property import NewModelProperty, NewModelVariableProperty, M
 from nlp.generate.pytest import PyTestModelFactoryExpression
 from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.generate.statement import AssignmentStatement
-from nlp.generate.variable import Variable
+from nlp.generate.variable import Variable, VariableReference
 from nlp.setup import Nlp
 from nlp.tests.utils import MockTranslator
 from nlp.utils import get_noun_chunks, NoToken
@@ -159,7 +159,7 @@ def test_reference_user_converter_property(doc, token_index, mocker):
         assert prop.value is None
         assert isinstance(prop.token, NoToken)
     else:
-        assert isinstance(prop.value, Variable)
+        assert isinstance(prop.value, VariableReference)
         assert prop.value.reference_string == 'User'
         assert prop.token == doc[token_index]
 

@@ -14,7 +14,7 @@ from nlp.generate.expression import CompareExpression, FunctionCallExpression, E
     ModelFactoryExpression
 from nlp.generate.index import Index
 from nlp.generate.statement import AssertStatement, AssignmentStatement
-from nlp.generate.variable import Variable
+from nlp.generate.variable import Variable, VariableReference
 from nlp.lookout.project import SerializerFieldLookout, ModelFieldLookout
 from nlp.lookout.token import NounLookout, ComparisonLookout, VerbLookout
 from nlp.utils import get_noun_chunk_of_token, NoToken, token_is_definite, get_previous_token
@@ -186,7 +186,8 @@ class ResponseConverterBase(ClassConverter):
 
         # since we are currently not supporting nested objects, if a model variable is returned from the extractor
         # use the pk instead of that variable
-        if isinstance(extracted_value, Variable) and isinstance(extracted_value.value, ModelFactoryExpression):
+        value_holds_variable = isinstance(extracted_value, (Variable, VariableReference))
+        if value_holds_variable and isinstance(extracted_value.value, ModelFactoryExpression):
             return Attribute(extracted_value, 'pk')
 
         return extracted_value
