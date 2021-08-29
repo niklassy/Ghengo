@@ -1,5 +1,6 @@
 from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin, ReferencedVariablesMixin
 from nlp.generate.replaceable import Replaceable
+from nlp.generate.variable import Variable
 
 
 class Statement(ReferencedVariablesMixin, Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
@@ -41,6 +42,7 @@ class AssignmentStatement(Statement):
 
     def __init__(self, expression, variable):
         super().__init__(expression)
+        assert isinstance(variable, Variable), 'You must pass a variable to an assignment statement.'
         self.variable = variable
         variable.set_value(self.expression)
 

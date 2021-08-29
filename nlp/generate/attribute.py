@@ -1,11 +1,13 @@
 from nlp.generate.mixin import TemplateMixin, ReferencedVariablesMixin
 from nlp.generate.replaceable import Replaceable
+from nlp.generate.variable import VariableReference
 
 
 class Attribute(ReferencedVariablesMixin, Replaceable, TemplateMixin):
     template = '{variable}.{attribute_name}'
 
     def __init__(self, variable, attribute_name):
+        assert isinstance(variable, VariableReference), 'You may only use VariableReference in Attributes'
         self.variable = variable
         self.attribute_name = attribute_name
 

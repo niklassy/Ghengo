@@ -14,7 +14,7 @@ from nlp.generate.expression import CompareExpression, FunctionCallExpression, E
     ModelFactoryExpression
 from nlp.generate.index import Index
 from nlp.generate.statement import AssertStatement, AssignmentStatement
-from nlp.generate.variable import Variable
+from nlp.generate.variable import Variable, VariableReference
 from nlp.lookout.project import SerializerFieldLookout, ModelFieldLookout
 from nlp.lookout.token import NounLookout, ComparisonLookout, VerbLookout
 from nlp.utils import get_noun_chunk_of_token, NoToken, token_is_definite, get_previous_token
@@ -162,7 +162,7 @@ class ResponseConverterBase(ClassConverter):
         # there is the option that a specific request was referenced (e.g. `the first response`), if not simply return
         # the last entry
         if not self.response_lookout.fittest_token:
-            return valid_variables[-1]
+            return valid_variables[-1].get_reference()
 
         wrapper = ConverterInitArgumentWrapper(
             representative=self.response_lookout.fittest_keyword,
@@ -172,21 +172,22 @@ class ResponseConverterBase(ClassConverter):
         # always get the integer for the response -> which response is meant?
         response_extractor = self.get_extractor_instance(wrapper, IntegerExtractor)
         if response_extractor.generates_warning:
-            return valid_variables[-1]
+            return valid_variables[-1].get_reference()
 
         # if the return value is fine, extract the number and try to access it from all the variables
         response_number = response_extractor.extract_value()
         try:
-            return valid_variables[response_number - 1]
+            return valid_variables[response_number - 1].get_reference()
         except IndexError:
-            return valid_variables[-1]
+            return valid_variables[-1].get_reference()
 
     def extract_and_handle_output(self, extractor):
         extracted_value = super().extract_and_handle_output(extractor)
 
         # since we are currently not supporting nested objects, if a model variable is returned from the extractor
         # use the pk instead of that variable
-        if isinstance(extracted_value, Variable) and isinstance(extracted_value.value, ModelFactoryExpression):
+        value_holds_variable = isinstance(extracted_value, (Variable, VariableReference))
+        if value_holds_variable and isinstance(extracted_value.value, ModelFactoryExpression):
             return Attribute(extracted_value, 'pk')
 
         return extracted_value
@@ -334,7 +335,7 @@ class ResponseConverter(ResponseConverterBase):
             CompareExpression(
                 # variable.get()
                 FunctionCallExpression(
-                    Attribute(self.response_data_variable, 'get'),
+                    Attribute(self.response_data_variable.get_reference(), 'get'),
                     [Argument(extractor.field_name)],
                 ),
                 # ==
@@ -515,7 +516,7 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
         statement = AssertStatement(
             CompareExpression(
                 FunctionCallExpression(
-                    Attribute(self.entry_variable, 'get'),
+                    Attribute(self.entry_variable.get_reference(), 'get'),
                     [Argument(extractor.field_name)],
                 ),
                 CompareChar.EQUAL,

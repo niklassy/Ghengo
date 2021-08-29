@@ -12,7 +12,7 @@ from nlp.generate.expression import Expression
 from nlp.generate.pytest import PyTestModelFactoryExpression
 from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.generate.statement import AssignmentStatement
-from nlp.generate.variable import Variable
+from nlp.generate.variable import Variable, VariableReference
 from nlp.setup import Nlp
 from nlp.utils import NoToken
 from test_utils import assert_callable_raises
@@ -396,11 +396,12 @@ def test_variable_extractor_output_doc_source(doc, token_index, raises, source_o
     extractor_output = VariableOutput(doc[token_index], doc, test_case)
     if not raises:
         output = extractor_output.get_output()
-        assert isinstance(output, Variable)
         if variable_in_text:
+            assert isinstance(output, Variable)
             assert output.name_predetermined == variable_in_text.name_predetermined
             assert output != var
         else:
+            assert isinstance(output, VariableReference)
             assert output == var
         assert extractor_output.output_token == doc[source_output_index]
     else:
@@ -457,12 +458,13 @@ def test_model_variable_extractor_output(doc, token_index, raises, model_input, 
     extractor_output = ModelVariableOutput(doc[token_index], doc, test_case, model_input)
     if not raises:
         output = extractor_output.get_output()
-        assert isinstance(output, Variable)
 
         if variable_in_text:
+            assert isinstance(output, Variable)
             assert output.name_predetermined == variable_in_text.name_predetermined
             assert output != var
         else:
+            assert isinstance(output, VariableReference)
             assert output == var
         assert extractor_output.output_token == doc[source_output_index]
     else:

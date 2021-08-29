@@ -10,7 +10,7 @@ from nlp.generate.expression import ModelM2MAddExpression
 from nlp.generate.pytest import PyTestModelFactoryExpression
 from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.generate.statement import AssignmentStatement
-from nlp.generate.variable import Variable
+from nlp.generate.variable import Variable, VariableReference
 from nlp.generate.warning import GenerationWarning
 from nlp.setup import Nlp
 
@@ -82,7 +82,7 @@ def test_model_field_extractor_extract_char():
     ))
     doc = nlp('Gegeben sei ein Benutzer mit dem Auftrag Bob')   # <-- Bob references that variable
     extractor = ModelFieldExtractor(test_case, doc[6], model_wrapper, field, doc)
-    assert isinstance(extractor.extract_value(), Variable)
+    assert isinstance(extractor.extract_value(), VariableReference)
     assert extractor.extract_value().name == 'bob'
 
 
