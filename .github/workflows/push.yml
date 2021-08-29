@@ -19,4 +19,5 @@ jobs:
           pipenv install --dev
           pipenv run python -m spacy download de_core_news_lg
           pipenv run python -m spacy download en_core_web_lg
+          piprnv run python manage.py migrate
           pipenv run pytest
