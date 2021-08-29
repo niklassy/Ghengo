@@ -22,15 +22,20 @@ def test_cleanup_variables(mocker):
         AssignmentStatement(variable=var_1, expression=Argument('')),
     )
     test_case.add_statement(
-        AssignmentStatement(variable=var_2, expression=FunctionCallExpression(Attribute(var_1, 'foo'), [])),
+        AssignmentStatement(
+            variable=var_2,
+            expression=FunctionCallExpression(Attribute(var_1.get_reference(), 'foo'), [])),
     )
     test_case.add_statement(
-        AssignmentStatement(variable=var_3, expression=FunctionCallExpression(Attribute(var_1, 'foo'), [])),
+        AssignmentStatement(
+            variable=var_3,
+            expression=FunctionCallExpression(Attribute(var_1.get_reference(), 'foo'), [])
+        ),
     )
     test_case.add_statement(
         AssignmentStatement(
             variable=var_4,
-            expression=FunctionCallExpression(Attribute(var_1, 'foo'), [var_2]),
+            expression=FunctionCallExpression(Attribute(var_1.get_reference(), 'foo'), [var_2]),
         ),
     )
 
@@ -47,7 +52,7 @@ def test_cleanup_variables(mocker):
     # check if the var_4 exists if we use it in a statement afterwards
     test_case.statements[3].variable = var_4
     test_case.add_statement(
-        AssignmentStatement(variable=var_3, expression=Attribute(var_4, 'bar')),
+        AssignmentStatement(variable=var_3, expression=Attribute(var_4.get_reference(), 'bar')),
     )
     suite.clean_up()
     assert bool(test_case.statements[3].variable)

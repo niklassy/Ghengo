@@ -162,7 +162,7 @@ class ResponseConverterBase(ClassConverter):
         # there is the option that a specific request was referenced (e.g. `the first response`), if not simply return
         # the last entry
         if not self.response_lookout.fittest_token:
-            return valid_variables[-1]
+            return valid_variables[-1].get_reference()
 
         wrapper = ConverterInitArgumentWrapper(
             representative=self.response_lookout.fittest_keyword,
@@ -172,14 +172,14 @@ class ResponseConverterBase(ClassConverter):
         # always get the integer for the response -> which response is meant?
         response_extractor = self.get_extractor_instance(wrapper, IntegerExtractor)
         if response_extractor.generates_warning:
-            return valid_variables[-1]
+            return valid_variables[-1].get_reference()
 
         # if the return value is fine, extract the number and try to access it from all the variables
         response_number = response_extractor.extract_value()
         try:
-            return valid_variables[response_number - 1]
+            return valid_variables[response_number - 1].get_reference()
         except IndexError:
-            return valid_variables[-1]
+            return valid_variables[-1].get_reference()
 
     def extract_and_handle_output(self, extractor):
         extracted_value = super().extract_and_handle_output(extractor)
@@ -335,7 +335,7 @@ class ResponseConverter(ResponseConverterBase):
             CompareExpression(
                 # variable.get()
                 FunctionCallExpression(
-                    Attribute(self.response_data_variable, 'get'),
+                    Attribute(self.response_data_variable.get_reference(), 'get'),
                     [Argument(extractor.field_name)],
                 ),
                 # ==
@@ -516,7 +516,7 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
         statement = AssertStatement(
             CompareExpression(
                 FunctionCallExpression(
-                    Attribute(self.entry_variable, 'get'),
+                    Attribute(self.entry_variable.get_reference(), 'get'),
                     [Argument(extractor.field_name)],
                 ),
                 CompareChar.EQUAL,

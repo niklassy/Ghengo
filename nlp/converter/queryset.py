@@ -134,7 +134,7 @@ class ObjectQuerysetConverter(QuerysetConverter):
 
         elif extractor in self.get_assert_extractors():
             exp = CompareExpression(
-                Attribute(self.assignment_variable, extractor.field_name),
+                Attribute(self.assignment_variable.get_reference(), extractor.field_name),
                 CompareChar.EQUAL,
                 Argument(extractor.extract_value()),
             )
@@ -206,7 +206,7 @@ class CountQuerysetConverter(QuerysetConverter):
 
         # create expression and statement
         expression = CompareExpression(
-            Attribute(qs_statement.variable, 'count()'),
+            Attribute(qs_statement.variable.get_reference(), 'count()'),
             compare_lookout.get_comparison_for_value(count_value),
             Argument(count_value),
         )
@@ -224,7 +224,9 @@ class ExistsQuerysetConverter(QuerysetConverter):
         statements = super().prepare_statements(statements)
         qs_statement = statements[0]
 
-        statement = AssertStatement(Expression(Attribute(qs_statement.variable, 'exists()')))
+        statement = AssertStatement(
+            Expression(Attribute(qs_statement.variable.get_reference(), 'exists()'))
+        )
         statements.append(statement)
 
         return statements

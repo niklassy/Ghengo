@@ -102,11 +102,19 @@ class M2MModelFieldExtractor(ManyExtractorMixin, ForeignKeyModelFieldExtractor):
 
 
 class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):
+    child_extractor_class = StringModelFieldExtractor
+
     @classmethod
     def fits_input(cls, field, *args, **kwargs):
         from django.contrib.auth.models import Permission
 
         return super().fits_input(field, *args, **kwargs) and field.related_model == Permission
+
+    def get_output_kwargs(self):
+        kwargs = super().get_output_kwargs()
+        del kwargs['test_case']
+        del kwargs['model']
+        return kwargs
 
     def get_permission_statement(self, lookout_input, statements):
         from django.contrib.auth.models import Permission

@@ -31,13 +31,16 @@ Funktionalität: Reference
 #    Und ein Auftrag mit dem Namen "Hallo"
 #    Wenn Alice einen Auftrag mit der Datei "asd" erstellt
 
-  Szenario: file
-    Gegeben sei ein Auftrag 1 mit dem Namen "foo"
-    Und ein Auftrag 2
-    Wenn Auftrag 1 gelöscht wird
-  Und ein Auftrag erstellt wird
-  Dann sollten 2 Aufträge existieren
-  Und 2 Aufträge existieren
+  Szenario:
+    Gegeben sei ein Todo 1
+    Und ein Auftrag 1 mit dem Todo 1
+
+  Szenario:
+    Gegeben sei ein Auftrag 1
+    Und der Auftrag 1 hat den Namen "foo"
+
+  Szenario:
+    Gegeben sei ein Benutzer mit der Benutzerberechtigung "Auftrag sehen"
 
 #    Dann sollten Benutzer mit dem Vornamen "Alice" existieren
 
