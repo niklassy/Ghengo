@@ -208,6 +208,9 @@ class Repeatable(RuleOperator):
         base_string = ''
         child_ebnf = self.child.to_ebnf(ebnf_entries)
 
+        if self.minimum == 1:
+            return '{}{}{}+'.format('{', child_ebnf, '}')
+
         if self.minimum > 0:
             for _ in range(self.minimum):
                 base_string += '{}, '.format(child_ebnf)
