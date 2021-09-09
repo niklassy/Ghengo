@@ -5,9 +5,12 @@ from gherkin.compiler_base.exception import GrammarNotUsed, GrammarInvalid
 from gherkin.compiler_base.line import Line
 from gherkin.compiler_base.symbol.terminal import TerminalSymbol
 from gherkin.compiler_base.wrapper import TokenWrapper
-from gherkin.non_terminal import DescriptionNonTerminal, TagsNonTerminal, DocStringNonTerminal, DataTableNonTerminal, AndNonTerminal, ButNonTerminal, \
-    ExamplesNonTerminal, GivenNonTerminal, WhenNonTerminal, ThenNonTerminal, StepsNonTerminal, ScenarioOutlineNonTerminal, ScenarioNonTerminal, \
-    BackgroundNonTerminal, RuleNonTerminal, FeatureNonTerminal, LanguageNonTerminal, GherkinDocumentNonTerminal
+from gherkin.non_terminal import DescriptionNonTerminal, TagsNonTerminal, DocStringNonTerminal, DataTableNonTerminal, \
+    AndNonTerminal, ButNonTerminal, \
+    ExamplesNonTerminal, GivenNonTerminal, WhenNonTerminal, ThenNonTerminal, StepsNonTerminal, \
+    ScenarioOutlineNonTerminal, ScenarioNonTerminal, \
+    BackgroundNonTerminal, RuleNonTerminal, FeatureNonTerminal, LanguageNonTerminal, GherkinDocumentNonTerminal, \
+    DescriptionChainNonTerminal
 from gherkin.tests.valid_token_sequences import examples_sequence, given_sequence, when_sequence, then_sequence, \
     scenario_sequence, scenario_outline_sequence, background_sequence, feature_sequence
 from gherkin.token import EOFToken, DescriptionToken, EndOfLineToken, RuleToken, TagToken, DocStringToken, \
@@ -71,13 +74,27 @@ def test_description_grammar_convert():
     remove_eof_from_chain(grammar.rule)
 
 
-def test_description_get_name_and_description():
-    """Check that the DescriptionGrammar helps building the name and description of other grammars."""
-    descriptions = [Description(text='val1'), Description(text='val2'), Description(text='val3')]
+def test_description_chain():
+    """Check that DescriptionChainNonTerminal converts just as expected."""
+    non_terminal = DescriptionChainNonTerminal()
 
-    name, description = DescriptionNonTerminal.get_name_and_description(descriptions)
-    assert name == 'val1'
-    assert description == 'val2 val3'
+    # valid 1
+    sequence = get_sequence(
+        [DescriptionToken('asd', None), EndOfLineToken(None, None)])
+    name, description = non_terminal.convert(sequence)
+    assert name == 'asd'
+    assert description is None
+
+    # valid 2
+    sequence = get_sequence([
+        DescriptionToken('asd', None),
+        EndOfLineToken(None, None),
+        DescriptionToken('desc', None),
+        EndOfLineToken(None, None),
+    ])
+    name, description = non_terminal.convert(sequence)
+    assert name == 'asd'
+    assert description == 'desc'
 
 
 def test_tags_grammar():

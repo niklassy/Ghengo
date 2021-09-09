@@ -34,8 +34,24 @@ class DescriptionNonTerminal(NonTerminal):
             'text': rule_output[0].token.text,
         }
 
-    @staticmethod
-    def get_name_and_description(descriptions_input):
+
+class DescriptionChainNonTerminal(NonTerminal):
+    """
+    There is a common pattern where a text can follow a keyword with more descriptions afterwards.
+    This happens e.g. when defining a scenario:
+
+    Scenario: name
+        description of that scenario
+
+    This is a wrapper to avoid code duplication. It won't result in a instance of an object for the AST though.
+    """
+    criterion_terminal_symbol = TerminalSymbol(DescriptionToken)
+    rule = OneOf([
+        Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionNonTerminal(), minimum=0)]),
+        Repeatable(DescriptionNonTerminal()),
+    ])
+
+    def sequence_to_object(self, sequence, index=0):
         """
         Since descriptions are used in several places to define the name and description of Grammars, this function
         can be used to determine the name and the description from a list of ASTDescription objects.
@@ -45,18 +61,20 @@ class DescriptionNonTerminal(NonTerminal):
         OR
         [EndOfLineTokenWrapper, [Description]]
         """
-        if not isinstance(descriptions_input, list):
+        rule_tree = self.get_rule_sequence_to_object(sequence, index)
+
+        if not isinstance(rule_tree, list):
             return None, None
 
         # if the second entry in the list is a list, it holds all the descriptions
-        if len(descriptions_input) > 1 and isinstance(descriptions_input[1], list):
+        if len(rule_tree) > 1 and isinstance(rule_tree[1], list):
             name = None
-            descriptions = descriptions_input[1]
+            descriptions = rule_tree[1]
         # if a list of descriptions is passed instead, the first entry holds the name and the
         # rest the descriptions
         else:
-            name = descriptions_input[0].text
-            descriptions = descriptions_input[1:]
+            name = rule_tree[0].text
+            descriptions = rule_tree[1:]
 
         if len(descriptions) > 0:
             return name, ' '.join(d.text for d in descriptions)
@@ -223,10 +241,7 @@ class ExamplesNonTerminal(TagsGrammarMixin, NonTerminal):
     rule = Chain([
         Optional(TagsNonTerminal()),
         criterion_terminal_symbol,
-        OneOf([
-            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionNonTerminal(), minimum=0)]),
-            Repeatable(DescriptionNonTerminal()),
-        ]),
+        DescriptionChainNonTerminal(),
         IndentBlock(
             DataTableNonTerminal(),
         ),
@@ -238,7 +253,7 @@ class ExamplesNonTerminal(TagsGrammarMixin, NonTerminal):
         return [ExamplesToken, EndOfLineToken] + DataTableNonTerminal.get_minimal_sequence()
 
     def get_convert_kwargs(self, rule_output):
-        name, description = DescriptionNonTerminal.get_name_and_description(rule_output[2])
+        name, description = rule_output[2]
 
         return {
             'keyword': rule_output[1].token.matched_keyword,
@@ -401,7 +416,7 @@ class ScenarioDefinitionNonTerminal(NonTerminal):
         return new_index
 
     def get_convert_kwargs(self, rule_output):
-        name, description = DescriptionNonTerminal.get_name_and_description(rule_output[self.description_index])
+        name, description = rule_output[self.description_index]
 
         return {
             'description': description,
@@ -427,10 +442,7 @@ class ScenarioOutlineNonTerminal(TagsGrammarMixin, ScenarioDefinitionNonTerminal
     rule = Chain([
         Optional(TagsNonTerminal()),
         criterion_terminal_symbol,
-        OneOf([
-            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionNonTerminal(), minimum=0)]),
-            Repeatable(DescriptionNonTerminal()),
-        ]),
+        DescriptionChainNonTerminal(),
         IndentBlock([
             StepsNonTerminal(),
             Repeatable(ExamplesNonTerminal()),
@@ -463,10 +475,7 @@ class ScenarioNonTerminal(TagsGrammarMixin, ScenarioDefinitionNonTerminal):
     rule = Chain([
         Optional(TagsNonTerminal()),
         criterion_terminal_symbol,
-        OneOf([
-            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionNonTerminal(), minimum=0)]),
-            Repeatable(DescriptionNonTerminal()),
-        ]),
+        DescriptionChainNonTerminal(),
         IndentBlock(
             StepsNonTerminal(),
         ),
@@ -486,10 +495,7 @@ class BackgroundNonTerminal(ScenarioDefinitionNonTerminal):
     criterion_terminal_symbol = TerminalSymbol(BackgroundToken)
     rule = Chain([
         criterion_terminal_symbol,
-        OneOf([
-            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionNonTerminal(), minimum=0)]),
-            Repeatable(DescriptionNonTerminal()),
-        ]),
+        DescriptionChainNonTerminal(),
         IndentBlock(
             Repeatable(GivenNonTerminal()),
         ),
@@ -509,10 +515,7 @@ class RuleNonTerminal(TagsGrammarMixin, NonTerminal):
     rule = Chain([
         Optional(TagsNonTerminal()),    # support was added some time ago (https://github.com/cucumber/common/pull/1356)
         criterion_terminal_symbol,
-        OneOf([
-            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionNonTerminal(), minimum=0)]),
-            Repeatable(DescriptionNonTerminal()),
-        ]),
+        DescriptionChainNonTerminal(),
         IndentBlock([
             Optional(BackgroundNonTerminal()),
             Repeatable(OneOf([
@@ -528,7 +531,7 @@ class RuleNonTerminal(TagsGrammarMixin, NonTerminal):
         return [RuleToken, EndOfLineToken] + ScenarioNonTerminal.get_minimal_sequence()
 
     def get_convert_kwargs(self, rule_output):
-        name, description = DescriptionNonTerminal.get_name_and_description(rule_output[2])
+        name, description = rule_output[2]
 
         return {
             'description': description,
@@ -554,10 +557,7 @@ class FeatureNonTerminal(TagsGrammarMixin, NonTerminal):
     rule = Chain([
         Optional(TagsNonTerminal()),
         criterion_terminal_symbol,
-        OneOf([
-            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionNonTerminal(), minimum=0)]),
-            Repeatable(DescriptionNonTerminal()),
-        ]),
+        DescriptionChainNonTerminal(),
         IndentBlock([
             Optional(BackgroundNonTerminal()),
             OneOf([
@@ -576,7 +576,7 @@ class FeatureNonTerminal(TagsGrammarMixin, NonTerminal):
         return [FeatureToken, EndOfLineToken] + RuleNonTerminal.get_minimal_sequence()
 
     def get_convert_kwargs(self, rule_output):
-        name, description = DescriptionNonTerminal.get_name_and_description(rule_output[2])
+        name, description = rule_output[2]
 
         return {
             'description': description,
