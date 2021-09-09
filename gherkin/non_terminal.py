@@ -1,4 +1,4 @@
-from gherkin.compiler_base.exception import GrammarInvalid
+from gherkin.compiler_base.exception import NonTerminalInvalid
 from gherkin.compiler_base.rule.utils import IndentBlock
 from gherkin.compiler_base.symbol.non_terminal import NonTerminal
 from gherkin.compiler_base.rule.operator import Chain, OneOf, Repeatable, Optional
@@ -34,10 +34,26 @@ class DescriptionNonTerminal(NonTerminal):
             'text': rule_output[0].token.text,
         }
 
-    @staticmethod
-    def get_name_and_description(descriptions_input):
+
+class DescriptionChainNonTerminal(NonTerminal):
+    """
+    There is a common pattern where a text can follow a keyword with more descriptions afterwards.
+    This happens e.g. when defining a scenario:
+
+    Scenario: name
+        description of that scenario
+
+    This is a wrapper to avoid code duplication. It won't result in a instance of an object for the AST though.
+    """
+    criterion_terminal_symbol = TerminalSymbol(DescriptionToken)
+    rule = OneOf([
+        Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionNonTerminal(), minimum=0)]),
+        Repeatable(DescriptionNonTerminal()),
+    ])
+
+    def sequence_to_object(self, sequence, index=0):
         """
-        Since descriptions are used in several places to define the name and description of Grammars, this function
+        Since descriptions are used in several places to define the name and description of NonTerminals, this function
         can be used to determine the name and the description from a list of ASTDescription objects.
 
         The input can be in the format:
@@ -45,18 +61,20 @@ class DescriptionNonTerminal(NonTerminal):
         OR
         [EndOfLineTokenWrapper, [Description]]
         """
-        if not isinstance(descriptions_input, list):
+        rule_tree = self.get_rule_sequence_to_object(sequence, index)
+
+        if not isinstance(rule_tree, list):
             return None, None
 
         # if the second entry in the list is a list, it holds all the descriptions
-        if len(descriptions_input) > 1 and isinstance(descriptions_input[1], list):
+        if len(rule_tree) > 1 and isinstance(rule_tree[1], list):
             name = None
-            descriptions = descriptions_input[1]
+            descriptions = rule_tree[1]
         # if a list of descriptions is passed instead, the first entry holds the name and the
         # rest the descriptions
         else:
-            name = descriptions_input[0].text
-            descriptions = descriptions_input[1:]
+            name = rule_tree[0].text
+            descriptions = rule_tree[1:]
 
         if len(descriptions) > 0:
             return name, ' '.join(d.text for d in descriptions)
@@ -144,9 +162,9 @@ class DataTableNonTerminal(NonTerminal):
             # for each of next data table entry, check that it has the same amount of columns
             if len(token_columns) != nmb_columns:
                 place_to_search = token_wrapper.get_place_to_search()
-                raise GrammarInvalid(
+                raise NonTerminalInvalid(
                     'All rows in a data table must have the same amount of columns. {}'.format(place_to_search),
-                    grammar=self,
+                    non_terminal=self,
                     suggested_tokens=[],
                 )
 
@@ -206,7 +224,7 @@ class ButNonTerminal(AndButNonTerminalBase):
     convert_cls = But
 
 
-class TagsGrammarMixin(object):
+class TagsNonTerminalMixin(object):
     def prepare_converted_object(self, rule_output, obj):
         obj = super().prepare_converted_object(rule_output, obj)
 
@@ -218,15 +236,12 @@ class TagsGrammarMixin(object):
         return obj
 
 
-class ExamplesNonTerminal(TagsGrammarMixin, NonTerminal):
+class ExamplesNonTerminal(TagsNonTerminalMixin, NonTerminal):
     criterion_terminal_symbol = TerminalSymbol(ExamplesToken)
     rule = Chain([
         Optional(TagsNonTerminal()),
         criterion_terminal_symbol,
-        OneOf([
-            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionNonTerminal(), minimum=0)]),
-            Repeatable(DescriptionNonTerminal()),
-        ]),
+        DescriptionChainNonTerminal(),
         IndentBlock(
             DataTableNonTerminal(),
         ),
@@ -238,7 +253,7 @@ class ExamplesNonTerminal(TagsGrammarMixin, NonTerminal):
         return [ExamplesToken, EndOfLineToken] + DataTableNonTerminal.get_minimal_sequence()
 
     def get_convert_kwargs(self, rule_output):
-        name, description = DescriptionNonTerminal.get_name_and_description(rule_output[2])
+        name, description = rule_output[2]
 
         return {
             'keyword': rule_output[1].token.matched_keyword,
@@ -256,13 +271,13 @@ class GivenWhenThenBase(NonTerminal):
             'argument': rule_output[3]
         }
 
-    def prepare_converted_object(self, rule_convert_obj, grammar_obj):
+    def prepare_converted_object(self, rule_convert_obj, converted_obj):
         # add sub steps like BUT and AND
         sub_steps = rule_convert_obj[4]
         for step in sub_steps:
-            grammar_obj.add_sub_step(step)
+            converted_obj.add_sub_step(step)
 
-        return grammar_obj
+        return converted_obj
 
 
 class GivenNonTerminal(GivenWhenThenBase):
@@ -341,9 +356,9 @@ class StepsNonTerminal(NonTerminal):
                 token_wrapper = sequence[index]
 
             place_to_search = token_wrapper.get_place_to_search()
-            raise GrammarInvalid(
+            raise NonTerminalInvalid(
                 'You must use at least one Given, When or Then. {}'.format(place_to_search),
-                grammar=self,
+                non_terminal=self,
                 suggested_tokens=[GivenToken, WhenToken, ThenToken]
             )
 
@@ -392,16 +407,16 @@ class ScenarioDefinitionNonTerminal(NonTerminal):
             # check if there is an earlier entry with the same text; if yet, raise an error
             if texts.index(text) < i:
                 place_to_search = descriptions[i].get_place_to_search()
-                raise GrammarInvalid(
+                raise NonTerminalInvalid(
                     'You must not use two different steps with the same text. {}'.format(place_to_search),
-                    grammar=self,
+                    non_terminal=self,
                     suggested_tokens=[],
                 )
 
         return new_index
 
     def get_convert_kwargs(self, rule_output):
-        name, description = DescriptionNonTerminal.get_name_and_description(rule_output[self.description_index])
+        name, description = rule_output[self.description_index]
 
         return {
             'description': description,
@@ -412,25 +427,22 @@ class ScenarioDefinitionNonTerminal(NonTerminal):
     def get_steps_from_convert_obj(self, rule_convert_obj):
         raise NotImplementedError()
 
-    def prepare_converted_object(self, rule_convert_obj, grammar_obj):
+    def prepare_converted_object(self, rule_convert_obj, converted_obj):
         steps = self.get_steps_from_convert_obj(rule_convert_obj)
 
         # add each step to the definition
         for step in steps:
-            grammar_obj.add_step(step)
+            converted_obj.add_step(step)
 
-        return grammar_obj
+        return converted_obj
 
 
-class ScenarioOutlineNonTerminal(TagsGrammarMixin, ScenarioDefinitionNonTerminal):
+class ScenarioOutlineNonTerminal(TagsNonTerminalMixin, ScenarioDefinitionNonTerminal):
     criterion_terminal_symbol = TerminalSymbol(ScenarioOutlineToken)
     rule = Chain([
         Optional(TagsNonTerminal()),
         criterion_terminal_symbol,
-        OneOf([
-            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionNonTerminal(), minimum=0)]),
-            Repeatable(DescriptionNonTerminal()),
-        ]),
+        DescriptionChainNonTerminal(),
         IndentBlock([
             StepsNonTerminal(),
             Repeatable(ExamplesNonTerminal()),
@@ -446,27 +458,24 @@ class ScenarioOutlineNonTerminal(TagsGrammarMixin, ScenarioDefinitionNonTerminal
     def get_steps_from_convert_obj(self, rule_convert_obj):
         return rule_convert_obj[3][0]
 
-    def prepare_converted_object(self, rule_convert_obj, grammar_obj: ScenarioOutline):
+    def prepare_converted_object(self, rule_convert_obj, converted_obj: ScenarioOutline):
         """In addition to the steps, we need to add the argument of the Examples here."""
-        grammar_obj = super().prepare_converted_object(rule_convert_obj, grammar_obj)
+        converted_obj = super().prepare_converted_object(rule_convert_obj, converted_obj)
         examples = rule_convert_obj[3][1]
 
         for example in examples:
-            example.parent = grammar_obj
-            grammar_obj.add_example(example)
+            example.parent = converted_obj
+            converted_obj.add_example(example)
 
-        return grammar_obj
+        return converted_obj
 
 
-class ScenarioNonTerminal(TagsGrammarMixin, ScenarioDefinitionNonTerminal):
+class ScenarioNonTerminal(TagsNonTerminalMixin, ScenarioDefinitionNonTerminal):
     criterion_terminal_symbol = TerminalSymbol(ScenarioToken)
     rule = Chain([
         Optional(TagsNonTerminal()),
         criterion_terminal_symbol,
-        OneOf([
-            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionNonTerminal(), minimum=0)]),
-            Repeatable(DescriptionNonTerminal()),
-        ]),
+        DescriptionChainNonTerminal(),
         IndentBlock(
             StepsNonTerminal(),
         ),
@@ -486,10 +495,7 @@ class BackgroundNonTerminal(ScenarioDefinitionNonTerminal):
     criterion_terminal_symbol = TerminalSymbol(BackgroundToken)
     rule = Chain([
         criterion_terminal_symbol,
-        OneOf([
-            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionNonTerminal(), minimum=0)]),
-            Repeatable(DescriptionNonTerminal()),
-        ]),
+        DescriptionChainNonTerminal(),
         IndentBlock(
             Repeatable(GivenNonTerminal()),
         ),
@@ -504,15 +510,12 @@ class BackgroundNonTerminal(ScenarioDefinitionNonTerminal):
         return [BackgroundToken, EndOfLineToken] + GivenNonTerminal.get_minimal_sequence()
 
 
-class RuleNonTerminal(TagsGrammarMixin, NonTerminal):
+class RuleNonTerminal(TagsNonTerminalMixin, NonTerminal):
     criterion_terminal_symbol = TerminalSymbol(RuleToken)
     rule = Chain([
         Optional(TagsNonTerminal()),    # support was added some time ago (https://github.com/cucumber/common/pull/1356)
         criterion_terminal_symbol,
-        OneOf([
-            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionNonTerminal(), minimum=0)]),
-            Repeatable(DescriptionNonTerminal()),
-        ]),
+        DescriptionChainNonTerminal(),
         IndentBlock([
             Optional(BackgroundNonTerminal()),
             Repeatable(OneOf([
@@ -528,7 +531,7 @@ class RuleNonTerminal(TagsGrammarMixin, NonTerminal):
         return [RuleToken, EndOfLineToken] + ScenarioNonTerminal.get_minimal_sequence()
 
     def get_convert_kwargs(self, rule_output):
-        name, description = DescriptionNonTerminal.get_name_and_description(rule_output[2])
+        name, description = rule_output[2]
 
         return {
             'description': description,
@@ -537,27 +540,24 @@ class RuleNonTerminal(TagsGrammarMixin, NonTerminal):
             'background': rule_output[3][0],
         }
 
-    def prepare_converted_object(self, rule_convert_obj, grammar_obj: Rule):
+    def prepare_converted_object(self, rule_convert_obj, converted_obj: Rule):
         # set tags
-        grammar_obj = super().prepare_converted_object(rule_convert_obj, grammar_obj)
+        converted_obj = super().prepare_converted_object(rule_convert_obj, converted_obj)
 
         # set all the children/ scenario definitions
         for sr in rule_convert_obj[3][1]:
-            sr.parent = grammar_obj
-            grammar_obj.add_scenario_definition(sr)
+            sr.parent = converted_obj
+            converted_obj.add_scenario_definition(sr)
 
-        return grammar_obj
+        return converted_obj
 
 
-class FeatureNonTerminal(TagsGrammarMixin, NonTerminal):
+class FeatureNonTerminal(TagsNonTerminalMixin, NonTerminal):
     criterion_terminal_symbol = TerminalSymbol(FeatureToken)
     rule = Chain([
         Optional(TagsNonTerminal()),
         criterion_terminal_symbol,
-        OneOf([
-            Chain([TerminalSymbol(EndOfLineToken), Repeatable(DescriptionNonTerminal(), minimum=0)]),
-            Repeatable(DescriptionNonTerminal()),
-        ]),
+        DescriptionChainNonTerminal(),
         IndentBlock([
             Optional(BackgroundNonTerminal()),
             OneOf([
@@ -576,7 +576,7 @@ class FeatureNonTerminal(TagsGrammarMixin, NonTerminal):
         return [FeatureToken, EndOfLineToken] + RuleNonTerminal.get_minimal_sequence()
 
     def get_convert_kwargs(self, rule_output):
-        name, description = DescriptionNonTerminal.get_name_and_description(rule_output[2])
+        name, description = rule_output[2]
 
         return {
             'description': description,
@@ -586,16 +586,16 @@ class FeatureNonTerminal(TagsGrammarMixin, NonTerminal):
             'background': rule_output[3][0],
         }
 
-    def prepare_converted_object(self, rule_convert_obj: [TokenWrapper], grammar_obj: Feature):
-        grammar_obj = super().prepare_converted_object(rule_convert_obj, grammar_obj)
+    def prepare_converted_object(self, rule_convert_obj: [TokenWrapper], converted_obj: Feature):
+        converted_obj = super().prepare_converted_object(rule_convert_obj, converted_obj)
         scenario_rules = rule_convert_obj[3][1]
 
         # add all the rules/ scenario definitions
         for sr in scenario_rules:
-            sr.parent = grammar_obj
-            grammar_obj.add_child(sr)
+            sr.parent = converted_obj
+            converted_obj.add_child(sr)
 
-        return grammar_obj
+        return converted_obj
 
 
 class LanguageNonTerminal(NonTerminal):
@@ -619,12 +619,12 @@ class GherkinDocumentNonTerminal(NonTerminal):
     name = 'Gherkin document'
     convert_cls = GherkinDocument
 
-    def prepare_converted_object(self, rule_convert_obj, grammar_obj: GherkinDocument):
+    def prepare_converted_object(self, rule_convert_obj, converted_obj: GherkinDocument):
         feature = rule_convert_obj[1]
 
         # set the feature if it exists
         if feature:
-            grammar_obj.set_feature(feature)
-            feature.parent = grammar_obj
+            converted_obj.set_feature(feature)
+            feature.parent = converted_obj
 
-        return grammar_obj
+        return converted_obj

@@ -1,4 +1,4 @@
-from gherkin.compiler_base.exception import RuleNotFulfilled, SequenceEnded, GrammarNotUsed, GrammarInvalid
+from gherkin.compiler_base.exception import RuleNotFulfilled, SequenceEnded, NonTerminalNotUsed, NonTerminalInvalid
 from gherkin.compiler_base.mixin import IndentMixin
 from gherkin.compiler_base.recursive import RecursiveValidationBase
 from gherkin.compiler_base.rule.operator import RuleOperator
@@ -64,7 +64,7 @@ class NonTerminal(IndentMixin, RecursiveValidationBase):
         return self.rule
 
     def get_clean_rule(self) -> RuleOperator:
-        """Returns the rule of this grammar with all preparations."""
+        """Returns the rule of this non terminal with all preparations."""
         rule = self._get_rule()
 
         if rule:
@@ -74,19 +74,19 @@ class NonTerminal(IndentMixin, RecursiveValidationBase):
 
     def get_name(self):
         """
-        Returns the name of the grammar. By default it uses the name of the token class in the criterion_terminal_symbol
+        Returns the name of the non terminal. By default it uses the name of the token class in the criterion_terminal_symbol
         """
         return self.criterion_terminal_symbol.token_cls.__name__.replace('Token', '') if not self.name else self.name
 
-    def get_grammar_criterion(self) -> TerminalSymbol:
+    def get_non_terminal_criterion(self) -> TerminalSymbol:
         """
-        Returns the criterion that defines this grammar/ that makes this grammar recognizable.
+        Returns the criterion that defines this non terminal/ that makes this non terminal recognizable.
         """
         return self.criterion_terminal_symbol
 
     def used_by_sequence_area(self, sequence, start_index, end_index):
-        """Checks if this grammar is used in a given area in a sequence of RuleTokens."""
-        criterion = self.get_grammar_criterion()
+        """Checks if this non terminal is used in a given area in a sequence of RuleTokens."""
+        criterion = self.get_non_terminal_criterion()
 
         if not criterion:
             return False
@@ -103,7 +103,7 @@ class NonTerminal(IndentMixin, RecursiveValidationBase):
         Validates the given sequence. If this is called by a parent, no index should be passed.
         It will call Rules that will call this method recursively.
 
-        :raises GrammarInvalid
+        :raises NonTerminalInvalid
 
         :arg sequence - list of RuleTokens - they represent all tokens from an input text
         :arg index (default 0) - the current index of validation in the sequence
@@ -128,15 +128,15 @@ class NonTerminal(IndentMixin, RecursiveValidationBase):
                 message = str(e)
 
             if not self.used_by_sequence_area(sequence, index, e.sequence_index):
-                raise GrammarNotUsed(
+                raise NonTerminalNotUsed(
                     message,
                     terminal_symbol=e.terminal_symbol,
                     sequence_index=e.sequence_index,
                     comes_from=e.comes_from,
-                    grammar=self,
+                    non_terminal=self,
                 )
 
-            raise GrammarInvalid(message, grammar=self, suggested_tokens=e.suggested_tokens)
+            raise NonTerminalInvalid(message, non_terminal=self, suggested_tokens=e.suggested_tokens)
 
     def validate_sequence(self, sequence, index=0):
         result_index = super().validate_sequence(sequence, 0)
@@ -151,17 +151,17 @@ class NonTerminal(IndentMixin, RecursiveValidationBase):
         """Returns the tree that is returned by self.get_clean_rule"""
         return self.get_clean_rule().sequence_to_object(sequence, index)
 
-    def prepare_converted_object(self, rule_convert_obj, grammar_obj):
+    def prepare_converted_object(self, rule_convert_obj, converted_obj):
         """Can be used to modify the object before it is returned by `convert`."""
-        return grammar_obj
+        return converted_obj
 
     def sequence_to_object(self, sequence, index=0):
         """
-        Returns an object that represents this grammar. By default it will create an instance of `ast_object_cls`,
+        Returns an object that represents this non_terminal. By default it will create an instance of `ast_object_cls`,
         add kwargs and return it. The object can be used by the caller of this function.
         """
         if self.convert_cls is None:
-            raise NotImplementedError('You must provide a class that this Grammar converts into.')
+            raise NotImplementedError('You must provide a class that this non terminal converts into.')
 
         object_of_rule = self.get_rule_sequence_to_object(sequence, index)
         kwargs = self.get_convert_kwargs(object_of_rule)

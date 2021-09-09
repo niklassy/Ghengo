@@ -1,5 +1,5 @@
 from gherkin.compiler import GherkinParser
-from gherkin.compiler_base.exception import GrammarInvalid, GrammarNotUsed
+from gherkin.compiler_base.exception import NonTerminalInvalid, NonTerminalNotUsed
 from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
 from gherkin.non_terminal import ExamplesNonTerminal, GivenNonTerminal, WhenNonTerminal, ThenNonTerminal, ScenarioOutlineNonTerminal, \
@@ -27,7 +27,7 @@ def get_sequence_as_lines(sequence):
 def get_token_suggestion_after_line(sequence, line_index, return_full_sequence=False):
     sequence = [token.copy() for token in sequence]
 
-    suggested_grammars = [
+    suggested_non_terminals = [
         GivenNonTerminal,
         WhenNonTerminal,
         ThenNonTerminal,
@@ -60,22 +60,22 @@ def get_token_suggestion_after_line(sequence, line_index, return_full_sequence=F
 
     new_line = Line('', line_index)
 
-    for suggested_grammar in suggested_grammars:
-        if not isinstance(suggested_grammar, list):
-            token_sequence = [token_cls('', new_line) for token_cls in suggested_grammar.get_minimal_sequence()]
+    for suggested_non_terminal in suggested_non_terminals:
+        if not isinstance(suggested_non_terminal, list):
+            token_sequence = [token_cls('', new_line) for token_cls in suggested_non_terminal.get_minimal_sequence()]
         else:
             token_sequence = []
-            for grammar in suggested_grammar:
-                token_sequence += [token_cls('', new_line) for token_cls in grammar.get_minimal_sequence()]
-            suggested_grammar = suggested_grammar[0]
+            for non_terminal in suggested_non_terminal:
+                token_sequence += [token_cls('', new_line) for token_cls in non_terminal.get_minimal_sequence()]
+            suggested_non_terminal = suggested_non_terminal[0]
         new_sequence = tokens_before_line + token_sequence + tokens_after_and_in_line
 
         try:
             GherkinParser(None).parse(new_sequence)
-        except (GrammarInvalid, GrammarNotUsed):
+        except (NonTerminalInvalid, NonTerminalNotUsed):
             continue
         else:
-            criterion_token_cls = suggested_grammar.criterion_terminal_symbol.token_cls
+            criterion_token_cls = suggested_non_terminal.criterion_terminal_symbol.token_cls
 
             if not return_full_sequence:
                 valid_suggestions.append(criterion_token_cls)
@@ -104,7 +104,7 @@ def get_indent_level_for_next_line(tokens, line_index, filter_token):
             fitting_token = first_token
 
     if fitting_token is not None:
-        return fitting_token.grammar_meta.get('suggested_indent_level')
+        return fitting_token.non_terminal_meta.get('suggested_indent_level')
 
     return 0
 
@@ -118,7 +118,7 @@ def get_intend_level_for_line(compiler, text, line_index):
             if token.line.line_index != line_index:
                 continue
 
-            return token.grammar_meta.get('suggested_indent_level', 0)
+            return token.non_terminal_meta.get('suggested_indent_level', 0)
 
         return 0
     except GherkinInvalid:

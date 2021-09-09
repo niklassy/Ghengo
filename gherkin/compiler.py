@@ -9,7 +9,7 @@ from nlp.generate.utils import to_function_name
 from gherkin.compiler_base.compiler import Lexer, Compiler, Parser, CodeGenerator
 
 from gherkin.ast import Comment as ASTComment, ScenarioOutline, Then, When, Given
-from gherkin.compiler_base.exception import GrammarInvalid, GrammarNotUsed
+from gherkin.compiler_base.exception import NonTerminalInvalid, NonTerminalNotUsed
 from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
 from gherkin.non_terminal import LanguageNonTerminal
@@ -54,7 +54,7 @@ class GherkinLexer(Lexer):
             if not token.at_valid_position:
                 raise GherkinInvalid(
                     'You may only set the language in the first line of the document',
-                    grammar=LanguageNonTerminal(),
+                    non_terminal=LanguageNonTerminal(),
                     suggested_tokens=[],
                 )
 
@@ -208,5 +208,5 @@ class GherkinToPyTestCompiler(Compiler):
     def use_parser(self, tokens):
         try:
             return super().use_parser(tokens)
-        except (GrammarInvalid, GrammarNotUsed) as e:
-            raise GherkinInvalid(str(e), grammar=e.grammar, suggested_tokens=e.suggested_tokens)
+        except (NonTerminalInvalid, NonTerminalNotUsed) as e:
+            raise GherkinInvalid(str(e), non_terminal=e.non_terminal, suggested_tokens=e.suggested_tokens)

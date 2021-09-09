@@ -1,4 +1,4 @@
-from gherkin.compiler_base.exception import GrammarInvalid, RuleNotFulfilled, SequenceNotFinished
+from gherkin.compiler_base.exception import NonTerminalInvalid, RuleNotFulfilled, SequenceNotFinished
 from gherkin.compiler_base.symbol.non_terminal import NonTerminal
 from gherkin.compiler_base.rule.operator import Optional, Chain, OneOf, Repeatable
 from gherkin.compiler_base.symbol.terminal import TerminalSymbol
@@ -31,17 +31,17 @@ def test_optional_terminal_symbol():
     optional.validate_sequence([])
 
 
-def test_optional_grammar():
-    """Check that an optional makes grammars pass if they are not used."""
+def test_optional_non_terminal():
+    """Check that an optional makes non_terminals pass if they are not used."""
     class CustomNonTerminal(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(DescriptionToken)
         rule = Chain([criterion_terminal_symbol, TerminalSymbol(EndOfLineToken)])
 
     optional = Optional(CustomNonTerminal())
-    # the grammar is used, so the grammar should raise an error and Optional should not catch it
+    # the non_terminal is used, so the non_terminal should raise an error and Optional should not catch it
     assert_callable_raises(
         optional.validate_sequence,
-        GrammarInvalid,
+        NonTerminalInvalid,
         args=(token_sequence([DescriptionToken('', None), DescriptionToken('', None)]),),
     )
     assert_callable_raises(

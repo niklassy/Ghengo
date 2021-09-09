@@ -1,13 +1,16 @@
 import pytest
 
 from core.constants import Languages
-from gherkin.compiler_base.exception import GrammarNotUsed, GrammarInvalid
+from gherkin.compiler_base.exception import NonTerminalNotUsed, NonTerminalInvalid
 from gherkin.compiler_base.line import Line
 from gherkin.compiler_base.symbol.terminal import TerminalSymbol
 from gherkin.compiler_base.wrapper import TokenWrapper
-from gherkin.non_terminal import DescriptionNonTerminal, TagsNonTerminal, DocStringNonTerminal, DataTableNonTerminal, AndNonTerminal, ButNonTerminal, \
-    ExamplesNonTerminal, GivenNonTerminal, WhenNonTerminal, ThenNonTerminal, StepsNonTerminal, ScenarioOutlineNonTerminal, ScenarioNonTerminal, \
-    BackgroundNonTerminal, RuleNonTerminal, FeatureNonTerminal, LanguageNonTerminal, GherkinDocumentNonTerminal
+from gherkin.non_terminal import DescriptionNonTerminal, TagsNonTerminal, DocStringNonTerminal, DataTableNonTerminal, \
+    AndNonTerminal, ButNonTerminal, \
+    ExamplesNonTerminal, GivenNonTerminal, WhenNonTerminal, ThenNonTerminal, StepsNonTerminal, \
+    ScenarioOutlineNonTerminal, ScenarioNonTerminal, \
+    BackgroundNonTerminal, RuleNonTerminal, FeatureNonTerminal, LanguageNonTerminal, GherkinDocumentNonTerminal, \
+    DescriptionChainNonTerminal
 from gherkin.tests.valid_token_sequences import examples_sequence, given_sequence, when_sequence, then_sequence, \
     scenario_sequence, scenario_outline_sequence, background_sequence, feature_sequence
 from gherkin.token import EOFToken, DescriptionToken, EndOfLineToken, RuleToken, TagToken, DocStringToken, \
@@ -25,12 +28,12 @@ class CustomTokenWrapper(TokenWrapper):
 
 
 def append_eof_to_chain(chain):
-    """Can be used to apply eof to a grammar. If you use it, remember to call remove_eof_from_chain."""
+    """Can be used to apply eof to a non_terminal. If you use it, remember to call remove_eof_from_chain."""
     chain.children.append(TerminalSymbol(EOFToken))
 
 
 def remove_eof_from_chain(chain):
-    """Can be used to remove eof of a grammar."""
+    """Can be used to remove eof of a non_terminal."""
     if chain.children[-1] == TerminalSymbol(EOFToken):
         chain.children = chain.children[:len(chain.children) - 1]
     return chain
@@ -51,111 +54,125 @@ def get_sequence(sequence, add_end_of=False):
     return output
 
 
-def test_description_grammar_convert():
-    """Check that the description grammar works as expected when converting."""
-    grammar = DescriptionNonTerminal()
-    append_eof_to_chain(grammar.rule)
+def test_description_non_terminal_convert():
+    """Check that the description non_terminal works as expected when converting."""
+    non_terminal = DescriptionNonTerminal()
+    append_eof_to_chain(non_terminal.rule)
 
     # check a valid sequence
     sequence = get_sequence([DescriptionToken(text='teasd', line=None)], add_end_of=True)
-    output = grammar.convert(sequence=sequence)
+    output = non_terminal.convert(sequence=sequence)
     assert isinstance(output, Description)
     assert output.text == 'teasd'
 
     # check invalid sequences
     sequence = get_sequence([RuleToken(text='asd', line=None)], add_end_of=True)
-    assert_callable_raises(grammar.convert, GrammarNotUsed, args=[sequence])
+    assert_callable_raises(non_terminal.convert, NonTerminalNotUsed, args=[sequence])
     sequence = get_sequence([DescriptionToken(text='asd', line=None), RuleToken(text='asd', line=None)])
-    assert_callable_raises(grammar.convert, GrammarInvalid, args=[sequence])
+    assert_callable_raises(non_terminal.convert, NonTerminalInvalid, args=[sequence])
 
-    remove_eof_from_chain(grammar.rule)
-
-
-def test_description_get_name_and_description():
-    """Check that the DescriptionGrammar helps building the name and description of other grammars."""
-    descriptions = [Description(text='val1'), Description(text='val2'), Description(text='val3')]
-
-    name, description = DescriptionNonTerminal.get_name_and_description(descriptions)
-    assert name == 'val1'
-    assert description == 'val2 val3'
+    remove_eof_from_chain(non_terminal.rule)
 
 
-def test_tags_grammar():
-    """Check that TagsGrammar converts just as expected."""
-    grammar = TagsNonTerminal()
-    append_eof_to_chain(grammar.rule)
+def test_description_chain():
+    """Check that DescriptionChainNonTerminal converts just as expected."""
+    non_terminal = DescriptionChainNonTerminal()
+
+    # valid 1
+    sequence = get_sequence(
+        [DescriptionToken('asd', None), EndOfLineToken(None, None)])
+    name, description = non_terminal.convert(sequence)
+    assert name == 'asd'
+    assert description is None
+
+    # valid 2
+    sequence = get_sequence([
+        DescriptionToken('asd', None),
+        EndOfLineToken(None, None),
+        DescriptionToken('desc', None),
+        EndOfLineToken(None, None),
+    ])
+    name, description = non_terminal.convert(sequence)
+    assert name == 'asd'
+    assert description == 'desc'
+
+
+def test_tags_non_terminal():
+    """Check that TagsNonTerminal converts just as expected."""
+    non_terminal = TagsNonTerminal()
+    append_eof_to_chain(non_terminal.rule)
 
     # valid 1
     sequence = get_sequence(
         [TagToken(text='@tag1', line=None), TagToken(text='@tag2', line=None), EndOfLineToken(None, None), EOFToken(None, None)])
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert len(output) == 2
     assert output[0].name == 'tag1'
     assert output[1].name == 'tag2'
 
     # valid 2
     sequence = get_sequence([TagToken(text='@tag1', line=None), EndOfLineToken(None, None), EOFToken(None, None)])
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert len(output) == 1
     assert output[0].name == 'tag1'
 
     # invalid sequences
     assert_callable_raises(
-        grammar.convert, GrammarNotUsed, args=[get_sequence([EndOfLineToken(None, None), EOFToken(None, None)])])
+        non_terminal.convert, NonTerminalNotUsed, args=[get_sequence([EndOfLineToken(None, None), EOFToken(None, None)])])
     assert_callable_raises(
-        grammar.convert, GrammarInvalid, args=[get_sequence([TagToken('@tag1', None), EOFToken(None, None)])])
+        non_terminal.convert, NonTerminalInvalid, args=[get_sequence([TagToken('@tag1', None), EOFToken(None, None)])])
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([TagToken('tag1', None), RuleToken(None, None), EOFToken(None, None)])])
 
-    remove_eof_from_chain(grammar.rule)
+    remove_eof_from_chain(non_terminal.rule)
 
 
-def test_doc_string_grammar():
+def test_doc_string_non_terminal():
     """Check that DocStrings work as expecting when converting."""
-    grammar = DocStringNonTerminal()
-    append_eof_to_chain(grammar.rule)
+    non_terminal = DocStringNonTerminal()
+    append_eof_to_chain(non_terminal.rule)
 
     # check valid input
     sequence = get_sequence(
         [DocStringToken(None, None), DescriptionToken('a', None), DescriptionToken('b', None), DocStringToken(None, None)], add_end_of=True)
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.text == 'a b'
 
     sequence = get_sequence([DocStringToken(None, None), DocStringToken(None, None)], add_end_of=True)
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.text == ''
 
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([DescriptionToken(None, None)], add_end_of=True)])
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([DocStringToken(None, None), DescriptionToken(None, None)], add_end_of=True)])
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,     # <- since description is at the beginning, DocString cant be identified.
+        non_terminal.convert,
+        NonTerminalNotUsed,     # <- since description is at the beginning, DocString cant be identified.
         args=[get_sequence([DescriptionToken(None, None), DocStringToken(None, None)], add_end_of=True)])
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([DocStringToken(None, None), RuleToken(None, None)], add_end_of=True)])
 
-    remove_eof_from_chain(grammar.rule)
+    remove_eof_from_chain(non_terminal.rule)
 
 
 def test_data_table():
     """Check that data tables are converted correctly."""
-    grammar = DataTableNonTerminal()
-    append_eof_to_chain(grammar.rule)
+    non_terminal = DataTableNonTerminal()
+    append_eof_to_chain(non_terminal.rule)
 
     # check a valid sequence
     sequence = get_sequence(
         [DataTableToken('| col1 | col2|    col3|', None), DataTableToken('| val1 | val2|val3', None)], add_end_of=True)
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.header.get_value_at(0) == 'col1'
     assert output.header.get_value_at(1) == 'col2'
     assert output.header.get_value_at(2) == 'col3'
@@ -166,40 +183,40 @@ def test_data_table():
 
     # check that all entries must have the same amount of columns
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         message='All rows in a data table must have the same amount of columns. ',
         args=[get_sequence([DataTableToken('|a|b|c|', None), DataTableToken('|a|b|', None)], add_end_of=True)]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([RuleToken(None, None)], add_end_of=True)]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([DataTableToken(None, None)], add_end_of=True)]   # <- not enough columns
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([DataTableToken(None, None), RuleToken(None, None)], add_end_of=True)]
     )
 
-    remove_eof_from_chain(grammar.rule)
+    remove_eof_from_chain(non_terminal.rule)
 
 
 @pytest.mark.parametrize(
-    'grammar_cls, token_cls', [(AndNonTerminal, AndToken), (ButNonTerminal, ButToken)]
+    'non_terminal_cls, token_cls', [(AndNonTerminal, AndToken), (ButNonTerminal, ButToken)]
 )
-def test_and_but_grammar(grammar_cls, token_cls):
-    """Check that the AND and BUT grammar work correctly and convert everything correctly."""
-    grammar = grammar_cls()
+def test_and_but_non_terminal(non_terminal_cls, token_cls):
+    """Check that the AND and BUT non_terminal work correctly and convert everything correctly."""
+    non_terminal = non_terminal_cls()
 
     # check valid sequence without docstring or data table
     sequence = get_sequence([token_cls(None, None), DescriptionToken('123', None), EndOfLineToken(None, None)])
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.text == '123'
     assert output.keyword is None
     assert output.argument is None
@@ -214,7 +231,7 @@ def test_and_but_grammar(grammar_cls, token_cls):
         DataTableToken('|a|b|', None),
         EndOfLineToken(None, None),
     ])
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.text == '543'
     assert output.keyword is None
     assert output.argument is not None
@@ -230,7 +247,7 @@ def test_and_but_grammar(grammar_cls, token_cls):
         DocStringToken('"""', None),
         EndOfLineToken(None, None),
     ])
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.text == '5435'
     assert output.keyword is None
     assert output.argument is not None
@@ -238,25 +255,25 @@ def test_and_but_grammar(grammar_cls, token_cls):
 
     # check invalid sequences
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([RuleToken(None, None)])],
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([DescriptionToken(None, None)])],
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([token_cls(None, None), EndOfLineToken(None, None)])],
     )
 
 
-def test_examples_grammar_valid():
-    """Check that the examples grammar converts the tokens correctly."""
-    grammar = ExamplesNonTerminal()
+def test_examples_non_terminal_valid():
+    """Check that the examples non_terminal converts the tokens correctly."""
+    non_terminal = ExamplesNonTerminal()
 
     # check valid sequence without tags
     sequence = get_sequence([
@@ -267,7 +284,7 @@ def test_examples_grammar_valid():
         DataTableToken('|a|b|', None),
         EndOfLineToken(None, None),
     ])
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.name is None
     assert output.description is None
     assert isinstance(output.datatable, DataTable)
@@ -285,7 +302,7 @@ def test_examples_grammar_valid():
         DataTableToken('|a|b|', None),
         EndOfLineToken(None, None),
     ])
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.name is None
     assert output.description is None
     assert isinstance(output.datatable, DataTable)
@@ -303,48 +320,48 @@ def test_examples_grammar_valid():
         DataTableToken('|a|b|', None),
         EndOfLineToken(None, None),
     ])
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.name == 'name'
     assert output.description == 'desc'
     assert isinstance(output.datatable, DataTable)
     assert output.tags == []
 
 
-def test_examples_grammar_invalid():
-    """Check that the examples grammar handles invalid input correctly."""
-    grammar = ExamplesNonTerminal()
+def test_examples_non_terminal_invalid():
+    """Check that the examples non_terminal handles invalid input correctly."""
+    non_terminal = ExamplesNonTerminal()
 
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([RuleToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([ExamplesToken(None, None), DataTableToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([ExamplesToken(None, None), TagToken(None, None)])]
     )
 
 
 @pytest.mark.parametrize(
-    'grammar_cls, token_cls', [
+    'non_terminal_cls, token_cls', [
         (GivenNonTerminal, GivenToken),
         (WhenNonTerminal, WhenToken),
         (ThenNonTerminal, ThenToken),
     ]
 )
-def test_given_when_then_grammar_valid(grammar_cls, token_cls):
-    """Check that step grammars handle valid input correctly."""
-    grammar = grammar_cls()
+def test_given_when_then_non_terminal_valid(non_terminal_cls, token_cls):
+    """Check that step non_terminals handle valid input correctly."""
+    non_terminal = non_terminal_cls()
 
     # check simple step
     sequence = get_sequence([token_cls(None, None), DescriptionToken('blub', None), EndOfLineToken(None, None)])
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.text == 'blub'
     assert output.argument is None
     assert output.sub_steps == []
@@ -361,7 +378,7 @@ def test_given_when_then_grammar_valid(grammar_cls, token_cls):
         DescriptionToken(None, None),
         EndOfLineToken(None, None),
     ])
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.text == 'blub'
     assert output.argument is None
     assert len(output.sub_steps) == 2
@@ -378,123 +395,123 @@ def test_given_when_then_grammar_valid(grammar_cls, token_cls):
         DocStringToken(None, None),
         EndOfLineToken(None, None),
     ])
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.text == 'blub'
     assert isinstance(output.argument, DocString)
     assert len(output.sub_steps) == 0
 
 
 @pytest.mark.parametrize(
-    'grammar_cls, token_cls', [
+    'non_terminal_cls, token_cls', [
         (GivenNonTerminal, GivenToken),
         (WhenNonTerminal, WhenToken),
         (ThenNonTerminal, ThenToken),
     ]
 )
-def test_given_when_then_grammar_invalid(grammar_cls, token_cls):
+def test_given_when_then_non_terminal_invalid(non_terminal_cls, token_cls):
     """Check that steps handle invalid input correctly."""
-    grammar = grammar_cls()
+    non_terminal = non_terminal_cls()
 
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([RuleToken(None, None)])],
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([token_cls(None, None), RuleToken(None, None)])],
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([token_cls(None, None), EndOfLineToken(None, None)])],
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([token_cls(None, None), AndToken(None, None)])],
     )
 
 
-def test_steps_grammar_valid():
-    """Check that the steps grammar converts valid input correctly."""
-    grammar = StepsNonTerminal()
+def test_steps_non_terminal_valid():
+    """Check that the steps non_terminal converts valid input correctly."""
+    non_terminal = StepsNonTerminal()
 
     sequence = get_sequence(given_sequence + when_sequence + then_sequence)
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert len(output) == 3
     assert all([isinstance(output[i], ast_cls) for i, ast_cls in enumerate([Given, When, Then])])
 
     sequence = get_sequence(when_sequence + then_sequence)
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert len(output) == 2
     assert all([isinstance(output[i], ast_cls) for i, ast_cls in enumerate([When, Then])])
 
     sequence = get_sequence(then_sequence + then_sequence)
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert len(output) == 2
     assert all([isinstance(output[i], ast_cls) for i, ast_cls in enumerate([Then, Then])])
 
     sequence = get_sequence(given_sequence + given_sequence + when_sequence + then_sequence)
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert len(output) == 4
     assert all([isinstance(output[i], ast_cls) for i, ast_cls in enumerate([Given, Given, When, Then])])
 
     sequence = get_sequence(
         given_sequence + given_sequence + when_sequence + when_sequence + then_sequence + then_sequence + then_sequence
     )
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert len(output) == 7
     assert all(
         [isinstance(output[i], ast_cls) for i, ast_cls in enumerate([Given, Given, When, When, Then, Then, Then])])
 
 
-def test_steps_grammar_invalid():
-    """Check that the steps grammar handles invalid input correctly."""
-    grammar = StepsNonTerminal()
+def test_steps_non_terminal_invalid():
+    """Check that the steps non_terminal handles invalid input correctly."""
+    non_terminal = StepsNonTerminal()
 
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([RuleToken(None, None)])],
         message='You must use at least one Given, When or Then. '
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([GivenToken(None, None), RuleToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([WhenToken(None, None), RuleToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([ThenToken(None, None), RuleToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([ThenToken(None, None), GivenToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([ThenToken(None, None), WhenToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([WhenToken(None, None), GivenToken(None, None)])]
     )
 
 
-def test_scenario_outline_grammar_valid():
+def test_scenario_outline_non_terminal_valid():
     """Check that the scenario outline handles valid input correctly."""
-    grammar = ScenarioOutlineNonTerminal()
+    non_terminal = ScenarioOutlineNonTerminal()
 
     base_sequence = [
         ScenarioOutlineToken(None, None),
@@ -506,7 +523,7 @@ def test_scenario_outline_grammar_valid():
 
     # valid simple sequence
     sequence = get_sequence(base_sequence + given_sequence + examples_sequence)
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.name == 'name'
     assert output.description == 'desc'
     assert len(output.tags) == 0
@@ -522,7 +539,7 @@ def test_scenario_outline_grammar_valid():
         + given_sequence
         + examples_sequence
     )
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.name == 'name'
     assert output.description == 'desc'
     assert len(output.tags) == 2
@@ -533,7 +550,7 @@ def test_scenario_outline_grammar_valid():
 
     # multiple examples
     sequence = get_sequence(base_sequence + given_sequence + examples_sequence + examples_sequence + examples_sequence)
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.name == 'name'
     assert output.description == 'desc'
     assert len(output.tags) == 0
@@ -545,28 +562,28 @@ def test_scenario_outline_grammar_valid():
         assert example.parent == output
 
 
-def test_scenario_outline_grammar_invalid():
+def test_scenario_outline_non_terminal_invalid():
     """Check that the scenario outline handles invalid input correctly."""
-    grammar = ScenarioOutlineNonTerminal()
+    non_terminal = ScenarioOutlineNonTerminal()
 
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([TagToken(None, None), EndOfLineToken(None, None), RuleToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([ScenarioOutlineToken(None, None), ExamplesToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([ScenarioOutlineToken(None, None), EndOfLineToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([])]
     )
     base_sequence = [
@@ -578,15 +595,15 @@ def test_scenario_outline_grammar_invalid():
     ]
     # it not allowed to have multiple steps with the same text
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence(base_sequence + given_sequence + given_sequence + examples_sequence)]
     )
 
 
-def test_scenario_grammar_valid():
-    """Check that the scenario grammar converts valid input correctly."""
-    grammar = ScenarioNonTerminal()
+def test_scenario_non_terminal_valid():
+    """Check that the scenario non_terminal converts valid input correctly."""
+    non_terminal = ScenarioNonTerminal()
 
     base_sequence = [
         ScenarioToken(None, None),
@@ -598,7 +615,7 @@ def test_scenario_grammar_valid():
 
     # basic sequence
     sequence = get_sequence(base_sequence + given_sequence)
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.name == 'name'
     assert output.description == 'desc'
     assert len(output.steps) == 1
@@ -612,7 +629,7 @@ def test_scenario_grammar_valid():
         EndOfLineToken(None, None),
     ]
     sequence = get_sequence(base_sequence_no_name + given_sequence)
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.name is None
     assert output.description == 'desc'
     assert len(output.steps) == 1
@@ -624,7 +641,7 @@ def test_scenario_grammar_valid():
         EndOfLineToken(None, None),
     ]
     sequence = get_sequence(base_sequence_no_data + given_sequence)
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.name is None
     assert output.description is None
     assert len(output.steps) == 1
@@ -632,7 +649,7 @@ def test_scenario_grammar_valid():
 
     # with tags
     sequence = get_sequence([TagToken('tag1', None), EndOfLineToken(None, None)] + base_sequence + given_sequence)
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.name == 'name'
     assert output.description == 'desc'
     assert len(output.tags) == 1
@@ -640,28 +657,28 @@ def test_scenario_grammar_valid():
     assert isinstance(output.steps[0], Given)
 
 
-def test_scenario_grammar_invalid():
-    """Check that the scenario grammar handles invalid input correctly."""
-    grammar = ScenarioNonTerminal()
+def test_scenario_non_terminal_invalid():
+    """Check that the scenario non_terminal handles invalid input correctly."""
+    non_terminal = ScenarioNonTerminal()
 
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([RuleToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([ScenarioOutlineToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([ScenarioToken(None, None)] + given_sequence)]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([ScenarioToken(None, None), DescriptionToken(None, None)] + given_sequence)]
     )
     base_sequence = [
@@ -673,15 +690,15 @@ def test_scenario_grammar_invalid():
     ]
     # it not allowed to have multiple steps with the same text
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence(base_sequence + given_sequence + given_sequence + examples_sequence)]
     )
 
 
-def test_background_grammar_valid():
+def test_background_non_terminal_valid():
     """Check that the background handles valid input correctly."""
-    grammar = BackgroundNonTerminal()
+    non_terminal = BackgroundNonTerminal()
 
     base_sequence = [
         BackgroundToken(None, None),
@@ -691,32 +708,32 @@ def test_background_grammar_valid():
         EndOfLineToken(None, None),
     ]
     sequence = get_sequence(base_sequence + given_sequence)
-    output = grammar.convert(sequence)
+    output = non_terminal.convert(sequence)
     assert output.name == 'name'
     assert output.description == 'desc'
     assert len(output.steps) == 1
     assert isinstance(output.steps[0], Given)
 
 
-def test_background_grammar_invalid():
-    """Check that background grammar handles invalid input correctly."""
-    grammar = BackgroundNonTerminal()
+def test_background_non_terminal_invalid():
+    """Check that background non_terminal handles invalid input correctly."""
+    non_terminal = BackgroundNonTerminal()
 
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([RuleToken(None, None)])]
     )
     # does not support tags
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([TagToken(None, None), BackgroundToken(None, None)])]
     )
     # steps missing
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([BackgroundToken(None, None), EndOfLineToken(None, None)])]
     )
     base_sequence = [
@@ -728,15 +745,15 @@ def test_background_grammar_invalid():
     ]
     # it not allowed to have multiple steps with the same text
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence(base_sequence + given_sequence + given_sequence + examples_sequence)]
     )
 
 
-def test_rule_grammar_valid():
-    """Check that rule grammar handles valid input correctly."""
-    grammar = RuleNonTerminal()
+def test_rule_non_terminal_valid():
+    """Check that rule non_terminal handles valid input correctly."""
+    non_terminal = RuleNonTerminal()
 
     base_sequence = [
         RuleToken(None, None),
@@ -747,7 +764,7 @@ def test_rule_grammar_valid():
     ]
 
     # simple version
-    output = grammar.convert(get_sequence(base_sequence + scenario_sequence))
+    output = non_terminal.convert(get_sequence(base_sequence + scenario_sequence))
     assert output.name == 'name1'
     assert output.description == 'desc1'
     assert output.background is None
@@ -755,7 +772,7 @@ def test_rule_grammar_valid():
     assert len(output.scenario_definitions) == 1
 
     # multiple scenario definitions
-    output = grammar.convert(get_sequence(
+    output = non_terminal.convert(get_sequence(
         base_sequence
         + scenario_sequence
         + scenario_outline_sequence
@@ -769,7 +786,7 @@ def test_rule_grammar_valid():
     assert len(output.scenario_definitions) == 4
 
     # tags
-    output = grammar.convert(get_sequence(
+    output = non_terminal.convert(get_sequence(
         [TagToken('tag1', None), EndOfLineToken(None, None)] +
         base_sequence
         + scenario_sequence
@@ -784,7 +801,7 @@ def test_rule_grammar_valid():
     assert len(output.scenario_definitions) == 4
 
     # background
-    output = grammar.convert(get_sequence(
+    output = non_terminal.convert(get_sequence(
         [TagToken('tag1', None), EndOfLineToken(None, None)] +
         base_sequence
         + background_sequence
@@ -798,35 +815,35 @@ def test_rule_grammar_valid():
     assert len(output.scenario_definitions) == 2
 
 
-def test_rule_grammar_invalid():
-    """Check that the rule grammar handles invalid input correctly."""
-    grammar = RuleNonTerminal()
+def test_rule_non_terminal_invalid():
+    """Check that the rule non_terminal handles invalid input correctly."""
+    non_terminal = RuleNonTerminal()
 
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([DescriptionToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[[]]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([RuleToken(None, None), TagToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([RuleToken(None, None), EndOfLineToken(None, None), GivenToken(None, None)])]
     )
 
 
-def test_feature_grammar_valid():
-    """Check that feature grammar handles valid input correctly."""
-    grammar = FeatureNonTerminal()
+def test_feature_non_terminal_valid():
+    """Check that feature non_terminal handles valid input correctly."""
+    non_terminal = FeatureNonTerminal()
 
     base_sequence = [
         FeatureToken(None, None),
@@ -838,7 +855,7 @@ def test_feature_grammar_valid():
 
     # with one scenario
     Settings.language = 'qweqweqwe'
-    output = grammar.convert(get_sequence(base_sequence + scenario_sequence))
+    output = non_terminal.convert(get_sequence(base_sequence + scenario_sequence))
     assert output.name == 'name123'
     assert output.description == 'desc123'
     assert len(output.tags) == 0
@@ -849,7 +866,7 @@ def test_feature_grammar_valid():
 
     # with background
     Settings.language = Settings.Defaults.LANGUAGE
-    output = grammar.convert(get_sequence(base_sequence + background_sequence + scenario_sequence))
+    output = non_terminal.convert(get_sequence(base_sequence + background_sequence + scenario_sequence))
     assert output.name == 'name123'
     assert output.description == 'desc123'
     assert output.background is not None
@@ -859,7 +876,7 @@ def test_feature_grammar_valid():
     assert len(output.tags) == 0
 
     # multiple scenarios
-    output = grammar.convert(get_sequence(
+    output = non_terminal.convert(get_sequence(
         base_sequence
         + background_sequence
         + scenario_sequence
@@ -875,7 +892,7 @@ def test_feature_grammar_valid():
     assert output.language == Settings.Defaults.LANGUAGE
 
     # with tags
-    output = grammar.convert(get_sequence(
+    output = non_terminal.convert(get_sequence(
         [TagToken('tag1', None), EndOfLineToken(None, None)]
         + base_sequence
         + background_sequence
@@ -892,33 +909,33 @@ def test_feature_grammar_valid():
     assert all([child.parent == output for child in output.children])
 
 
-def test_feature_grammar_invalid():
-    """Check that the feature grammar handles invalid input correctly."""
-    grammar = FeatureNonTerminal()
+def test_feature_non_terminal_invalid():
+    """Check that the feature non_terminal handles invalid input correctly."""
+    non_terminal = FeatureNonTerminal()
 
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[[]]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([RuleToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([TagToken(None, None), EndOfLineToken(None, None), RuleToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([FeatureToken(None, None), EndOfLineToken(None, None), DescriptionToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([
             FeatureToken(None, None),
             BackgroundToken(None, None),
@@ -928,52 +945,52 @@ def test_feature_grammar_invalid():
     )
 
 
-def test_language_grammar():
-    """Check that language grammar handles all forms of input correctly"""
-    grammar = LanguageNonTerminal()
+def test_language_non_terminal():
+    """Check that language non_terminal handles all forms of input correctly"""
+    non_terminal = LanguageNonTerminal()
 
     # valid input
-    output = grammar.convert(get_sequence([LanguageToken(None, Line('# language: en', 1)), EndOfLineToken(None, None)]))
+    output = non_terminal.convert(get_sequence([LanguageToken(None, Line('# language: en', 1)), EndOfLineToken(None, None)]))
     assert output.language == Languages.EN
 
     # invalid input
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([RuleToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([EndOfLineToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[[]]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarInvalid,
+        non_terminal.convert,
+        NonTerminalInvalid,
         args=[get_sequence([LanguageToken(None, Line('my text', 1)), DescriptionToken(None, None)])]
     )
 
 
-def test_gherkin_doc_grammar_valid():
+def test_gherkin_doc_non_terminal_valid():
     """Check that Gherkin document handles all input correctly."""
-    grammar = GherkinDocumentNonTerminal()
+    non_terminal = GherkinDocumentNonTerminal()
 
     # empty doc
-    output = grammar.convert(get_sequence([EOFToken(None, None)]))
+    output = non_terminal.convert(get_sequence([EOFToken(None, None)]))
     assert output.feature is None
 
     # with language
-    output = grammar.convert(
+    output = non_terminal.convert(
         get_sequence([LanguageToken(None, Line(Languages.DE, 1)), EndOfLineToken(None, None), EOFToken(None, None)]))
     assert output.feature is None
 
     # with feature
-    output = grammar.convert(get_sequence(
+    output = non_terminal.convert(get_sequence(
         [LanguageToken(None, Line(Languages.DE, 1)), EndOfLineToken(None, None)]
         + feature_sequence
         + [EOFToken(None, None)]
@@ -982,21 +999,21 @@ def test_gherkin_doc_grammar_valid():
     assert output.feature.parent == output
 
 
-def test_gherkin_doc_grammar_invalid():
-    """Check that gherkin doc grammar handles invalid input."""
-    grammar = GherkinDocumentNonTerminal()
+def test_gherkin_doc_non_terminal_invalid():
+    """Check that gherkin doc non_terminal handles invalid input."""
+    non_terminal = GherkinDocumentNonTerminal()
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence([RuleToken(None, None)])]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[[]]
     )
     assert_callable_raises(
-        grammar.convert,
-        GrammarNotUsed,
+        non_terminal.convert,
+        NonTerminalNotUsed,
         args=[get_sequence(feature_sequence + [RuleToken(None, None)])]
     )

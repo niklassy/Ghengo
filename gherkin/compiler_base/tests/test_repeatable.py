@@ -1,4 +1,4 @@
-from gherkin.compiler_base.exception import GrammarInvalid, RuleNotFulfilled, SequenceNotFinished
+from gherkin.compiler_base.exception import NonTerminalInvalid, RuleNotFulfilled, SequenceNotFinished
 from gherkin.compiler_base.symbol.non_terminal import NonTerminal
 from gherkin.compiler_base.rule.operator import Optional, Chain, OneOf, Repeatable
 from gherkin.compiler_base.symbol.terminal import TerminalSymbol
@@ -105,8 +105,8 @@ def test_repeatable_one_of():
     repeatable.validate_sequence(token_sequence([EndOfLineToken(None), EndOfLineToken(None), EndOfLineToken(None)]))
 
 
-def test_repeatable_grammar():
-    """Check that Repeatable handles Grammar objects as children correctly."""
+def test_repeatable_operator():
+    """Check that Repeatable handles Operator objects as children correctly."""
     class MyNonTerminal(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(EOFToken)
         rule = Chain([
@@ -119,20 +119,20 @@ def test_repeatable_grammar():
     repeatable.validate_sequence(token_sequence([EOFToken(None), EndOfLineToken(None), EOFToken(None), EndOfLineToken(None)]))
     repeatable.validate_sequence(token_sequence([EOFToken(None), EndOfLineToken(None)]))
 
-    # grammar recognized but no valid in first and second round
+    # non_terminal recognized but no valid in first and second round
     assert_callable_raises(
         repeatable.validate_sequence,
-        GrammarInvalid,
+        NonTerminalInvalid,
         args=[token_sequence([EOFToken(None), EOFToken(None)])],  # <- second EOF incorrect
     )
     assert_callable_raises(
         repeatable.validate_sequence,
-        GrammarInvalid,
+        NonTerminalInvalid,
         args=[token_sequence([EOFToken(None), EndOfLineToken(None), EOFToken(None)])],     # <- incomplete
     )
     assert_callable_raises(
         repeatable.validate_sequence,
-        GrammarInvalid,
+        NonTerminalInvalid,
         args=[token_sequence([EOFToken(None), EndOfLineToken(None), EOFToken(None), FeatureToken('', None)])],  # <- Feature not correct
     )
 

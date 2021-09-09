@@ -1,4 +1,4 @@
-from gherkin.compiler_base.exception import GrammarInvalid, GrammarNotUsed
+from gherkin.compiler_base.exception import NonTerminalInvalid, NonTerminalNotUsed
 from gherkin.compiler_base.symbol.non_terminal import NonTerminal
 from gherkin.compiler_base.rule.operator import Optional, Chain, OneOf, Repeatable
 from gherkin.compiler_base.symbol.terminal import TerminalSymbol
@@ -16,8 +16,8 @@ def token_sequence(sequence):
     return [CustomTokenWrapper(t) for t in sequence]
 
 
-def test_grammar_validation():
-    """Check if different input to grammar is handled correctly."""
+def test_non_terminal_validation():
+    """Check if different input to non_terminal is handled correctly."""
     class NonTerminal1(NonTerminal):
         rule = None
 
@@ -46,8 +46,8 @@ def test_grammar_validation():
     NonTerminal6()
 
 
-def test_grammar_chain():
-    """Check that the grammar handles a chain as a rule correctly."""
+def test_non_terminal_chain():
+    """Check that the non_terminal handles a chain as a rule correctly."""
     class MyNonTerminal(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(EOFToken)
         rule = Chain([
@@ -56,32 +56,32 @@ def test_grammar_chain():
             TerminalSymbol(FeatureToken),
         ])
 
-    grammar = MyNonTerminal()
+    non_terminal = MyNonTerminal()
     # valid input
-    grammar.validate_sequence(token_sequence([EOFToken(None), EndOfLineToken(None), FeatureToken('', None)]))
+    non_terminal.validate_sequence(token_sequence([EOFToken(None), EndOfLineToken(None), FeatureToken('', None)]))
 
-    # some other grammar that does not fit this
+    # some other non_terminal that does not fit this
     assert_callable_raises(
-        grammar.validate_sequence,
-        GrammarNotUsed,
+        non_terminal.validate_sequence,
+        NonTerminalNotUsed,
         args=[token_sequence([FeatureToken('', None), DescriptionToken('', None)])]   # <- criterion_terminal_symbol missing
     )
 
-    # the grammar is not valid
+    # the non_terminal is not valid
     assert_callable_raises(
-        grammar.validate_sequence,
-        GrammarInvalid,
-        args=[token_sequence([EOFToken(None), EndOfLineToken(None), EOFToken(None)])]      # <- grammar not complete
+        non_terminal.validate_sequence,
+        NonTerminalInvalid,
+        args=[token_sequence([EOFToken(None), EndOfLineToken(None), EOFToken(None)])]      # <- non_terminal not complete
     )
     assert_callable_raises(
-        grammar.validate_sequence,
-        GrammarInvalid,
-        args=[token_sequence([EOFToken(None), EOFToken(None), EOFToken(None)])]  # <- grammar not complete
+        non_terminal.validate_sequence,
+        NonTerminalInvalid,
+        args=[token_sequence([EOFToken(None), EOFToken(None), EOFToken(None)])]  # <- non_terminal not complete
     )
 
 
-def test_grammar_nested():
-    """Check what happens if a grammars are nested."""
+def test_non_terminal_nested():
+    """Check what happens if a non_terminals are nested."""
     class NestedNonTerminal(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(DescriptionToken)
         rule = Chain([
@@ -89,33 +89,33 @@ def test_grammar_nested():
             TerminalSymbol(EndOfLineToken),
         ])
 
-    nested_grammar = NestedNonTerminal()
+    nested_non_terminal = NestedNonTerminal()
 
     class ParentNonTerminal(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(FeatureToken)
         rule = Chain([
             TerminalSymbol(FeatureToken),
-            nested_grammar,
+            nested_non_terminal,
             TerminalSymbol(EOFToken),
         ])
 
-    grammar = ParentNonTerminal()
+    non_terminal = ParentNonTerminal()
 
     # valid input
-    grammar.validate_sequence(token_sequence([FeatureToken('', None), DescriptionToken('', None), EndOfLineToken(None), EOFToken(None)]))
+    non_terminal.validate_sequence(token_sequence([FeatureToken('', None), DescriptionToken('', None), EndOfLineToken(None), EOFToken(None)]))
 
-    # grammar of parent not used
+    # non_terminal of parent not used
     error = assert_callable_raises(
-        grammar.validate_sequence,
-        GrammarNotUsed,
+        non_terminal.validate_sequence,
+        NonTerminalNotUsed,
         args=[token_sequence([EOFToken(None)])],
     )
-    assert error.grammar == grammar
+    assert error.non_terminal == non_terminal
 
-    # grammar of child not used, so the grammar of the parent is not valid
+    # non_terminal of child not used, so the non_terminal of the parent is not valid
     error = assert_callable_raises(
-        grammar.validate_sequence,
-        GrammarInvalid,
+        non_terminal.validate_sequence,
+        NonTerminalInvalid,
         args=[token_sequence([FeatureToken('', None), EOFToken(None)])],
     )
-    assert error.grammar == grammar
+    assert error.non_terminal == non_terminal
