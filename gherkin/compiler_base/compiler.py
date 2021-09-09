@@ -168,7 +168,8 @@ class Parser(object):
         # prepare the tokens before validating them
         prepared_tokens = self.prepare_tokens(self.tokens)
 
-        # wrap the tokens in RuleTokens because they will be used by Rules and Grammars in the validation
+        # wrap the tokens in TerminalSymbols because they will be used by NonTerminals and RuleOperators in
+        # the validation
         wrapped_tokens = [self.token_wrapper_cls(token=t) for t in prepared_tokens]
 
         # convert also validates the tokens

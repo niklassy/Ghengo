@@ -96,7 +96,7 @@ class TerminalSymbol(IndentMixin, RecursiveValidationBase):
         return self.get_next_pointer_index(child=None, sequence=sequence, current_index=index)
 
     def on_token_wrapper_valid(self, token_wrapper):
-        token_wrapper.token.set_grammar_meta_value('suggested_indent_level', self.get_suggested_indent_level())
+        token_wrapper.token.set_non_terminal_meta_value('suggested_indent_level', self.get_suggested_indent_level())
 
     def __str__(self):
         return str(self.token_cls)

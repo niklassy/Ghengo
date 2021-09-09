@@ -145,8 +145,8 @@ class OneOf(RuleOperator):
         """
         Returns an object for an entry in a sequence at a given index. This will return:
             -> the first child that is valid will return its value
-                -> RuleAlias: the current RuleToken
-                -> Grammar or Rule: get its value instead.
+                -> TerminalSymbol: the current RuleToken
+                -> NonTerminal or RuleOperator: get its value instead.
         """
         self._validate_sequence(sequence, index)
 

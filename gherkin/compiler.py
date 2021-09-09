@@ -54,7 +54,7 @@ class GherkinLexer(Lexer):
             if not token.at_valid_position:
                 raise GherkinInvalid(
                     'You may only set the language in the first line of the document',
-                    grammar=LanguageNonTerminal(),
+                    non_terminal=LanguageNonTerminal(),
                     suggested_tokens=[],
                 )
 
@@ -209,4 +209,4 @@ class GherkinToPyTestCompiler(Compiler):
         try:
             return super().use_parser(tokens)
         except (NonTerminalInvalid, NonTerminalNotUsed) as e:
-            raise GherkinInvalid(str(e), grammar=e.grammar, suggested_tokens=e.suggested_tokens)
+            raise GherkinInvalid(str(e), non_terminal=e.non_terminal, suggested_tokens=e.suggested_tokens)

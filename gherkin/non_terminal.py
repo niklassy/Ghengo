@@ -53,7 +53,7 @@ class DescriptionChainNonTerminal(NonTerminal):
 
     def sequence_to_object(self, sequence, index=0):
         """
-        Since descriptions are used in several places to define the name and description of Grammars, this function
+        Since descriptions are used in several places to define the name and description of NonTerminals, this function
         can be used to determine the name and the description from a list of ASTDescription objects.
 
         The input can be in the format:
@@ -164,7 +164,7 @@ class DataTableNonTerminal(NonTerminal):
                 place_to_search = token_wrapper.get_place_to_search()
                 raise NonTerminalInvalid(
                     'All rows in a data table must have the same amount of columns. {}'.format(place_to_search),
-                    grammar=self,
+                    non_terminal=self,
                     suggested_tokens=[],
                 )
 
@@ -224,7 +224,7 @@ class ButNonTerminal(AndButNonTerminalBase):
     convert_cls = But
 
 
-class TagsGrammarMixin(object):
+class TagsNonTerminalMixin(object):
     def prepare_converted_object(self, rule_output, obj):
         obj = super().prepare_converted_object(rule_output, obj)
 
@@ -236,7 +236,7 @@ class TagsGrammarMixin(object):
         return obj
 
 
-class ExamplesNonTerminal(TagsGrammarMixin, NonTerminal):
+class ExamplesNonTerminal(TagsNonTerminalMixin, NonTerminal):
     criterion_terminal_symbol = TerminalSymbol(ExamplesToken)
     rule = Chain([
         Optional(TagsNonTerminal()),
@@ -271,13 +271,13 @@ class GivenWhenThenBase(NonTerminal):
             'argument': rule_output[3]
         }
 
-    def prepare_converted_object(self, rule_convert_obj, grammar_obj):
+    def prepare_converted_object(self, rule_convert_obj, converted_obj):
         # add sub steps like BUT and AND
         sub_steps = rule_convert_obj[4]
         for step in sub_steps:
-            grammar_obj.add_sub_step(step)
+            converted_obj.add_sub_step(step)
 
-        return grammar_obj
+        return converted_obj
 
 
 class GivenNonTerminal(GivenWhenThenBase):
@@ -358,7 +358,7 @@ class StepsNonTerminal(NonTerminal):
             place_to_search = token_wrapper.get_place_to_search()
             raise NonTerminalInvalid(
                 'You must use at least one Given, When or Then. {}'.format(place_to_search),
-                grammar=self,
+                non_terminal=self,
                 suggested_tokens=[GivenToken, WhenToken, ThenToken]
             )
 
@@ -409,7 +409,7 @@ class ScenarioDefinitionNonTerminal(NonTerminal):
                 place_to_search = descriptions[i].get_place_to_search()
                 raise NonTerminalInvalid(
                     'You must not use two different steps with the same text. {}'.format(place_to_search),
-                    grammar=self,
+                    non_terminal=self,
                     suggested_tokens=[],
                 )
 
@@ -427,17 +427,17 @@ class ScenarioDefinitionNonTerminal(NonTerminal):
     def get_steps_from_convert_obj(self, rule_convert_obj):
         raise NotImplementedError()
 
-    def prepare_converted_object(self, rule_convert_obj, grammar_obj):
+    def prepare_converted_object(self, rule_convert_obj, converted_obj):
         steps = self.get_steps_from_convert_obj(rule_convert_obj)
 
         # add each step to the definition
         for step in steps:
-            grammar_obj.add_step(step)
+            converted_obj.add_step(step)
 
-        return grammar_obj
+        return converted_obj
 
 
-class ScenarioOutlineNonTerminal(TagsGrammarMixin, ScenarioDefinitionNonTerminal):
+class ScenarioOutlineNonTerminal(TagsNonTerminalMixin, ScenarioDefinitionNonTerminal):
     criterion_terminal_symbol = TerminalSymbol(ScenarioOutlineToken)
     rule = Chain([
         Optional(TagsNonTerminal()),
@@ -458,19 +458,19 @@ class ScenarioOutlineNonTerminal(TagsGrammarMixin, ScenarioDefinitionNonTerminal
     def get_steps_from_convert_obj(self, rule_convert_obj):
         return rule_convert_obj[3][0]
 
-    def prepare_converted_object(self, rule_convert_obj, grammar_obj: ScenarioOutline):
+    def prepare_converted_object(self, rule_convert_obj, converted_obj: ScenarioOutline):
         """In addition to the steps, we need to add the argument of the Examples here."""
-        grammar_obj = super().prepare_converted_object(rule_convert_obj, grammar_obj)
+        converted_obj = super().prepare_converted_object(rule_convert_obj, converted_obj)
         examples = rule_convert_obj[3][1]
 
         for example in examples:
-            example.parent = grammar_obj
-            grammar_obj.add_example(example)
+            example.parent = converted_obj
+            converted_obj.add_example(example)
 
-        return grammar_obj
+        return converted_obj
 
 
-class ScenarioNonTerminal(TagsGrammarMixin, ScenarioDefinitionNonTerminal):
+class ScenarioNonTerminal(TagsNonTerminalMixin, ScenarioDefinitionNonTerminal):
     criterion_terminal_symbol = TerminalSymbol(ScenarioToken)
     rule = Chain([
         Optional(TagsNonTerminal()),
@@ -510,7 +510,7 @@ class BackgroundNonTerminal(ScenarioDefinitionNonTerminal):
         return [BackgroundToken, EndOfLineToken] + GivenNonTerminal.get_minimal_sequence()
 
 
-class RuleNonTerminal(TagsGrammarMixin, NonTerminal):
+class RuleNonTerminal(TagsNonTerminalMixin, NonTerminal):
     criterion_terminal_symbol = TerminalSymbol(RuleToken)
     rule = Chain([
         Optional(TagsNonTerminal()),    # support was added some time ago (https://github.com/cucumber/common/pull/1356)
@@ -540,19 +540,19 @@ class RuleNonTerminal(TagsGrammarMixin, NonTerminal):
             'background': rule_output[3][0],
         }
 
-    def prepare_converted_object(self, rule_convert_obj, grammar_obj: Rule):
+    def prepare_converted_object(self, rule_convert_obj, converted_obj: Rule):
         # set tags
-        grammar_obj = super().prepare_converted_object(rule_convert_obj, grammar_obj)
+        converted_obj = super().prepare_converted_object(rule_convert_obj, converted_obj)
 
         # set all the children/ scenario definitions
         for sr in rule_convert_obj[3][1]:
-            sr.parent = grammar_obj
-            grammar_obj.add_scenario_definition(sr)
+            sr.parent = converted_obj
+            converted_obj.add_scenario_definition(sr)
 
-        return grammar_obj
+        return converted_obj
 
 
-class FeatureNonTerminal(TagsGrammarMixin, NonTerminal):
+class FeatureNonTerminal(TagsNonTerminalMixin, NonTerminal):
     criterion_terminal_symbol = TerminalSymbol(FeatureToken)
     rule = Chain([
         Optional(TagsNonTerminal()),
@@ -586,16 +586,16 @@ class FeatureNonTerminal(TagsGrammarMixin, NonTerminal):
             'background': rule_output[3][0],
         }
 
-    def prepare_converted_object(self, rule_convert_obj: [TokenWrapper], grammar_obj: Feature):
-        grammar_obj = super().prepare_converted_object(rule_convert_obj, grammar_obj)
+    def prepare_converted_object(self, rule_convert_obj: [TokenWrapper], converted_obj: Feature):
+        converted_obj = super().prepare_converted_object(rule_convert_obj, converted_obj)
         scenario_rules = rule_convert_obj[3][1]
 
         # add all the rules/ scenario definitions
         for sr in scenario_rules:
-            sr.parent = grammar_obj
-            grammar_obj.add_child(sr)
+            sr.parent = converted_obj
+            converted_obj.add_child(sr)
 
-        return grammar_obj
+        return converted_obj
 
 
 class LanguageNonTerminal(NonTerminal):
@@ -619,12 +619,12 @@ class GherkinDocumentNonTerminal(NonTerminal):
     name = 'Gherkin document'
     convert_cls = GherkinDocument
 
-    def prepare_converted_object(self, rule_convert_obj, grammar_obj: GherkinDocument):
+    def prepare_converted_object(self, rule_convert_obj, converted_obj: GherkinDocument):
         feature = rule_convert_obj[1]
 
         # set the feature if it exists
         if feature:
-            grammar_obj.set_feature(feature)
-            feature.parent = grammar_obj
+            converted_obj.set_feature(feature)
+            feature.parent = converted_obj
 
-        return grammar_obj
+        return converted_obj

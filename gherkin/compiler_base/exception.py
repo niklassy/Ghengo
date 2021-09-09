@@ -19,9 +19,9 @@ class NonTerminalInvalid(Exception):
     """
     An exception that is raised when a NonTerminal was detected but is not valid.
     """
-    def __init__(self, msg, grammar, suggested_tokens):
+    def __init__(self, msg, non_terminal, suggested_tokens):
         super().__init__(msg)
-        self.grammar = grammar
+        self.non_terminal = non_terminal
         self.suggested_tokens = suggested_tokens
 
 
@@ -44,13 +44,13 @@ class NonTerminalNotUsed(Exception):
     An exception that is raised when a NonTerminal is not used in a given sequence.
     """
 
-    def __init__(self, msg, terminal_symbol, sequence_index, comes_from, grammar):
+    def __init__(self, msg, terminal_symbol, sequence_index, comes_from, non_terminal):
         super().__init__(msg)
         self.terminal_symbol = terminal_symbol
         self.sequence_index = sequence_index
         self.comes_from = comes_from
-        self.grammar = grammar
-        self.suggested_tokens = grammar.get_next_valid_tokens()
+        self.non_terminal = non_terminal
+        self.suggested_tokens = non_terminal.get_next_valid_tokens()
 
 
 class SequenceNotFinished(Exception):

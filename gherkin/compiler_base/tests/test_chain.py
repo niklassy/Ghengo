@@ -104,8 +104,8 @@ def test_chain_one_of():
     )
 
 
-def test_chain_grammar():
-    """Check that Chain handles Grammars as children correctly."""
+def test_chain_operator():
+    """Check that Chain handles Operators as children correctly."""
     class NonTerminal1(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(DescriptionToken)
         rule = Chain([
@@ -123,25 +123,25 @@ def test_chain_grammar():
     chain = Chain([NonTerminal1(), NonTerminal2()])
     # both valid
     chain.validate_sequence(token_sequence([DescriptionToken('', None), EndOfLineToken(None), EOFToken(None), EndOfLineToken(None)]))
-    # grammar 1 recognized and invalid
+    # non_terminal 1 recognized and invalid
     assert_callable_raises(
         chain.validate_sequence,
         NonTerminalInvalid,
         args=[token_sequence([DescriptionToken('', None), EOFToken(None)])]
     )
-    # grammar 1 valid, grammar 2 recognized and invalid
+    # non_terminal 1 valid, non_terminal 2 recognized and invalid
     assert_callable_raises(
         chain.validate_sequence,
         NonTerminalInvalid,
         args=[token_sequence([DescriptionToken('', None), EndOfLineToken(None), EOFToken(None), EOFToken(None)])]
     )
-    # grammar 1 not recognized
+    # non_terminal 1 not recognized
     assert_callable_raises(
         chain.validate_sequence,
         RuleNotFulfilled,
         args=[token_sequence([EOFToken(None)])]
     )
-    # grammar 1 valid, grammar 2 not recognized
+    # non_terminal 1 valid, non_terminal 2 not recognized
     assert_callable_raises(
         chain.validate_sequence,
         RuleNotFulfilled,

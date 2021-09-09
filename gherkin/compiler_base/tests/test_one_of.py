@@ -35,8 +35,8 @@ def test_one_of_terminal_symbol():
     assert_callable_raises(optional.validate_sequence, RuleNotFulfilled, args=(token_sequence([FeatureToken('', None)]),))
 
 
-def test_one_of_grammar():
-    """Checks that OneOf correctly handles a list of grammars."""
+def test_one_of_operator():
+    """Checks that OneOf correctly handles a list of operators."""
     class TestNonTerminal(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(DescriptionToken)
         rule = Chain([criterion_terminal_symbol, TerminalSymbol(EndOfLineToken)])
@@ -45,33 +45,33 @@ def test_one_of_grammar():
         criterion_terminal_symbol = TerminalSymbol(FeatureToken)
         rule = Chain([criterion_terminal_symbol, TerminalSymbol(EndOfLineToken)])
 
-    grammar_one_of = OneOf([TestNonTerminal(), Test2NonTerminal()])
-    # grammar 1 is recognized and works
-    grammar_one_of.validate_sequence(token_sequence([DescriptionToken('', None), EndOfLineToken(None)]))
-    # grammar 2 is recognized and works
-    grammar_one_of.validate_sequence(token_sequence([FeatureToken('', None), EndOfLineToken(None)]))
-    # none of the grammars are recognized, so the rule is not fulfilled
+    operator_one_of = OneOf([TestNonTerminal(), Test2NonTerminal()])
+    # operator 1 is recognized and works
+    operator_one_of.validate_sequence(token_sequence([DescriptionToken('', None), EndOfLineToken(None)]))
+    # operator 2 is recognized and works
+    operator_one_of.validate_sequence(token_sequence([FeatureToken('', None), EndOfLineToken(None)]))
+    # none of the operators are recognized, so the rule is not fulfilled
     assert_callable_raises(
-        grammar_one_of.validate_sequence,
+        operator_one_of.validate_sequence,
         RuleNotFulfilled,
         args=[token_sequence([EOFToken(None), EndOfLineToken(None)])],
     )
-    # grammar 1 is recognized and does not work
+    # operator 1 is recognized and does not work
     assert_callable_raises(
-        grammar_one_of.validate_sequence,
+        operator_one_of.validate_sequence,
         NonTerminalInvalid,
         args=[token_sequence([DescriptionToken('', None), FeatureToken('', None)])],
     )
-    # grammar 2 is recognized and does not work
+    # operator 2 is recognized and does not work
     assert_callable_raises(
-        grammar_one_of.validate_sequence,
+        operator_one_of.validate_sequence,
         NonTerminalInvalid,
         args=[token_sequence([FeatureToken('', None), EOFToken(None)])],
     )
 
 
-def test_one_of_grammar_and_terminal_symbol():
-    """Checks that OneOf correctly handles a list of combination of grammars and rule aliases."""
+def test_one_of_operator_and_terminal_symbol():
+    """Checks that OneOf correctly handles a list of combination of operators and rule aliases."""
     class TestNonTerminal(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(DescriptionToken)
         rule = Chain([criterion_terminal_symbol, TerminalSymbol(EndOfLineToken)])
@@ -81,13 +81,13 @@ def test_one_of_grammar_and_terminal_symbol():
     one_of.validate_sequence(token_sequence([EOFToken(None)]))
     # both are not valid
     assert_callable_raises(one_of.validate_sequence, RuleNotFulfilled, args=[token_sequence([EndOfLineToken(None)])])
-    # grammar is recognized and not valid
+    # operator is recognized and not valid
     assert_callable_raises(
         one_of.validate_sequence, NonTerminalInvalid, args=[token_sequence([DescriptionToken('', None), EOFToken(None)])])
 
 
-def test_one_of_grammar_and_rules():
-    """Checks that OneOf correctly handles a list of combination of grammars and other rules."""
+def test_one_of_operator_and_rules():
+    """Checks that OneOf correctly handles a list of combination of operators and other rules."""
     class TestNonTerminal(NonTerminal):
         criterion_terminal_symbol = TerminalSymbol(DescriptionToken)
         rule = Chain([criterion_terminal_symbol, TerminalSymbol(EndOfLineToken)])
@@ -98,7 +98,7 @@ def test_one_of_grammar_and_rules():
     one_of.validate_sequence(token_sequence([FeatureToken('', None)]))
     # both are not valid
     assert_callable_raises(one_of.validate_sequence, RuleNotFulfilled, args=[token_sequence([EndOfLineToken(None)])])
-    # grammar is recognized and not valid
+    # operator is recognized and not valid
     assert_callable_raises(
         one_of.validate_sequence, NonTerminalInvalid, args=[token_sequence([DescriptionToken('', None), EOFToken(None)])])
 
