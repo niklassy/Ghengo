@@ -206,13 +206,17 @@ class Repeatable(RuleOperator):
         Repeatable is represented as `{<value>}` for minimum=0, `<value>, {<value>}` for minimum=1 and so on.
         """
         base_string = ''
+        end_string = ''
         child_ebnf = self.child.to_ebnf(ebnf_entries)
 
         if self.minimum > 0:
-            for _ in range(self.minimum):
+            end_string = '+'
+
+        if self.minimum > 1:
+            for _ in range(self.minimum - 1):
                 base_string += '{}, '.format(child_ebnf)
 
-        return '{}{}{}{}'.format(base_string, '{', child_ebnf, '}')
+        return '{}{}{}{}{}'.format(base_string, '{', child_ebnf, '}', end_string)
 
     def get_next_valid_tokens(self):
         if self.minimum == 0 and not self.show_in_autocomplete:
