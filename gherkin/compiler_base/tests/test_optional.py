@@ -1,4 +1,4 @@
-from gherkin.compiler_base.exception import GrammarInvalid, RuleNotFulfilled, SequenceNotFinished
+from gherkin.compiler_base.exception import NonTerminalInvalid, RuleNotFulfilled, SequenceNotFinished
 from gherkin.compiler_base.symbol.non_terminal import NonTerminal
 from gherkin.compiler_base.rule.operator import Optional, Chain, OneOf, Repeatable
 from gherkin.compiler_base.symbol.terminal import TerminalSymbol
@@ -41,7 +41,7 @@ def test_optional_grammar():
     # the grammar is used, so the grammar should raise an error and Optional should not catch it
     assert_callable_raises(
         optional.validate_sequence,
-        GrammarInvalid,
+        NonTerminalInvalid,
         args=(token_sequence([DescriptionToken('', None), DescriptionToken('', None)]),),
     )
     assert_callable_raises(

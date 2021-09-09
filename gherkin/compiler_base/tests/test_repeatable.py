@@ -1,4 +1,4 @@
-from gherkin.compiler_base.exception import GrammarInvalid, RuleNotFulfilled, SequenceNotFinished
+from gherkin.compiler_base.exception import NonTerminalInvalid, RuleNotFulfilled, SequenceNotFinished
 from gherkin.compiler_base.symbol.non_terminal import NonTerminal
 from gherkin.compiler_base.rule.operator import Optional, Chain, OneOf, Repeatable
 from gherkin.compiler_base.symbol.terminal import TerminalSymbol
@@ -122,17 +122,17 @@ def test_repeatable_grammar():
     # grammar recognized but no valid in first and second round
     assert_callable_raises(
         repeatable.validate_sequence,
-        GrammarInvalid,
+        NonTerminalInvalid,
         args=[token_sequence([EOFToken(None), EOFToken(None)])],  # <- second EOF incorrect
     )
     assert_callable_raises(
         repeatable.validate_sequence,
-        GrammarInvalid,
+        NonTerminalInvalid,
         args=[token_sequence([EOFToken(None), EndOfLineToken(None), EOFToken(None)])],     # <- incomplete
     )
     assert_callable_raises(
         repeatable.validate_sequence,
-        GrammarInvalid,
+        NonTerminalInvalid,
         args=[token_sequence([EOFToken(None), EndOfLineToken(None), EOFToken(None), FeatureToken('', None)])],  # <- Feature not correct
     )
 

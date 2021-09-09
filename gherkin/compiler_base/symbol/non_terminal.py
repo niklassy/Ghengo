@@ -1,4 +1,4 @@
-from gherkin.compiler_base.exception import RuleNotFulfilled, SequenceEnded, GrammarNotUsed, GrammarInvalid
+from gherkin.compiler_base.exception import RuleNotFulfilled, SequenceEnded, NonTerminalNotUsed, NonTerminalInvalid
 from gherkin.compiler_base.mixin import IndentMixin
 from gherkin.compiler_base.recursive import RecursiveValidationBase
 from gherkin.compiler_base.rule.operator import RuleOperator
@@ -128,7 +128,7 @@ class NonTerminal(IndentMixin, RecursiveValidationBase):
                 message = str(e)
 
             if not self.used_by_sequence_area(sequence, index, e.sequence_index):
-                raise GrammarNotUsed(
+                raise NonTerminalNotUsed(
                     message,
                     terminal_symbol=e.terminal_symbol,
                     sequence_index=e.sequence_index,
@@ -136,7 +136,7 @@ class NonTerminal(IndentMixin, RecursiveValidationBase):
                     grammar=self,
                 )
 
-            raise GrammarInvalid(message, grammar=self, suggested_tokens=e.suggested_tokens)
+            raise NonTerminalInvalid(message, grammar=self, suggested_tokens=e.suggested_tokens)
 
     def validate_sequence(self, sequence, index=0):
         result_index = super().validate_sequence(sequence, 0)

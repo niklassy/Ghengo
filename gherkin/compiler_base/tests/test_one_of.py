@@ -1,4 +1,4 @@
-from gherkin.compiler_base.exception import GrammarInvalid, RuleNotFulfilled, SequenceNotFinished
+from gherkin.compiler_base.exception import NonTerminalInvalid, RuleNotFulfilled, SequenceNotFinished
 from gherkin.compiler_base.symbol.non_terminal import NonTerminal
 from gherkin.compiler_base.rule.operator import Optional, Chain, OneOf, Repeatable
 from gherkin.compiler_base.symbol.terminal import TerminalSymbol
@@ -59,13 +59,13 @@ def test_one_of_grammar():
     # grammar 1 is recognized and does not work
     assert_callable_raises(
         grammar_one_of.validate_sequence,
-        GrammarInvalid,
+        NonTerminalInvalid,
         args=[token_sequence([DescriptionToken('', None), FeatureToken('', None)])],
     )
     # grammar 2 is recognized and does not work
     assert_callable_raises(
         grammar_one_of.validate_sequence,
-        GrammarInvalid,
+        NonTerminalInvalid,
         args=[token_sequence([FeatureToken('', None), EOFToken(None)])],
     )
 
@@ -83,7 +83,7 @@ def test_one_of_grammar_and_terminal_symbol():
     assert_callable_raises(one_of.validate_sequence, RuleNotFulfilled, args=[token_sequence([EndOfLineToken(None)])])
     # grammar is recognized and not valid
     assert_callable_raises(
-        one_of.validate_sequence, GrammarInvalid, args=[token_sequence([DescriptionToken('', None), EOFToken(None)])])
+        one_of.validate_sequence, NonTerminalInvalid, args=[token_sequence([DescriptionToken('', None), EOFToken(None)])])
 
 
 def test_one_of_grammar_and_rules():
@@ -100,7 +100,7 @@ def test_one_of_grammar_and_rules():
     assert_callable_raises(one_of.validate_sequence, RuleNotFulfilled, args=[token_sequence([EndOfLineToken(None)])])
     # grammar is recognized and not valid
     assert_callable_raises(
-        one_of.validate_sequence, GrammarInvalid, args=[token_sequence([DescriptionToken('', None), EOFToken(None)])])
+        one_of.validate_sequence, NonTerminalInvalid, args=[token_sequence([DescriptionToken('', None), EOFToken(None)])])
 
 
 def test_one_of_chain():

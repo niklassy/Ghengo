@@ -1,4 +1,4 @@
-from gherkin.compiler_base.exception import GrammarInvalid, GrammarNotUsed
+from gherkin.compiler_base.exception import NonTerminalInvalid, NonTerminalNotUsed
 from gherkin.compiler_base.symbol.non_terminal import NonTerminal
 from gherkin.compiler_base.rule.operator import Optional, Chain, OneOf, Repeatable
 from gherkin.compiler_base.symbol.terminal import TerminalSymbol
@@ -63,19 +63,19 @@ def test_grammar_chain():
     # some other grammar that does not fit this
     assert_callable_raises(
         grammar.validate_sequence,
-        GrammarNotUsed,
+        NonTerminalNotUsed,
         args=[token_sequence([FeatureToken('', None), DescriptionToken('', None)])]   # <- criterion_terminal_symbol missing
     )
 
     # the grammar is not valid
     assert_callable_raises(
         grammar.validate_sequence,
-        GrammarInvalid,
+        NonTerminalInvalid,
         args=[token_sequence([EOFToken(None), EndOfLineToken(None), EOFToken(None)])]      # <- grammar not complete
     )
     assert_callable_raises(
         grammar.validate_sequence,
-        GrammarInvalid,
+        NonTerminalInvalid,
         args=[token_sequence([EOFToken(None), EOFToken(None), EOFToken(None)])]  # <- grammar not complete
     )
 
@@ -107,7 +107,7 @@ def test_grammar_nested():
     # grammar of parent not used
     error = assert_callable_raises(
         grammar.validate_sequence,
-        GrammarNotUsed,
+        NonTerminalNotUsed,
         args=[token_sequence([EOFToken(None)])],
     )
     assert error.grammar == grammar
@@ -115,7 +115,7 @@ def test_grammar_nested():
     # grammar of child not used, so the grammar of the parent is not valid
     error = assert_callable_raises(
         grammar.validate_sequence,
-        GrammarInvalid,
+        NonTerminalInvalid,
         args=[token_sequence([FeatureToken('', None), EOFToken(None)])],
     )
     assert error.grammar == grammar

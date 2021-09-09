@@ -1,4 +1,4 @@
-from gherkin.compiler_base.exception import GrammarInvalid
+from gherkin.compiler_base.exception import NonTerminalInvalid
 from gherkin.compiler_base.rule.utils import IndentBlock
 from gherkin.compiler_base.symbol.non_terminal import NonTerminal
 from gherkin.compiler_base.rule.operator import Chain, OneOf, Repeatable, Optional
@@ -162,7 +162,7 @@ class DataTableNonTerminal(NonTerminal):
             # for each of next data table entry, check that it has the same amount of columns
             if len(token_columns) != nmb_columns:
                 place_to_search = token_wrapper.get_place_to_search()
-                raise GrammarInvalid(
+                raise NonTerminalInvalid(
                     'All rows in a data table must have the same amount of columns. {}'.format(place_to_search),
                     grammar=self,
                     suggested_tokens=[],
@@ -356,7 +356,7 @@ class StepsNonTerminal(NonTerminal):
                 token_wrapper = sequence[index]
 
             place_to_search = token_wrapper.get_place_to_search()
-            raise GrammarInvalid(
+            raise NonTerminalInvalid(
                 'You must use at least one Given, When or Then. {}'.format(place_to_search),
                 grammar=self,
                 suggested_tokens=[GivenToken, WhenToken, ThenToken]
@@ -407,7 +407,7 @@ class ScenarioDefinitionNonTerminal(NonTerminal):
             # check if there is an earlier entry with the same text; if yet, raise an error
             if texts.index(text) < i:
                 place_to_search = descriptions[i].get_place_to_search()
-                raise GrammarInvalid(
+                raise NonTerminalInvalid(
                     'You must not use two different steps with the same text. {}'.format(place_to_search),
                     grammar=self,
                     suggested_tokens=[],

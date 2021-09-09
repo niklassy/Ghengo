@@ -1,5 +1,5 @@
 from gherkin.compiler import GherkinParser
-from gherkin.compiler_base.exception import GrammarInvalid, GrammarNotUsed
+from gherkin.compiler_base.exception import NonTerminalInvalid, NonTerminalNotUsed
 from gherkin.compiler_base.line import Line
 from gherkin.exception import GherkinInvalid
 from gherkin.non_terminal import ExamplesNonTerminal, GivenNonTerminal, WhenNonTerminal, ThenNonTerminal, ScenarioOutlineNonTerminal, \
@@ -72,7 +72,7 @@ def get_token_suggestion_after_line(sequence, line_index, return_full_sequence=F
 
         try:
             GherkinParser(None).parse(new_sequence)
-        except (GrammarInvalid, GrammarNotUsed):
+        except (NonTerminalInvalid, NonTerminalNotUsed):
             continue
         else:
             criterion_token_cls = suggested_grammar.criterion_terminal_symbol.token_cls

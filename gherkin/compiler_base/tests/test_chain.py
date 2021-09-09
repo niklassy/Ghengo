@@ -1,4 +1,4 @@
-from gherkin.compiler_base.exception import GrammarInvalid, RuleNotFulfilled, SequenceNotFinished
+from gherkin.compiler_base.exception import NonTerminalInvalid, RuleNotFulfilled, SequenceNotFinished
 from gherkin.compiler_base.symbol.non_terminal import NonTerminal
 from gherkin.compiler_base.rule.operator import Optional, Chain, OneOf, Repeatable
 from gherkin.compiler_base.symbol.terminal import TerminalSymbol
@@ -126,13 +126,13 @@ def test_chain_grammar():
     # grammar 1 recognized and invalid
     assert_callable_raises(
         chain.validate_sequence,
-        GrammarInvalid,
+        NonTerminalInvalid,
         args=[token_sequence([DescriptionToken('', None), EOFToken(None)])]
     )
     # grammar 1 valid, grammar 2 recognized and invalid
     assert_callable_raises(
         chain.validate_sequence,
-        GrammarInvalid,
+        NonTerminalInvalid,
         args=[token_sequence([DescriptionToken('', None), EndOfLineToken(None), EOFToken(None), EOFToken(None)])]
     )
     # grammar 1 not recognized

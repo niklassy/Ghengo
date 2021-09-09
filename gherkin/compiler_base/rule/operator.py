@@ -1,6 +1,6 @@
 from abc import ABC
 
-from gherkin.compiler_base.exception import SequenceEnded, RuleNotFulfilled, GrammarNotUsed
+from gherkin.compiler_base.exception import SequenceEnded, RuleNotFulfilled, NonTerminalNotUsed
 from gherkin.compiler_base.mixin import IndentMixin
 from gherkin.compiler_base.recursive import RecursiveValidationBase
 
@@ -84,7 +84,7 @@ class Optional(RuleOperator):
         # try to get the next index. If that fails, just ignore, since it is optional
         try:
             return self.get_next_pointer_index(self.child, sequence, index)
-        except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded):
+        except (RuleNotFulfilled, NonTerminalNotUsed, SequenceEnded):
             # if not valid, continue at current index
             return index
 
@@ -100,7 +100,7 @@ class Optional(RuleOperator):
         # check if the child exists - if not return None
         try:
             self.get_next_pointer_index(self.child, sequence, index)
-        except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded):
+        except (RuleNotFulfilled, NonTerminalNotUsed, SequenceEnded):
             return None
 
         return self.child.sequence_to_object(sequence, index)
@@ -153,7 +153,7 @@ class OneOf(RuleOperator):
         for child in self.children:
             try:
                 self.get_next_pointer_index(child, sequence, index)
-            except (RuleNotFulfilled, SequenceEnded, GrammarNotUsed):
+            except (RuleNotFulfilled, SequenceEnded, NonTerminalNotUsed):
                 continue
 
             return child.sequence_to_object(sequence, index)
@@ -176,7 +176,7 @@ class OneOf(RuleOperator):
         for child in self.children:
             try:
                 return self.get_next_pointer_index(child, sequence, index)
-            except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded) as e:
+            except (RuleNotFulfilled, NonTerminalNotUsed, SequenceEnded) as e:
                 errors.append((e, child))
 
         # if each child has thrown an error, this is invalid
@@ -237,8 +237,8 @@ class Repeatable(RuleOperator):
         while True:
             try:
                 index = self.get_next_pointer_index(self.child, sequence, index)
-            except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded) as e:
-                if isinstance(e, GrammarNotUsed):
+            except (RuleNotFulfilled, NonTerminalNotUsed, SequenceEnded) as e:
+                if isinstance(e, NonTerminalNotUsed):
                     break_error = RuleNotFulfilled(
                         str(e),
                         sequence_index=index,
@@ -271,7 +271,7 @@ class Repeatable(RuleOperator):
                 next_round_index = self.get_next_pointer_index(self.child, sequence, index)
                 output.append(self.child.sequence_to_object(sequence, index))
                 index = next_round_index
-            except (RuleNotFulfilled, GrammarNotUsed, SequenceEnded):
+            except (RuleNotFulfilled, NonTerminalNotUsed, SequenceEnded):
                 break
         return output
 
@@ -328,7 +328,7 @@ class Chain(RuleOperator):
             # get the index where we will end
             try:
                 next_round_index = self.get_next_pointer_index(child, sequence, index)
-            except (GrammarNotUsed, RuleNotFulfilled):
+            except (NonTerminalNotUsed, RuleNotFulfilled):
                 continue
 
             output.append(child.sequence_to_object(sequence, index))
@@ -341,7 +341,7 @@ class Chain(RuleOperator):
         for child in self.children:
             try:
                 index = self.get_next_pointer_index(child, sequence, index)
-            except GrammarNotUsed as e:
+            except NonTerminalNotUsed as e:
                 raise RuleNotFulfilled(
                     str(e),
                     terminal_symbol=e.terminal_symbol,

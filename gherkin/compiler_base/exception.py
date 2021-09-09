@@ -15,9 +15,9 @@ class RuleNotFulfilled(Exception):
         self.suggested_tokens = suggested_tokens
 
 
-class GrammarInvalid(Exception):
+class NonTerminalInvalid(Exception):
     """
-    An exception that is raised when a Grammar was detected but is not valid.
+    An exception that is raised when a NonTerminal was detected but is not valid.
     """
     def __init__(self, msg, grammar, suggested_tokens):
         super().__init__(msg)
@@ -39,9 +39,9 @@ class SequenceEnded(Exception):
         self.suggested_tokens = suggested_tokens
 
 
-class GrammarNotUsed(Exception):
+class NonTerminalNotUsed(Exception):
     """
-    An exception that is raised when a Grammar is not used in a given sequence.
+    An exception that is raised when a NonTerminal is not used in a given sequence.
     """
 
     def __init__(self, msg, terminal_symbol, sequence_index, comes_from, grammar):
