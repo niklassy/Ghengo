@@ -203,7 +203,8 @@ class Repeatable(RuleOperator):
 
     def to_ebnf(self, ebnf_entries=None):
         """
-        Repeatable is represented as `{<value>}` for minimum=0, `<value>, {<value>}` for minimum=1 and so on.
+        Repeatable is represented as `{<value>}` for minimum=0, `{<value>}+` for minimum=1,
+        `<value>, {<value>}+` for minimum=2 and so on.
         """
         base_string = ''
         end_string = ''

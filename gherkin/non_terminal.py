@@ -196,21 +196,16 @@ class AndButNonTerminalBase(NonTerminal):
     def _get_rule(self):
         return Chain([
             self.criterion_terminal_symbol,
-            TerminalSymbol(DescriptionToken),
-            TerminalSymbol(EndOfLineToken),
-            IndentBlock(
-                Optional(OneOf([
-                    DocStringNonTerminal(),
-                    DataTableNonTerminal(),
-                ])),
-            ),
+            StepEndNonTerminal(),
         ])
 
     def get_convert_kwargs(self, rule_output):
+        step_end_data = rule_output[1]
+
         return {
-            'text': rule_output[1].token.text,
+            'text': step_end_data[0].token.text,
             'keyword': rule_output[0].token.matched_keyword,
-            'argument': rule_output[3],
+            'argument': step_end_data[2],
         }
 
 
@@ -265,31 +260,43 @@ class ExamplesNonTerminal(TagsNonTerminalMixin, NonTerminal):
 
 class GivenWhenThenBase(NonTerminal):
     def get_convert_kwargs(self, rule_output):
+        step_end_data = rule_output[1]
+
         return {
             'keyword': rule_output[0].token.matched_keyword,
-            'text': rule_output[1].token.text,
-            'argument': rule_output[3]
+            'text': step_end_data[0].token.text,
+            'argument': step_end_data[2]
         }
 
     def prepare_converted_object(self, rule_convert_obj, converted_obj):
         # add sub steps like BUT and AND
-        sub_steps = rule_convert_obj[4]
+        sub_steps = rule_convert_obj[2]
         for step in sub_steps:
             converted_obj.add_sub_step(step)
 
         return converted_obj
 
 
-class GivenNonTerminal(GivenWhenThenBase):
-    criterion_terminal_symbol = TerminalSymbol(GivenToken)
+class StepEndNonTerminal(NonTerminal):
+    criterion_terminal_symbol = TerminalSymbol(DescriptionToken)
     rule = Chain([
         criterion_terminal_symbol,
-        TerminalSymbol(DescriptionToken),
         TerminalSymbol(EndOfLineToken),
         Optional(OneOf([
             DocStringNonTerminal(),
             DataTableNonTerminal(),
         ])),
+    ])
+
+    def sequence_to_object(self, sequence, index=0):
+        return self.get_rule_sequence_to_object(sequence, index)
+
+
+class GivenNonTerminal(GivenWhenThenBase):
+    criterion_terminal_symbol = TerminalSymbol(GivenToken)
+    rule = Chain([
+        criterion_terminal_symbol,
+        StepEndNonTerminal(),
         Repeatable(OneOf([AndNonTerminal(), ButNonTerminal()]), minimum=0),
     ])
     convert_cls = Given
@@ -303,12 +310,7 @@ class WhenNonTerminal(GivenWhenThenBase):
     criterion_terminal_symbol = TerminalSymbol(WhenToken)
     rule = Chain([
         criterion_terminal_symbol,
-        TerminalSymbol(DescriptionToken),
-        TerminalSymbol(EndOfLineToken),
-        Optional(OneOf([
-            DocStringNonTerminal(),
-            DataTableNonTerminal(),
-        ])),
+        StepEndNonTerminal(),
         Repeatable(OneOf([AndNonTerminal(), ButNonTerminal()]), minimum=0),
     ])
     convert_cls = When
@@ -322,12 +324,7 @@ class ThenNonTerminal(GivenWhenThenBase):
     criterion_terminal_symbol = TerminalSymbol(ThenToken)
     rule = Chain([
         criterion_terminal_symbol,
-        TerminalSymbol(DescriptionToken),
-        TerminalSymbol(EndOfLineToken),
-        Optional(OneOf([
-            DocStringNonTerminal(),
-            DataTableNonTerminal(),
-        ])),
+        StepEndNonTerminal(),
         Repeatable(OneOf([AndNonTerminal(), ButNonTerminal()]), minimum=0),
     ])
     convert_cls = Then
@@ -338,31 +335,21 @@ class ThenNonTerminal(GivenWhenThenBase):
 
 
 class StepsNonTerminal(NonTerminal):
-    rule = Chain([
-        Repeatable(GivenNonTerminal(), minimum=0, show_in_autocomplete=True),
-        Repeatable(WhenNonTerminal(), minimum=0, show_in_autocomplete=True),
-        Repeatable(ThenNonTerminal(), minimum=0, show_in_autocomplete=True),
+    rule = OneOf([
+        Chain([
+            Repeatable(GivenNonTerminal()),
+            Repeatable(WhenNonTerminal(), minimum=0),
+            Repeatable(ThenNonTerminal(), minimum=0),
+        ]),
+        Chain([
+            Repeatable(WhenNonTerminal()),
+            Repeatable(ThenNonTerminal(), minimum=0),
+        ]),
+        Chain([
+            Repeatable(ThenNonTerminal()),
+        ]),
     ])
     name = 'Steps'
-
-    def _validate_sequence(self, sequence, index):
-        new_index = super()._validate_sequence(sequence, index)
-
-        # there has to be at least one step!
-        if new_index == index:
-            if index > len(sequence) - 1:
-                token_wrapper = sequence[-1]
-            else:
-                token_wrapper = sequence[index]
-
-            place_to_search = token_wrapper.get_place_to_search()
-            raise NonTerminalInvalid(
-                'You must use at least one Given, When or Then. {}'.format(place_to_search),
-                non_terminal=self,
-                suggested_tokens=[GivenToken, WhenToken, ThenToken]
-            )
-
-        return new_index
 
     def used_by_sequence_area(self, sequence, start_index, end_index):
         given = GivenNonTerminal().used_by_sequence_area(sequence, start_index, end_index)
