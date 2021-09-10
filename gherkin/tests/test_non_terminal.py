@@ -473,9 +473,8 @@ def test_steps_non_terminal_invalid():
 
     assert_callable_raises(
         non_terminal.convert,
-        NonTerminalInvalid,
+        NonTerminalNotUsed,
         args=[get_sequence([RuleToken(None, None)])],
-        message='You must use at least one Given, When or Then. '
     )
     assert_callable_raises(
         non_terminal.convert,
