@@ -170,13 +170,9 @@ class TestCaseBase(Replaceable, TemplateMixin):
         """
         Cleanup up all the statements in a test case.
         """
-        statement_copy = self.statements.copy()
-        referenced_variables = []
-
         # for each statement: clean it up and save the variables that it uses
-        for statement in reversed(statement_copy):
-            statement.clean_up(self, referenced_variables)
-            referenced_variables += statement.get_referenced_variables()
+        for statement in self.statements:
+            statement.clean_up(self)
 
 
 class TestSuiteBase(Replaceable, TemplateMixin):

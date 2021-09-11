@@ -1,15 +1,14 @@
-from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin, ReferencedVariablesMixin
+from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
 from nlp.generate.replaceable import Replaceable
 from nlp.generate.variable import Variable
 
 
-class Statement(ReferencedVariablesMixin, Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
+class Statement(Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
     template = '{expression}{comment}'
 
     def __init__(self, expression, comment=None):
         super().__init__()
         self.expression = expression
-        self.test_case = None
         self.comment = comment
 
     def get_template_context(self, line_indent, indent):
@@ -18,19 +17,13 @@ class Statement(ReferencedVariablesMixin, Replaceable, TemplateMixin, OnAddToTes
             'comment': '   # {}'.format(self.comment) if self.comment else ''
         }
 
-    def get_variable_reference_children(self):
+    def get_children(self):
         return [self.expression]
-
-    def on_add_to_test_case(self, test_case):
-        self.test_case = test_case
-
-        if self.expression is not None and isinstance(self.expression, OnAddToTestCaseListenerMixin):
-            self.expression.on_add_to_test_case(test_case)
 
     def string_matches_variable(self, string, reference_string):
         return False
 
-    def clean_up(self, test_case, referenced_variables):
+    def clean_up(self, test_case):
         """
         Can be used to clean up statements before everything is shipped.
         """
@@ -46,14 +39,14 @@ class AssignmentStatement(Statement):
         self.variable = variable
         variable.set_value(self.expression)
 
-    def get_variable_reference_children(self):
-        references = super().get_variable_reference_children()
+    def get_children(self):
+        references = super().get_children()
         references.append(self.variable)
         return references
 
-    def clean_up(self, test_case, referenced_variables):
+    def clean_up(self, test_case):
         # if the variable here is not used anywhere, remove it
-        if self.variable not in referenced_variables:
+        if self.variable and not self.variable.is_referenced_in_tc:
             self.variable = None
 
     def string_matches_variable(self, string, reference_string=None):
@@ -105,8 +98,8 @@ class ModelFieldAssignmentStatement(Statement):
         self.variable = variable
         super().__init__(assigned_value)
 
-    def get_variable_reference_children(self):
-        references = super().get_variable_reference_children()
+    def get_children(self):
+        references = super().get_children()
         references.append(self.variable)
         return references
 

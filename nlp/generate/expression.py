@@ -1,26 +1,27 @@
-import inspect
 import mimetypes
 
 from nlp.generate.argument import Argument, Kwarg
 from nlp.generate.constants import CompareChar
-from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin, ReferencedVariablesMixin
+from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
 from nlp.generate.replaceable import Replaceable
+from nlp.generate.variable import Variable
 from settings import PYTHON_INDENT_SPACES
 from nlp.generate.statement import Statement
 from nlp.generate.suite import Import, ImportPlaceholder
 from nlp.generate.utils import camel_to_snake_case
 
 
-class Expression(ReferencedVariablesMixin, Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
+class Expression(Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
     template = '{child}'
 
     def __init__(self, child=None):
+        super().__init__()
         self.child = child
 
     def get_template_context(self, line_indent, indent):
         return {'child': self.child if self.child else ''}
 
-    def get_variable_reference_children(self):
+    def get_children(self):
         return [self.child] if self.child else []
 
     def as_statement(self):
@@ -36,8 +37,8 @@ class FunctionCallExpression(Expression):
         self.function_name = function_name
         self.function_kwargs = function_kwargs
 
-    def get_variable_reference_children(self):
-        references = super().get_variable_reference_children()
+    def get_children(self):
+        references = super().get_children()
         return references + [self.function_name] + self.function_kwargs
 
     def get_template_context(self, line_indent, indent):
@@ -65,9 +66,10 @@ class ModelSaveExpression(FunctionCallExpression):
 
     def __init__(self, variable):
         self.variable = variable
+        assert not isinstance(variable, Variable)
         super().__init__('save', [])
 
-    def get_variable_reference_children(self):
+    def get_children(self):
         return [self.variable]
 
     def get_template_context(self, line_indent, indent):
@@ -87,6 +89,8 @@ class ModelQuerysetBaseExpression(FunctionCallExpression):
         return context
 
     def on_add_to_test_case(self, test_case):
+        super().on_add_to_test_case(test_case)
+
         # We can only add the import if the model already exists in the code
         if self.model_wrapper.exists_in_code:
             test_case.test_suite.add_import(
@@ -124,8 +128,8 @@ class CompareExpression(Expression):
         assert compare_char in CompareChar.get_all()
         self.compare_char = compare_char
 
-    def get_variable_reference_children(self):
-        references = super().get_variable_reference_children()
+    def get_children(self):
+        references = super().get_children()
         return references + [self.value_1, self.value_2]
 
     def get_template_context(self, line_indent, indent):
@@ -137,16 +141,19 @@ class APIClientExpression(FunctionCallExpression):
         super().__init__('APIClient', [])
 
     def on_add_to_test_case(self, test_case):
+        super().on_add_to_test_case(test_case)
+
         test_case.test_suite.add_import(Import('rest_framework.test', 'APIClient'))
 
 
 class APIClientAuthenticateExpression(FunctionCallExpression):
     def __init__(self, client_variable, user_variable):
+        assert not isinstance(client_variable, Variable)
         self.client_variable = client_variable
         super().__init__('{}.force_authenticate'.format(client_variable), [Argument(user_variable)])
 
-    def get_variable_reference_children(self):
-        references = super().get_variable_reference_children()
+    def get_children(self):
+        references = super().get_children()
         return references + [self.client_variable]
 
 
@@ -157,8 +164,8 @@ class ReverseCallExpression(FunctionCallExpression):
         super().__init__('reverse', reverse_kwargs)
         self.reverse_name = Argument(reverse_name)
 
-    def get_variable_reference_children(self):
-        references = super().get_variable_reference_children()
+    def get_children(self):
+        references = super().get_children()
         return references + [self.reverse_name]
 
     def get_template_context(self, line_indent, indent):
@@ -179,12 +186,13 @@ class RequestExpression(FunctionCallExpression):
 
     def __init__(self, function_name, function_kwargs, reverse_name, client_variable, reverse_kwargs, url_wrapper):
         super().__init__(function_name, function_kwargs)
+        assert not isinstance(client_variable, Variable)
         self.client_variable = client_variable
         self.reverse_expression = ReverseCallExpression(reverse_name, reverse_kwargs)
         self.url_wrapper = url_wrapper
 
-    def get_variable_reference_children(self):
-        references = super().get_variable_reference_children()
+    def get_children(self):
+        references = super().get_children()
         return references + [self.client_variable, self.reverse_expression]
 
     @property
@@ -204,6 +212,8 @@ class RequestExpression(FunctionCallExpression):
         return context
 
     def on_add_to_test_case(self, test_case):
+        super().on_add_to_test_case(test_case)
+
         test_case.test_suite.add_import(Import('django.urls', 'reverse'))
 
 
@@ -229,6 +239,8 @@ class CreateUploadFileExpression(FunctionCallExpression):
             self.function_kwargs.append(Kwarg('content_type', content_type_guesses[0]))
 
     def on_add_to_test_case(self, test_case):
+        super().on_add_to_test_case(test_case)
+
         test_case.test_suite.add_import(Import('django.core.files.uploadedfile', 'SimpleUploadedFile'))
 
 
@@ -247,12 +259,15 @@ class ModelM2MAddExpression(Expression):
 
     def __init__(self, model_instance_variable, field, add_variable):
         super().__init__()
+        assert not isinstance(model_instance_variable, Variable)
+        assert not isinstance(add_variable, Variable)
+
         self.model_instance_variable = model_instance_variable
         self.field = field
         self.add_variable = add_variable
 
-    def get_variable_reference_children(self):
-        references = super().get_variable_reference_children()
+    def get_children(self):
+        references = super().get_children()
         return references + [self.model_instance_variable, self.add_variable]
 
     def get_template_context(self, line_indent, indent):
@@ -266,7 +281,3 @@ class ModelM2MAddExpression(Expression):
             'field': self.field,
             'variable': variable,
         }
-
-    def on_add_to_test_case(self, test_case):
-        if isinstance(self.add_variable, OnAddToTestCaseListenerMixin):
-            self.add_variable.on_add_to_test_case(test_case)

@@ -1,16 +1,19 @@
-from nlp.generate.mixin import ReferencedVariablesMixin
+from nlp.generate.mixin import OnAddToTestCaseListenerMixin
 from nlp.generate.replaceable import Replaceable
 from nlp.generate.utils import to_function_name
 
 
-class Variable(ReferencedVariablesMixin, Replaceable):
+class Variable(OnAddToTestCaseListenerMixin, Replaceable):
     """
     This class represents a variable in a test case.
     """
     def __init__(self, name_predetermined, reference_string):
+        super().__init__()
+
         self.reference_string = reference_string
         self.name_predetermined = name_predetermined
         self.value = None
+        self._test_case_references = []
 
     def __copy__(self):
         variable = Variable(
@@ -18,6 +21,10 @@ class Variable(ReferencedVariablesMixin, Replaceable):
             reference_string=self.reference_string,
         )
         variable.set_value(self.value)
+
+        for ref in self._test_case_references:
+            variable.add_test_case_references(ref)
+
         return variable
 
     def __bool__(self):
@@ -39,13 +46,20 @@ class Variable(ReferencedVariablesMixin, Replaceable):
     def __str__(self):
         return self.name
 
+    @property
+    def is_referenced_in_tc(self):
+        return len(self._test_case_references) > 0
+
+    def get_children(self):
+        return []
+
+    def add_test_case_references(self, reference):
+        if reference not in self._test_case_references:
+            self._test_case_references.append(reference)
+
     def get_reference(self):
         """Returns a reference to this variable."""
         return VariableReference(self)
-
-    def get_referenced_variables(self):
-        """Overwrite the default behaviour here since this is a variable."""
-        return [self]
 
     def copy(self):
         """Create a copy of this variable."""
@@ -99,7 +113,7 @@ class Variable(ReferencedVariablesMixin, Replaceable):
         return ''
 
 
-class VariableReference(ReferencedVariablesMixin, Replaceable):
+class VariableReference(OnAddToTestCaseListenerMixin, Replaceable):
     """
     This class represents a reference to an existing variable. It will pass everything to the variable. So:
 
@@ -107,6 +121,8 @@ class VariableReference(ReferencedVariablesMixin, Replaceable):
     bar = foo  # <- `foo` is a variable reference, bar another variable
     """
     def __init__(self, variable):
+        super().__init__()
+
         self.variable = variable
 
     def __eq__(self, other):
@@ -134,5 +150,10 @@ class VariableReference(ReferencedVariablesMixin, Replaceable):
         except AttributeError:
             return getattr(self, item)
 
-    def get_referenced_variables(self):
-        return [self.variable]
+    def get_children(self):
+        return []
+
+    def on_add_to_test_case(self, test_case):
+        super().on_add_to_test_case(test_case)
+
+        self.variable.add_test_case_references(self)

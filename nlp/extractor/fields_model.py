@@ -94,9 +94,9 @@ class M2MModelFieldExtractor(ManyExtractorMixin, ForeignKeyModelFieldExtractor):
 
         for variable in values:
             m2m_expression = ModelM2MAddExpression(
-                model_instance_variable=factory_statement.variable,
+                model_instance_variable=factory_statement.variable.get_reference(),
                 field=self.field_name,
-                add_variable=variable,
+                add_variable=variable.get_reference(),
             )
             statements.append(m2m_expression.as_statement())
 
@@ -140,7 +140,7 @@ class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):
             self.test_case.test_suite.warning_collection.add_warning(permission_query.code)
 
         m2m_expression = ModelM2MAddExpression(
-            model_instance_variable=factory_statement.variable,
+            model_instance_variable=factory_statement.variable.get_reference(),
             field=self.field_name,
             add_variable=permission_query,
         )

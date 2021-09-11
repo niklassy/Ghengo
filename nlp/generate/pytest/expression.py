@@ -9,6 +9,8 @@ class PyTestModelFactoryExpression(ModelFactoryExpression):
     for_test_type = GenerationType.PY_TEST
 
     def on_add_to_test_case(self, test_case):
+        super().on_add_to_test_case(test_case)
+
         parameter = Parameter(self.factory_name)
         try:
             test_case.add_parameter(parameter)
@@ -24,6 +26,8 @@ class PyTestModelFactoryExpression(ModelFactoryExpression):
 
 class FixtureFunctionCallExpression(FunctionCallExpression):
     def on_add_to_test_case(self, test_case):
+        super().on_add_to_test_case(test_case)
+
         try:
             test_case.add_parameter(Parameter(self.function_name))
         except test_case.ParameterAlreadyPresent:

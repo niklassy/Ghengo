@@ -10,6 +10,7 @@ class PyTestDecorator(Decorator):
         super().__init__('pytest.{}'.format(name), arguments)
 
     def on_add_to_test_case(self, test_case):
+        super().on_add_to_test_case(test_case)
         test_case.test_suite.add_import(Import('pytest'))
 
 

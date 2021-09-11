@@ -10,6 +10,9 @@ class Decorator(Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
         self.name = name
         self.arguments = arguments or []
 
+    def get_children(self):
+        return self.arguments
+
     def get_template_context(self, line_indent, indent):
         if len(self.arguments) > 0:
             arguments = '({})'.format(
