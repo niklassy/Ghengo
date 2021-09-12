@@ -1,26 +1,29 @@
-import inspect
 import mimetypes
 
 from nlp.generate.argument import Argument, Kwarg
 from nlp.generate.constants import CompareChar
-from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin, ReferencedVariablesMixin
+from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
 from nlp.generate.replaceable import Replaceable
+from nlp.generate.variable import Variable
 from settings import PYTHON_INDENT_SPACES
 from nlp.generate.statement import Statement
 from nlp.generate.suite import Import, ImportPlaceholder
 from nlp.generate.utils import camel_to_snake_case
 
 
-class Expression(ReferencedVariablesMixin, Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
+class Expression(Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
     template = '{child}'
 
     def __init__(self, child=None):
+        super().__init__()
         self.child = child
+        assert not isinstance(child, Variable), 'You must not use Variable as a child of Expression. ' \
+                                                'Use VariableReference instead'
 
     def get_template_context(self, line_indent, indent):
         return {'child': self.child if self.child else ''}
 
-    def get_variable_reference_children(self):
+    def get_children(self):
         return [self.child] if self.child else []
 
     def as_statement(self):
@@ -36,8 +39,12 @@ class FunctionCallExpression(Expression):
         self.function_name = function_name
         self.function_kwargs = function_kwargs
 
-    def get_variable_reference_children(self):
-        references = super().get_variable_reference_children()
+        for kwarg in function_kwargs:
+            assert not isinstance(kwarg, Variable), 'You must not use Variable as function kwarg. Use' \
+                                                    ' VariableReference instead'
+
+    def get_children(self):
+        references = super().get_children()
         return references + [self.function_name] + self.function_kwargs
 
     def get_template_context(self, line_indent, indent):
@@ -61,18 +68,20 @@ class FunctionCallExpression(Expression):
 
 
 class ModelSaveExpression(FunctionCallExpression):
-    template = '{variable}.{fn_name}()'
+    template = '{variable_ref}.{fn_name}()'
 
-    def __init__(self, variable):
-        self.variable = variable
+    def __init__(self, variable_ref):
+        self.variable_ref = variable_ref
+        assert not isinstance(variable_ref, Variable), 'You must not use Variable as variable_ref. Use' \
+                                                       ' VariableReference instead'
         super().__init__('save', [])
 
-    def get_variable_reference_children(self):
-        return [self.variable]
+    def get_children(self):
+        return [self.variable_ref]
 
     def get_template_context(self, line_indent, indent):
         context = super().get_template_context(line_indent, 0)
-        context['variable'] = self.variable
+        context['variable_ref'] = self.variable_ref
         return context
 
 
@@ -87,6 +96,8 @@ class ModelQuerysetBaseExpression(FunctionCallExpression):
         return context
 
     def on_add_to_test_case(self, test_case):
+        super().on_add_to_test_case(test_case)
+
         # We can only add the import if the model already exists in the code
         if self.model_wrapper.exists_in_code:
             test_case.test_suite.add_import(
@@ -124,8 +135,8 @@ class CompareExpression(Expression):
         assert compare_char in CompareChar.get_all()
         self.compare_char = compare_char
 
-    def get_variable_reference_children(self):
-        references = super().get_variable_reference_children()
+    def get_children(self):
+        references = super().get_children()
         return references + [self.value_1, self.value_2]
 
     def get_template_context(self, line_indent, indent):
@@ -137,17 +148,21 @@ class APIClientExpression(FunctionCallExpression):
         super().__init__('APIClient', [])
 
     def on_add_to_test_case(self, test_case):
+        super().on_add_to_test_case(test_case)
+
         test_case.test_suite.add_import(Import('rest_framework.test', 'APIClient'))
 
 
 class APIClientAuthenticateExpression(FunctionCallExpression):
-    def __init__(self, client_variable, user_variable):
-        self.client_variable = client_variable
-        super().__init__('{}.force_authenticate'.format(client_variable), [Argument(user_variable)])
+    def __init__(self, client_variable_ref, user_variable_ref):
+        assert not isinstance(client_variable_ref, Variable), 'You must not use Variable as client_ref. Use' \
+                                                              ' VariableReference instead'
+        self.client_variable_ref = client_variable_ref
+        super().__init__('{}.force_authenticate'.format(client_variable_ref), [Argument(user_variable_ref)])
 
-    def get_variable_reference_children(self):
-        references = super().get_variable_reference_children()
-        return references + [self.client_variable]
+    def get_children(self):
+        references = super().get_children()
+        return references + [self.client_variable_ref]
 
 
 class ReverseCallExpression(FunctionCallExpression):
@@ -157,8 +172,8 @@ class ReverseCallExpression(FunctionCallExpression):
         super().__init__('reverse', reverse_kwargs)
         self.reverse_name = Argument(reverse_name)
 
-    def get_variable_reference_children(self):
-        references = super().get_variable_reference_children()
+    def get_children(self):
+        references = super().get_children()
         return references + [self.reverse_name]
 
     def get_template_context(self, line_indent, indent):
@@ -175,17 +190,19 @@ class ReverseCallExpression(FunctionCallExpression):
 
 
 class RequestExpression(FunctionCallExpression):
-    template = '{client_variable}.{fn_name}({long_content_start}{reverse}{kwargs}{long_content_end})'
+    template = '{client_variable_ref}.{fn_name}({long_content_start}{reverse}{kwargs}{long_content_end})'
 
-    def __init__(self, function_name, function_kwargs, reverse_name, client_variable, reverse_kwargs, url_wrapper):
+    def __init__(self, function_name, function_kwargs, reverse_name, client_variable_ref, reverse_kwargs, url_wrapper):
         super().__init__(function_name, function_kwargs)
-        self.client_variable = client_variable
+        assert not isinstance(client_variable_ref, Variable), 'You must not use Variable as client_ref. Use' \
+                                                              ' VariableReference instead'
+        self.client_variable_ref = client_variable_ref
         self.reverse_expression = ReverseCallExpression(reverse_name, reverse_kwargs)
         self.url_wrapper = url_wrapper
 
-    def get_variable_reference_children(self):
-        references = super().get_variable_reference_children()
-        return references + [self.client_variable, self.reverse_expression]
+    def get_children(self):
+        references = super().get_children()
+        return references + [self.client_variable_ref, self.reverse_expression]
 
     @property
     def serializer_class(self):
@@ -200,10 +217,12 @@ class RequestExpression(FunctionCallExpression):
 
         # add `,` because it is an argument as well
         context['kwargs'] = ', {' + dict_content_str + '}' if dict_content_str else ''
-        context['client_variable'] = self.client_variable
+        context['client_variable_ref'] = self.client_variable_ref
         return context
 
     def on_add_to_test_case(self, test_case):
+        super().on_add_to_test_case(test_case)
+
         test_case.test_suite.add_import(Import('django.urls', 'reverse'))
 
 
@@ -229,6 +248,8 @@ class CreateUploadFileExpression(FunctionCallExpression):
             self.function_kwargs.append(Kwarg('content_type', content_type_guesses[0]))
 
     def on_add_to_test_case(self, test_case):
+        super().on_add_to_test_case(test_case)
+
         test_case.test_suite.add_import(Import('django.core.files.uploadedfile', 'SimpleUploadedFile'))
 
 
@@ -243,30 +264,31 @@ class ModelFactoryExpression(FunctionCallExpression):
 
 
 class ModelM2MAddExpression(Expression):
-    template = '{model_instance}.{field}.add({variable})'
+    template = '{model_instance}.{field}.add({variable_ref})'
 
-    def __init__(self, model_instance_variable, field, add_variable):
+    def __init__(self, model_instance_variable_ref, field, add_variable_ref):
         super().__init__()
-        self.model_instance_variable = model_instance_variable
-        self.field = field
-        self.add_variable = add_variable
+        assert not isinstance(model_instance_variable_ref, Variable), 'You must not use Variable as model. Use' \
+                                                                      ' VariableReference instead'
+        assert not isinstance(add_variable_ref, Variable), 'You must not use Variable as add var. Use' \
+                                                           ' VariableReference instead'
 
-    def get_variable_reference_children(self):
-        references = super().get_variable_reference_children()
-        return references + [self.model_instance_variable, self.add_variable]
+        self.model_instance_variable_ref = model_instance_variable_ref
+        self.field = field
+        self.add_variable_ref = add_variable_ref
+
+    def get_children(self):
+        references = super().get_children()
+        return references + [self.model_instance_variable_ref, self.add_variable_ref]
 
     def get_template_context(self, line_indent, indent):
-        variable = self.add_variable
+        variable_ref = self.add_variable_ref
 
-        if isinstance(self.add_variable, TemplateMixin):
-            variable = variable.to_template(line_indent)
+        if isinstance(self.add_variable_ref, TemplateMixin):
+            variable_ref = variable_ref.to_template(line_indent)
 
         return {
-            'model_instance': self.model_instance_variable,
+            'model_instance': self.model_instance_variable_ref,
             'field': self.field,
-            'variable': variable,
+            'variable_ref': variable_ref,
         }
-
-    def on_add_to_test_case(self, test_case):
-        if isinstance(self.add_variable, OnAddToTestCaseListenerMixin):
-            self.add_variable.on_add_to_test_case(test_case)

@@ -33,7 +33,7 @@ class RequestConverter(ClassConverter):
             blocked_model_tokens += [self.user.chunk.root, self.user.token]
         self.model = NewModelProperty(self, blocked_tokens=blocked_model_tokens)
 
-        self.model_variable = ReferenceModelVariableProperty(self)
+        self.model_variable_ref = ReferenceModelVariableProperty(self)
 
     def get_document_verbs(self):
         return [t for t in self.get_possible_argument_tokens() if t.pos_ == 'VERB']
@@ -54,7 +54,7 @@ class RequestConverter(ClassConverter):
         return True
 
     def prepare_converter(self):
-        for token in (self.method.token, self.user.token, self.model_variable.token, self.model.token):
+        for token in (self.method.token, self.user.token, self.model_variable_ref.token, self.model.token):
             self.block_token_as_argument(token)
 
         # if there is a user token, it might be defined as "Alice" or "User 1", if there is a token we also want
@@ -173,23 +173,25 @@ class RequestConverter(ClassConverter):
 
         # if the request comes from a user, login with that user
         if not self.from_anonymous_user:
-            statements.append(APIClientAuthenticateExpression(variable_client, self.user.value).as_statement())
+            statements.append(
+                APIClientAuthenticateExpression(variable_client.get_reference(), self.user.value).as_statement()
+            )
 
         # check if a primary key is needed in the request, and if yes collect it from the model variable
         reverse_kwargs = []
-        model_token = self.model_variable.token
+        model_token = self.model_variable_ref.token
         user_token = self.user.token
         pk_in_route_kwargs = self.url_pattern_wrapper.key_exists_in_route_kwargs('pk')
 
         if model_token and not tokens_are_equal(model_token, user_token) and pk_in_route_kwargs:
-            reverse_kwargs.append(Kwarg('pk', Attribute(self.model_variable.value, 'pk')))
+            reverse_kwargs.append(Kwarg('pk', Attribute(self.model_variable_ref.value, 'pk')))
 
         # create the statement with the request
         expression_request = RequestExpression(
             self.extract_method(),
             function_kwargs=[],
             reverse_name=self.url_pattern_wrapper.reverse_name,
-            client_variable=variable_client,
+            client_variable_ref=variable_client.get_reference(),
             reverse_kwargs=reverse_kwargs,
             url_wrapper=self.url_pattern_wrapper,
         )

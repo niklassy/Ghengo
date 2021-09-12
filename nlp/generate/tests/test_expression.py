@@ -7,6 +7,7 @@ from nlp.generate.expression import Expression, FunctionCallExpression, ModelFac
 from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.generate.statement import Statement
 from nlp.generate.suite import Import, ImportPlaceholder
+from nlp.generate.variable import Variable
 
 
 def test_expression_as_statement():
@@ -37,7 +38,8 @@ def test_model_factory_expression():
 
 def test_m2m_add_expression():
     """Check that m2m add expression creates the correct template."""
-    exp = ModelM2MAddExpression(model_instance_variable='foo', field='baz', add_variable='bar')
+    var = Variable('foo', 'foo')
+    exp = ModelM2MAddExpression(model_instance_variable_ref=var.get_reference(), field='baz', add_variable_ref='bar')
     assert exp.to_template() == 'foo.baz.add(bar)'
 
 

@@ -1,9 +1,10 @@
-from nlp.generate.mixin import TemplateMixin, ReferencedVariablesMixin
+from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
 from nlp.generate.replaceable import Replaceable
+from nlp.generate.variable import Variable
 from settings import PYTHON_INDENT_SPACES
 
 
-class Argument(ReferencedVariablesMixin, Replaceable, TemplateMixin):
+class Argument(OnAddToTestCaseListenerMixin, Replaceable, TemplateMixin):
     """
     Class that represents the values that are passed to a function during runtime.
 
@@ -15,6 +16,8 @@ class Argument(ReferencedVariablesMixin, Replaceable, TemplateMixin):
     def __init__(self, value):
         super().__init__()
         self.value = value
+        assert not isinstance(value, Variable), 'You must not use a Variable with an Argument. Use a ' \
+                                                'VariableReference instead'
 
     def __bool__(self):
         return bool(self.value)
@@ -34,7 +37,7 @@ class Argument(ReferencedVariablesMixin, Replaceable, TemplateMixin):
 
         return super().__new__(cls, value, *args, **kwargs)
 
-    def get_variable_reference_children(self):
+    def get_children(self):
         return [self.value]
 
     @classmethod
@@ -87,7 +90,7 @@ class StringArgument(Argument):
         return {'value': '\'{}\''.format(self.value)}
 
 
-class Kwarg(ReferencedVariablesMixin, TemplateMixin):
+class Kwarg(OnAddToTestCaseListenerMixin, TemplateMixin):
     template = '{name}={value}'
 
     def __init__(self, name, value):
@@ -95,7 +98,7 @@ class Kwarg(ReferencedVariablesMixin, TemplateMixin):
         self.name = name
         self.value = Argument(value)
 
-    def get_variable_reference_children(self):
+    def get_children(self):
         return [self.value]
 
     def get_template_context(self, line_indent, indent):

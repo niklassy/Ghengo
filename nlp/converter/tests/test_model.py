@@ -249,7 +249,7 @@ def test_object_qs_converter_output(doc, mocker, filter_fields, variable_type):
         assert exp.value_1.attribute_name == filter_field_name
 
         if referenced_variable:
-            assert exp.value_1.variable == referenced_variable
+            assert exp.value_1.variable_ref == referenced_variable
 
 
 def test_model_variable_reference_converter(mocker):
@@ -297,7 +297,7 @@ def test_model_variable_reference_converter_multiple_name(mocker):
     assert isinstance(statements[1].expression, ModelSaveExpression)
     assert isinstance(converter.model.value, ModelWrapper)
     assert converter.model.value.model == User
-    assert converter.variable.value == user_variable
+    assert converter.variable_ref.value == user_variable
 
 
 @pytest.mark.parametrize(

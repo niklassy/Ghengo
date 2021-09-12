@@ -1,6 +1,22 @@
 class OnAddToTestCaseListenerMixin(object):
+    """
+    This mixin is used to keep of children and notify them as soon as they are added to a test case. This only works
+    if all the parents of the given instance are subclasses of this class.
+    """
+    def __init__(self):
+        super().__init__()
+
+        self.test_case = None
+
+    def get_children(self):
+        raise NotImplementedError()
+
     def on_add_to_test_case(self, test_case):
-        pass
+        self.test_case = test_case
+
+        for child in self.get_children():
+            if isinstance(child, OnAddToTestCaseListenerMixin):
+                child.on_add_to_test_case(test_case)
 
 
 class TemplateMixin(object):
@@ -27,28 +43,3 @@ class TemplateMixin(object):
 
     def __str__(self):
         return self.to_template()
-
-
-class ReferencedVariablesMixin(object):
-    """
-    This mixin can be used to get all the variables it and its children reference.
-    """
-    def get_variable_reference_children(self):
-        """
-        Returns all the objects that might have more references to any variable.
-        """
-        return []
-
-    def get_referenced_variables(self):
-        """
-        Returns all the variables that are referenced by this object and its children.
-        """
-        variables = []
-
-        for child in self.get_variable_reference_children():
-            if not isinstance(child, ReferencedVariablesMixin):
-                continue
-
-            variables += child.get_referenced_variables()
-
-        return variables

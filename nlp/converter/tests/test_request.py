@@ -136,10 +136,10 @@ def test_model_request_converter_with_reference(
     assert converter.model.value.model == Order
     assert converter.model.token == doc[model_token_index]
     if model_variable_index is not None:
-        assert converter.model_variable.value == order_variable
-        assert converter.model_variable.token == doc[model_variable_index]
+        assert converter.model_variable_ref.value == order_variable
+        assert converter.model_variable_ref.token == doc[model_variable_index]
     else:
-        assert not converter.model_variable.token
+        assert not converter.model_variable_ref.token
     assert converter.user.token == doc[user_var_index]
 
     assert len(statements) == 3
@@ -155,7 +155,7 @@ def test_model_request_converter_with_reference(
         # if a primary key was meant, check that there is a variable
         if field_name == 'pk':
             attribute = reverse_kwargs[0].value.value
-            assert attribute.variable == order_variable
+            assert attribute.variable_ref == order_variable
         else:
             # check that the field name is correct
             assert converter.extractors[i].field_name == field_name

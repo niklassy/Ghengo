@@ -35,7 +35,7 @@ def test_cleanup_variables(mocker):
     test_case.add_statement(
         AssignmentStatement(
             variable=var_4,
-            expression=FunctionCallExpression(Attribute(var_1.get_reference(), 'foo'), [var_2]),
+            expression=FunctionCallExpression(Attribute(var_1.get_reference(), 'foo'), [var_2.get_reference()]),
         ),
     )
 

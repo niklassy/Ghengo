@@ -95,7 +95,7 @@ def test_then_tiler_best_converter(mocker, keyword, text, expected_converter_cls
                 reverse_kwargs=[],
                 reverse_name='',
                 url_wrapper=AbstractUrlPatternWrapper(ModelWrapper.create_with_model(User)),
-                client_variable=None,
+                client_variable_ref=None,
             )
         )
     )

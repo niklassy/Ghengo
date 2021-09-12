@@ -184,7 +184,7 @@ def test_fk_rest_extractor(doc, token_index, expected_value):
 
     if isinstance(expected_value, Variable):
         assert isinstance(extracted_value, Attribute)
-        assert extracted_value.variable == var
+        assert extracted_value.variable_ref == var
         assert extracted_value.attribute_name == 'pk'
     else:
         assert extracted_value == expected_value
