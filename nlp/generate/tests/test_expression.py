@@ -39,7 +39,7 @@ def test_model_factory_expression():
 def test_m2m_add_expression():
     """Check that m2m add expression creates the correct template."""
     var = Variable('foo', 'foo')
-    exp = ModelM2MAddExpression(model_instance_variable=var.get_reference(), field='baz', add_variable='bar')
+    exp = ModelM2MAddExpression(model_instance_variable_ref=var.get_reference(), field='baz', add_variable_ref='bar')
     assert exp.to_template() == 'foo.baz.add(bar)'
 
 

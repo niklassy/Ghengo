@@ -215,7 +215,7 @@ def test_many_check_length_response_converter_output(doc, desired_length, mocker
     assert len(statements) == 1
     assert statements[0].expression.value_2.value == desired_length
     assert statements[0].expression.value_1.function_name == 'len'
-    assert statements[0].expression.value_1.function_kwargs[0].variable == converter.get_referenced_response_variable()
+    assert statements[0].expression.value_1.function_kwargs[0].variable_ref == converter.get_referenced_response_variable()
     assert statements[0].expression.value_1.function_kwargs[0].attribute_name == 'data'
 
 

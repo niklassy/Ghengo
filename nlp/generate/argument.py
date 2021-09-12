@@ -16,7 +16,8 @@ class Argument(OnAddToTestCaseListenerMixin, Replaceable, TemplateMixin):
     def __init__(self, value):
         super().__init__()
         self.value = value
-        assert not isinstance(value, Variable)
+        assert not isinstance(value, Variable), 'You must not use a Variable with an Argument. Use a ' \
+                                                'VariableReference instead'
 
     def __bool__(self):
         return bool(self.value)

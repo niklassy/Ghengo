@@ -66,6 +66,12 @@ class AssignmentStatement(Statement):
         return copy == self.variable
 
     def generate_variable(self, test_case):
+        """
+        Generate a variable for this statement if there is none yet.
+        """
+        if self.variable:
+            return
+
         if not self.variable.name_predetermined:
             similar_statements = []
 
@@ -91,22 +97,22 @@ class AssignmentStatement(Statement):
 
 
 class ModelFieldAssignmentStatement(Statement):
-    template = '{variable}.{field_name} = {expression}{comment}'
+    template = '{variable_ref}.{field_name} = {expression}{comment}'
 
-    def __init__(self, variable, field_name, assigned_value):
+    def __init__(self, variable_ref, field_name, assigned_value):
         self.field_name = field_name
-        self.variable = variable
-        assert not isinstance(variable, Variable)
+        self.variable_ref = variable_ref
+        assert not isinstance(variable_ref, Variable)
         super().__init__(assigned_value)
 
     def get_children(self):
-        references = super().get_children()
-        references.append(self.variable)
-        return references
+        children = super().get_children()
+        children.append(self.variable_ref)
+        return children
 
     def get_template_context(self, line_indent, indent):
         context = super().get_template_context(line_indent, indent)
-        context['variable'] = self.variable
+        context['variable_ref'] = self.variable_ref
         context['field_name'] = self.field_name
         return context
 

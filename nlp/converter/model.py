@@ -132,7 +132,7 @@ class ModelVariableReferenceConverter(ModelConverter):
         extracted_value = self.extract_and_handle_output(extractor)
 
         statement = ModelFieldAssignmentStatement(
-            variable=self.variable.value,
+            variable_ref=self.variable.value,
             assigned_value=Argument(value=extracted_value),
             field_name=extractor.field_name,
         )

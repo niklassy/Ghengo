@@ -191,7 +191,7 @@ class RequestConverter(ClassConverter):
             self.extract_method(),
             function_kwargs=[],
             reverse_name=self.url_pattern_wrapper.reverse_name,
-            client_variable=variable_client.get_reference(),
+            client_variable_ref=variable_client.get_reference(),
             reverse_kwargs=reverse_kwargs,
             url_wrapper=self.url_pattern_wrapper,
         )

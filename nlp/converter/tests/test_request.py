@@ -155,7 +155,7 @@ def test_model_request_converter_with_reference(
         # if a primary key was meant, check that there is a variable
         if field_name == 'pk':
             attribute = reverse_kwargs[0].value.value
-            assert attribute.variable == order_variable
+            assert attribute.variable_ref == order_variable
         else:
             # check that the field name is correct
             assert converter.extractors[i].field_name == field_name

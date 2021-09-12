@@ -249,7 +249,7 @@ def test_object_qs_converter_output(doc, mocker, filter_fields, variable_type):
         assert exp.value_1.attribute_name == filter_field_name
 
         if referenced_variable:
-            assert exp.value_1.variable == referenced_variable
+            assert exp.value_1.variable_ref == referenced_variable
 
 
 def test_model_variable_reference_converter(mocker):
