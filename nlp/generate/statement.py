@@ -69,9 +69,6 @@ class AssignmentStatement(Statement):
         """
         Generate a variable for this statement if there is none yet.
         """
-        if self.variable:
-            return
-
         if not self.variable.name_predetermined:
             similar_statements = []
 
