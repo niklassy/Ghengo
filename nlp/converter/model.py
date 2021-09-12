@@ -104,7 +104,7 @@ class ModelVariableReferenceConverter(ModelConverter):
         super().__init__(document, related_object, django_project, test_case)
         self.model_in_text = NewModelProperty(self)
         self.variable_ref = ReferenceModelVariableProperty(self)
-        self.model = ReferenceModelProperty(self)
+        self.model = ReferenceModelProperty(self, self.variable_ref)
 
         # the value of the variable is important for the model
         self.variable_ref.calculate_value()
@@ -159,7 +159,7 @@ class AssertPreviousModelConverter(ModelConverter):
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
         self.variable_ref = ReferenceModelVariableProperty(self)
-        self.model = ReferenceModelProperty(self)
+        self.model = ReferenceModelProperty(self, self.variable_ref)
 
         # the value of the variable is important for the model
         self.variable_ref.calculate_value()

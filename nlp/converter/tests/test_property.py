@@ -123,7 +123,7 @@ def test_reference_model_converter_property(doc, token_index, mocker):
     converter.model = NewModelProperty(converter)
     converter.variable_ref = ReferenceModelVariableProperty(converter)
     converter.variable_ref.calculate_value()
-    prop = ReferenceModelProperty(converter)
+    prop = ReferenceModelProperty(converter, converter.variable_ref)
 
     assert isinstance(prop.value, ModelWrapper)
     assert prop.value.model == Order

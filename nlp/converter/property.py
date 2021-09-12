@@ -249,6 +249,10 @@ class ReferenceModelProperty(NewModelProperty):
     This property can be used for cases where the model can be defined indirectly by referencing a variable that
     was created earlier in the test case.
     """
+    def __init__(self, converter, variable_ref, blocked_tokens=None):
+        super().__init__(converter, blocked_tokens)
+        self.variable_ref = variable_ref
+
     def get_chunk(self):
         if len(self.converter.get_noun_chunks()) == 0:
             return None
@@ -261,8 +265,8 @@ class ReferenceModelProperty(NewModelProperty):
         In sentences like "Alice does ..." we don't know the model of alice initially. So if the variable of
         the converter is found, we can use the variable model instead.
         """
-        if self.converter.variable_ref.value_determined is True and self.converter.variable_ref.value is not None:
-            variable = self.converter.variable_ref.value
+        if self.variable_ref.value_determined is True and self.variable_ref.value is not None:
+            variable = self.variable_ref.value
             return variable.value.model_wrapper
 
         return super().value
