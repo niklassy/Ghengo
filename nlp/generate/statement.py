@@ -96,6 +96,7 @@ class ModelFieldAssignmentStatement(Statement):
     def __init__(self, variable, field_name, assigned_value):
         self.field_name = field_name
         self.variable = variable
+        assert not isinstance(variable, Variable)
         super().__init__(assigned_value)
 
     def get_children(self):

@@ -1,4 +1,8 @@
 class OnAddToTestCaseListenerMixin(object):
+    """
+    This mixin is used to keep of children and notify them as soon as they are added to a test case. This only works
+    if all the parents of the given instance are subclasses of this class.
+    """
     def __init__(self):
         super().__init__()
 

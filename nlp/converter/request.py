@@ -173,7 +173,9 @@ class RequestConverter(ClassConverter):
 
         # if the request comes from a user, login with that user
         if not self.from_anonymous_user:
-            statements.append(APIClientAuthenticateExpression(variable_client, self.user.value).as_statement())
+            statements.append(
+                APIClientAuthenticateExpression(variable_client.get_reference(), self.user.value).as_statement()
+            )
 
         # check if a primary key is needed in the request, and if yes collect it from the model variable
         reverse_kwargs = []

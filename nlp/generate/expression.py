@@ -17,6 +17,7 @@ class Expression(Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
     def __init__(self, child=None):
         super().__init__()
         self.child = child
+        assert not isinstance(child, Variable)
 
     def get_template_context(self, line_indent, indent):
         return {'child': self.child if self.child else ''}
@@ -36,6 +37,9 @@ class FunctionCallExpression(Expression):
         super().__init__()
         self.function_name = function_name
         self.function_kwargs = function_kwargs
+
+        for kwarg in function_kwargs:
+            assert not isinstance(kwarg, Variable)
 
     def get_children(self):
         references = super().get_children()
