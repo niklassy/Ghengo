@@ -297,7 +297,7 @@ def test_model_variable_reference_converter_multiple_name(mocker):
     assert isinstance(statements[1].expression, ModelSaveExpression)
     assert isinstance(converter.model.value, ModelWrapper)
     assert converter.model.value.model == User
-    assert converter.variable.value == user_variable
+    assert converter.variable_ref.value == user_variable
 
 
 @pytest.mark.parametrize(

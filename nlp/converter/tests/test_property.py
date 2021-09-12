@@ -121,8 +121,8 @@ def test_reference_model_converter_property(doc, token_index, mocker):
     ))
     converter.test_case = test_case
     converter.model = NewModelProperty(converter)
-    converter.variable = ReferenceModelVariableProperty(converter)
-    converter.variable.calculate_value()
+    converter.variable_ref = ReferenceModelVariableProperty(converter)
+    converter.variable_ref.calculate_value()
     prop = ReferenceModelProperty(converter)
 
     assert isinstance(prop.value, ModelWrapper)

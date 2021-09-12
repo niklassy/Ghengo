@@ -45,7 +45,7 @@ class ResponseConverterBase(ClassConverter):
     @property
     def model_wrapper_from_request(self):
         """Returns the model_wrapper that is referenced by the variable of the request."""
-        referenced_variable = self.get_referenced_response_variable()
+        referenced_variable = self.get_response_variable_reference()
 
         if not referenced_variable:
             return None
@@ -117,7 +117,7 @@ class ResponseConverterBase(ClassConverter):
         return kwargs
 
     def get_lookout_kwargs(self):
-        serializer_class = self.get_referenced_response_variable().value.serializer_class
+        serializer_class = self.get_response_variable_reference().value.serializer_class
 
         return {
             'serializer': serializer_class() if serializer_class else None,
@@ -145,7 +145,7 @@ class ResponseConverterBase(ClassConverter):
 
         return compatibility
 
-    def get_referenced_response_variable(self) -> Optional[Variable]:
+    def get_response_variable_reference(self) -> Optional[VariableReference]:
         """
         Returns the variable that holds the request that was previously made and that is referenced here.
         """
@@ -209,15 +209,13 @@ class ResponseStatusCodeConverter(ResponseConverterBase):
 
     def prepare_statements(self, statements):
         if self.status_lookout.fittest_token:
-            response_var = self.get_referenced_response_variable()
-
             wrapper = ConverterInitArgumentWrapper(
                 token=self.status_lookout.fittest_token,
                 representative=self.status_lookout.fittest_keyword
             )
             extractor = self.get_extractor_instance(wrapper)
             exp = CompareExpression(
-                Attribute(response_var, 'status_code'),
+                Attribute(self.get_response_variable_reference(), 'status_code'),
                 CompareChar.EQUAL,
                 Argument(self.extract_and_handle_output(extractor)),
             )
@@ -242,7 +240,7 @@ class ResponseErrorConverter(ResponseConverterBase):
 
     def prepare_statements(self, statements):
         if self.error_lookout.fittest_token:
-            response_var = self.get_referenced_response_variable()
+            response_var = self.get_response_variable_reference()
 
             wrapper = ConverterInitArgumentWrapper(
                 token=self.error_lookout.fittest_token,
@@ -315,7 +313,7 @@ class ResponseConverter(ResponseConverterBase):
         if len(self.extractors) > 0 and not self.response_data_variable_already_present:
             statement = AssignmentStatement(
                 variable=self.response_data_variable,
-                expression=Expression(Attribute(self.get_referenced_response_variable(), 'data')),
+                expression=Expression(Attribute(self.get_response_variable_reference(), 'data')),
             )
             statements.append(statement)
 
@@ -500,7 +498,7 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
         statement = AssignmentStatement(
             variable=self.entry_variable,
             expression=Expression(
-                Index(Attribute(self.get_referenced_response_variable(), 'data'), extracted_number)
+                Index(Attribute(self.get_response_variable_reference(), 'data'), extracted_number)
             )
         )
 
@@ -596,7 +594,7 @@ class ManyLengthResponseConverter(ManyResponseConverter):
             return statements
 
         exp = CompareExpression(
-            FunctionCallExpression('len', [Attribute(self.get_referenced_response_variable(), 'data')]),
+            FunctionCallExpression('len', [Attribute(self.get_response_variable_reference(), 'data')]),
             compare_lookout.get_comparison_for_value(extracted_value),
             Argument(extracted_value),
         )

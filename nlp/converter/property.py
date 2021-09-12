@@ -261,8 +261,8 @@ class ReferenceModelProperty(NewModelProperty):
         In sentences like "Alice does ..." we don't know the model of alice initially. So if the variable of
         the converter is found, we can use the variable model instead.
         """
-        if self.converter.variable.value_determined is True and self.converter.variable.value is not None:
-            variable = self.converter.variable.value
+        if self.converter.variable_ref.value_determined is True and self.converter.variable_ref.value is not None:
+            variable = self.converter.variable_ref.value
             return variable.value.model_wrapper
 
         return super().value

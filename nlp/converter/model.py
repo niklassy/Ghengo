@@ -103,20 +103,25 @@ class ModelVariableReferenceConverter(ModelConverter):
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
         self.model_in_text = NewModelProperty(self)
+        self.variable_ref = ReferenceModelVariableProperty(self)
         self.model = ReferenceModelProperty(self)
-        self.variable = ReferenceModelVariableProperty(self)
 
         # the value of the variable is important for the model
-        self.variable.calculate_value()
+        self.variable_ref.calculate_value()
+
+    def prepare_converter(self):
+        """The model and variable token are disabled as an argument."""
+        super().prepare_converter()
+        self.block_token_as_argument(self.variable_ref.token)
 
     def get_variable_model_wrapper(self):
         """
         Returns the model wrapper of the variable that this references. Returns none if there is no variable.
         """
-        if not self.variable.value:
+        if not self.variable_ref.value:
             return None
 
-        variable_instance = self.variable.value
+        variable_instance = self.variable_ref.value
         return variable_instance.value.model_wrapper
 
     def get_document_compatibility(self):
@@ -132,7 +137,7 @@ class ModelVariableReferenceConverter(ModelConverter):
         extracted_value = self.extract_and_handle_output(extractor)
 
         statement = ModelFieldAssignmentStatement(
-            variable_ref=self.variable.value,
+            variable_ref=self.variable_ref.value,
             assigned_value=Argument(value=extracted_value),
             field_name=extractor.field_name,
         )
@@ -143,7 +148,7 @@ class ModelVariableReferenceConverter(ModelConverter):
         statements = super().finish_statements(statements)
         # only add a save statement if any model field was changed
         if len(statements) > 0:
-            statements.append(ModelSaveExpression(self.variable.value).as_statement())
+            statements.append(ModelSaveExpression(self.variable_ref.value).as_statement())
         return statements
 
 
@@ -153,16 +158,16 @@ class AssertPreviousModelConverter(ModelConverter):
     """
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
-        self.variable = ReferenceModelVariableProperty(self)
+        self.variable_ref = ReferenceModelVariableProperty(self)
         self.model = ReferenceModelProperty(self)
 
         # the value of the variable is important for the model
-        self.variable.calculate_value()
+        self.variable_ref.calculate_value()
 
     def get_document_compatibility(self):
         compatibility = super().get_document_compatibility()
 
-        if not self.variable.token:
+        if not self.variable_ref.token:
             compatibility *= 0.2
 
         # since this references a single entry, it is unlikely that this fits if multiple model entries are mentioned
@@ -174,7 +179,7 @@ class AssertPreviousModelConverter(ModelConverter):
     def prepare_statements(self, statements):
         # we need to refresh the data before checking the values
         statements.append(
-            Expression(Attribute(self.variable.value, 'refresh_from_db()')).as_statement()
+            Expression(Attribute(self.variable_ref.value, 'refresh_from_db()')).as_statement()
         )
 
         return statements
@@ -186,7 +191,7 @@ class AssertPreviousModelConverter(ModelConverter):
         extracted_value = extractor.extract_value()
 
         exp = CompareExpression(
-            Attribute(self.variable.value, extractor.field_name),
+            Attribute(self.variable_ref.value, extractor.field_name),
             compare_lookout.get_comparison_for_value(extracted_value),
             Argument(extracted_value),
         )
