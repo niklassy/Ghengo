@@ -16,5 +16,5 @@ class Attribute(OnAddToTestCaseListenerMixin, Replaceable, TemplateMixin):
     def get_children(self):
         return [self.attribute_name, self.variable_ref]
 
-    def get_template_context(self, line_indent, indent):
+    def get_template_context(self, line_indent, at_start_of_line):
         return {'variable_ref': self.variable_ref, 'attribute_name': self.attribute_name}

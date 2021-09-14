@@ -34,7 +34,7 @@ class GenerationWarningDescription(TemplateMixin):
         super().__init__()
         self.code = code
 
-    def get_template_context(self, line_indent, indent):
+    def get_template_context(self, line_indent, at_start_of_line):
         one_indent = self.get_indent_string(line_indent + PYTHON_INDENT_SPACES)
         two_indents = self.get_indent_string(line_indent + (PYTHON_INDENT_SPACES * 2))
 
@@ -70,7 +70,7 @@ class GenerationWarning(TemplateMixin):
         super().__init__()
         self.code = code
 
-    def get_template_context(self, line_indent, indent):
+    def get_template_context(self, line_indent, at_start_of_line):
         return {'code': self.code}
 
     @classmethod
@@ -88,8 +88,8 @@ class GenerationWarningCollection(TemplateMixin):
             return ''
         return '\n\n\n{warnings}'
 
-    def get_template_context(self, line_indent, indent):
-        return {'warnings': '\n'.join([w.to_template() for w in self.warnings])}
+    def get_template_context(self, line_indent, at_start_of_line):
+        return {'warnings': '\n'.join([w.to_template(0, at_start_of_line=True) for w in self.warnings])}
 
     def add_warning(self, code):
         warning = GenerationWarningDescription(code)

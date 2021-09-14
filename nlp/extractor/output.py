@@ -27,8 +27,9 @@ class ExtractorOutput(object):
         def __bool__(self):
             return False
 
-    def __init__(self, source, document):
+    def __init__(self, source, document, test_case):
         self.source = source
+        self.test_case = test_case
         self.document = document
         self.source_represents_output = False
 
@@ -82,7 +83,9 @@ class ExtractorOutput(object):
     @classmethod
     def copy_from(cls, extractor_output):
         """Copies an output instance from another one. It moves all attributes over to the new instance."""
-        copy = cls(document=extractor_output.document, source=extractor_output.source)
+        copy = cls(
+            document=extractor_output.document, source=extractor_output.source, test_case=extractor_output.test_case
+        )
         copy.source_represents_output = extractor_output.source_represents_output
         return copy
 
@@ -95,7 +98,19 @@ class ExtractorOutput(object):
 
         # any values in `<??>` are variables
         if self.string_represents_variable(value_str):
-            return Variable(value_str[1:-1], '')
+            value_str = value_str[1:-1]
+            tc_parameter = self.test_case.get_parameter_by_name(value_str)
+            tc_variable = self.test_case.get_variable_by_string(value_str, None)
+
+            # if the value is existent as a parameter, return its reference
+            if tc_parameter:
+                return tc_parameter.variable.get_reference()
+
+            # if the value exists as variable in the test case, return its reference
+            if tc_variable:
+                return tc_variable.get_reference()
+
+            return value_str
 
         raise ValueError()
 
@@ -418,8 +433,7 @@ class VariableOutput(ExtractorOutput):
     needs the statements. It will search for a statement with a similar variable and returns it if possible.
     """
     def __init__(self, source, document, test_case):
-        super().__init__(source, document)
-        self.test_case = test_case
+        super().__init__(source, document, test_case)
         self.statements = test_case.statements
 
     @classmethod

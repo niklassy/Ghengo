@@ -29,16 +29,36 @@ class TemplateMixin(object):
     def get_template(self):
         return self.template
 
-    def get_template_context(self, line_indent, indent):
+    def get_template_context(self, line_indent, at_start_of_line):
+        """
+        Returns the context that is injected into the template.
+
+        :argument: line_indent = stands for the current indentation of the line in the code
+        :argument: at_start_of_line = indicates that this instance will be at the start of a line in the code
+        """
         return {}
 
     @classmethod
     def get_indent_string(cls, indent):
+        """
+        Helper function to return an indent string.
+
+        :argument: line_indent (int) = number of indentations
+        """
         return ' ' * indent
 
-    def to_template(self, line_indent=0, indent=0):
-        return self.get_indent_string(indent) + self.get_template().format(
-            **self.get_template_context(line_indent, indent)
+    def to_template(self, line_indent=0, at_start_of_line=True):
+        """
+        This function will return the filled in template. It will also handle indentation.
+
+        :argument: line_indent = stands for the current indentation of the line in the code
+        :argument: at_start_of_line = indicates that this instance will be at the start of a line in the code
+        """
+        assert isinstance(at_start_of_line, bool)
+        indent = self.get_indent_string(line_indent) if at_start_of_line else ''
+
+        return indent + self.get_template().format(
+            **self.get_template_context(line_indent, at_start_of_line)
         )
 
     def __str__(self):

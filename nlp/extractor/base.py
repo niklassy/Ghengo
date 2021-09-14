@@ -35,7 +35,7 @@ class Extractor(object):
         """
         Returns the kwargs that are passed to the ExtractorOutput __init__.
         """
-        return {'source': self.source, 'document': self.document}
+        return {'source': self.source, 'document': self.document, 'test_case': self.test_case}
 
     def get_output_class(self):
         """Returns the output class of this extractor."""

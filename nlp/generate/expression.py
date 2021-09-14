@@ -20,7 +20,7 @@ class Expression(Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
         assert not isinstance(child, Variable), 'You must not use Variable as a child of Expression. ' \
                                                 'Use VariableReference instead'
 
-    def get_template_context(self, line_indent, indent):
+    def get_template_context(self, line_indent, at_start_of_line):
         return {'child': self.child if self.child else ''}
 
     def get_children(self):
@@ -47,14 +47,16 @@ class FunctionCallExpression(Expression):
         references = super().get_children()
         return references + [self.function_name] + self.function_kwargs
 
-    def get_template_context(self, line_indent, indent):
-        kwargs_template = ', '.join([kwarg.to_template(line_indent) for kwarg in self.function_kwargs])
+    def get_template_context(self, line_indent, at_start_of_line):
+        kwargs_template = ', '.join(
+            [kwarg.to_template(line_indent, at_start_of_line=False) for kwarg in self.function_kwargs]
+        )
 
         if len(str(self.function_name) + kwargs_template) > 100:
             long_content_start = '\n'
             long_content_end = '\n' + self.get_indent_string(line_indent)
             kwargs_template = ',\n'.join([kwarg.to_template(
-                line_indent, line_indent + PYTHON_INDENT_SPACES) for kwarg in self.function_kwargs])
+                line_indent + PYTHON_INDENT_SPACES, at_start_of_line=True) for kwarg in self.function_kwargs])
         else:
             long_content_start = ''
             long_content_end = ''
@@ -79,7 +81,7 @@ class ModelSaveExpression(FunctionCallExpression):
     def get_children(self):
         return [self.variable_ref]
 
-    def get_template_context(self, line_indent, indent):
+    def get_template_context(self, line_indent, at_start_of_line):
         context = super().get_template_context(line_indent, 0)
         context['variable_ref'] = self.variable_ref
         return context
@@ -90,8 +92,8 @@ class ModelQuerysetBaseExpression(FunctionCallExpression):
         self.model_wrapper = model_wrapper
         super().__init__('{}.objects.{}'.format(model_wrapper.name, function_name), function_kwargs)
 
-    def get_template_context(self, line_indent, indent):
-        context = super().get_template_context(line_indent, indent)
+    def get_template_context(self, line_indent, at_start_of_line):
+        context = super().get_template_context(line_indent, at_start_of_line)
         context['model'] = self.model_wrapper.name
         return context
 
@@ -139,7 +141,7 @@ class CompareExpression(Expression):
         references = super().get_children()
         return references + [self.value_1, self.value_2]
 
-    def get_template_context(self, line_indent, indent):
+    def get_template_context(self, line_indent, at_start_of_line):
         return {'compare_char': self.compare_char, 'value_1': self.value_1, 'value_2': self.value_2}
 
 
@@ -176,9 +178,9 @@ class ReverseCallExpression(FunctionCallExpression):
         references = super().get_children()
         return references + [self.reverse_name]
 
-    def get_template_context(self, line_indent, indent):
-        context = super().get_template_context(line_indent, indent)
-        context['reverse_name'] = self.reverse_name.to_template(line_indent, 0)
+    def get_template_context(self, line_indent, at_start_of_line):
+        context = super().get_template_context(line_indent, at_start_of_line)
+        context['reverse_name'] = self.reverse_name.to_template(line_indent, at_start_of_line=False)
 
         if len(self.function_kwargs) > 0:
             dict_content_str = ', '.join(['\'{}\': {}'.format(k.name, k.value) for k in self.function_kwargs])
@@ -208,12 +210,13 @@ class RequestExpression(FunctionCallExpression):
     def serializer_class(self):
         return self.url_wrapper.get_serializer_class(self.function_name)
 
-    def get_template_context(self, line_indent, indent):
-        context = super().get_template_context(line_indent, indent)
+    def get_template_context(self, line_indent, at_start_of_line):
+        context = super().get_template_context(line_indent, at_start_of_line)
 
-        context['reverse'] = self.reverse_expression.to_template(line_indent, 0)
+        context['reverse'] = self.reverse_expression.to_template(line_indent, at_start_of_line=False)
         dict_content_str = ', '.join(
-            ['\'{}\': {}'.format(k.name, k.value.to_template(line_indent)) for k in self.function_kwargs])
+            ['\'{}\': {}'.format(
+                k.name, k.value.to_template(line_indent, at_start_of_line=False)) for k in self.function_kwargs])
 
         # add `,` because it is an argument as well
         context['kwargs'] = ', {' + dict_content_str + '}' if dict_content_str else ''
@@ -281,11 +284,11 @@ class ModelM2MAddExpression(Expression):
         references = super().get_children()
         return references + [self.model_instance_variable_ref, self.add_variable_ref]
 
-    def get_template_context(self, line_indent, indent):
+    def get_template_context(self, line_indent, at_start_of_line):
         variable_ref = self.add_variable_ref
 
         if isinstance(self.add_variable_ref, TemplateMixin):
-            variable_ref = variable_ref.to_template(line_indent)
+            variable_ref = variable_ref.to_template(line_indent, at_start_of_line=False)
 
         return {
             'model_instance': self.model_instance_variable_ref,

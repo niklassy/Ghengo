@@ -9,6 +9,7 @@ from nlp.extractor.output import ExtractorOutput, NoneOutput, StringOutput, Dict
     IntegerOutput, FloatOutput, BooleanOutput, VariableOutput, ModelVariableOutput
 from nlp.generate.argument import Kwarg
 from nlp.generate.expression import Expression
+from nlp.generate.parameter import Parameter
 from nlp.generate.pytest import PyTestModelFactoryExpression
 from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.generate.statement import AssignmentStatement
@@ -20,6 +21,10 @@ from test_utils import assert_callable_raises
 nlp = Nlp.for_language(Languages.DE)
 document = nlp('Sie hat 3 Äpfel.')
 
+default_suite = PyTestTestSuite('bar')
+default_test_case = default_suite.create_and_add_test_case('qweqwe')
+default_test_case.add_parameter(Parameter('tc_parameter'))
+
 
 @pytest.mark.parametrize(
     'value, output', [
@@ -28,7 +33,7 @@ document = nlp('Sie hat 3 Äpfel.')
         (True, True),
         ('asd', 'asd'),
         ('"asd"', 'asd'),
-        ('"<asd>"', Variable('asd', '')),
+        ('"<tc_parameter>"', Variable('tc_parameter', '')),
         ('Wahr', True),
         ('{"1": 12}', {'1': 12}),
         ('[1, 2]', [1, 2]),
@@ -37,10 +42,10 @@ document = nlp('Sie hat 3 Äpfel.')
 )
 def test_extractor_output_python_source(value, output):
     """Check if guessing the input works as expected."""
-    extractor_output = ExtractorOutput(value, document)
+    extractor_output = ExtractorOutput(value, document, default_test_case)
     guessed_value = extractor_output.get_output()
     if isinstance(output, Variable):
-        assert isinstance(guessed_value, Variable)
+        assert isinstance(guessed_value, VariableReference)
     else:
         assert guessed_value == output
     assert isinstance(extractor_output.output_token, NoToken)
@@ -63,7 +68,7 @@ def test_extractor_output_python_source(value, output):
 )
 def test_extractor_output_token_source(doc, token_index, expected_output, source_output_index):
     """Check if the correct string is extracted given a specific token."""
-    extractor_output = ExtractorOutput(doc[token_index], doc)
+    extractor_output = ExtractorOutput(doc[token_index], doc, default_test_case)
     actual_output = extractor_output.get_output()
     assert expected_output == actual_output
     extractor_output.source_represents_output = True
@@ -85,7 +90,7 @@ def test_extractor_output_token_source(doc, token_index, expected_output, source
 )
 def test_none_extractor_output(doc, token_index):
     """Test if the none output always returns None."""
-    extractor_output = NoneOutput(doc[token_index], doc)
+    extractor_output = NoneOutput(doc[token_index], doc, default_test_case)
     assert extractor_output.get_output() is None
     assert not extractor_output.output_token
 
@@ -95,15 +100,15 @@ def test_none_extractor_output(doc, token_index):
         (nlp('Gegeben sei ein Benutzer mit dem Namen Franz'), 6, 'Franz', 7),
         (nlp('Gegeben sei ein Dach mit der Länge 2'), 6, '2', 7),
         (nlp('Gegeben sei ein Auftrag mit dem Typen "ABCD"'), 6, 'ABCD', 7),
-        (nlp('Gegeben sei ein Auftrag mit dem Typen "<my_type>"'), 6, Variable('my_type', ''), 7),
+        (nlp('Gegeben sei ein Auftrag mit dem Typen "<tc_parameter>"'), 6, Variable('tc_parameter', ''), 7),
         (nlp('Gegeben sei ein Benutzer der Fußball spielt.'), 6, 'True', 6),
     ]
 )
 def test_string_extractor_output_doc(doc, token_index, expected_output, source_output_index):
     """Test if the string output always returns stringifies the output."""
-    extractor_output = StringOutput(doc[token_index], doc)
+    extractor_output = StringOutput(doc[token_index], doc, default_test_case)
     if isinstance(expected_output, Variable):
-        assert isinstance(extractor_output.get_output(), Variable)
+        assert isinstance(extractor_output.get_output(), VariableReference)
         assert extractor_output.get_output().name_predetermined == expected_output.name_predetermined
     else:
         assert extractor_output.get_output() == expected_output
@@ -116,7 +121,7 @@ def test_string_extractor_output_doc(doc, token_index, expected_output, source_o
         (1, '1'),
         ('Hallo Test', 'Hallo Test'),
         ('"blubb"', 'blubb'),
-        ('<test>', Variable('test', '')),
+        ('<tc_parameter>', Variable('tc_parameter', '')),
         ('{"1": 12}', "{'1': 12}"),
         ('[1, 2]', "[1, 2]"),
         ('(1, 2)', "(1, 2)"),
@@ -124,12 +129,12 @@ def test_string_extractor_output_doc(doc, token_index, expected_output, source_o
 )
 def test_string_extractor_output_python_source(source, expected_output):
     """Check that the string output handles python sources correctly."""
-    extractor_output = StringOutput(source, document)
+    extractor_output = StringOutput(source, document, default_test_case)
     actual_output = extractor_output.get_output()
 
     assert not extractor_output.output_token
     if isinstance(expected_output, Variable):
-        assert isinstance(extractor_output.get_output(), Variable)
+        assert isinstance(extractor_output.get_output(), VariableReference)
         assert extractor_output.get_output().name_predetermined == expected_output.name_predetermined
     else:
         assert actual_output == expected_output
@@ -138,17 +143,17 @@ def test_string_extractor_output_python_source(source, expected_output):
 @pytest.mark.parametrize(
     'doc, token_index, expected_output, raises', [
         (nlp('Gegeben sei ein Benutzer mit dem Namen "{\'1\': 123}"'), 6, {'1': 123}, False),
-        (nlp('Gegeben sei ein Benutzer mit dem Namen "<name>"'), 6, Variable('name', ''), False),
+        (nlp('Gegeben sei ein Benutzer mit dem Namen "<tc_parameter>"'), 6, Variable('tc_parameter', ''), False),
         (nlp('Gegeben sei ein Benutzer mit dem Namen Alice'), 6, None, True),
     ]
 )
 def test_dict_extractor_output_doc_source(doc, token_index, expected_output, raises):
     """Test if the dict output always returns a dictionary or an error."""
-    extractor_output = DictOutput(doc[token_index], doc)
+    extractor_output = DictOutput(doc[token_index], doc, default_test_case)
 
     if not raises:
         if isinstance(expected_output, Variable):
-            assert isinstance(extractor_output.get_output(), Variable)
+            assert isinstance(extractor_output.get_output(), VariableReference)
             assert extractor_output.get_output().name_predetermined == expected_output.name_predetermined
         else:
             assert extractor_output.get_output() == expected_output
@@ -167,7 +172,7 @@ def test_dict_extractor_output_doc_source(doc, token_index, expected_output, rai
 )
 def test_dict_extractor_output_python_source(source, expected_output, raises):
     """Check that the dict output handles python sources as expected."""
-    extractor_output = DictOutput(source, document)
+    extractor_output = DictOutput(source, document, default_test_case)
 
     if not raises:
         if isinstance(expected_output, Variable):
@@ -187,17 +192,17 @@ def test_dict_extractor_output_python_source(source, expected_output, raises):
         (nlp('Gegeben sei ein Benutzer mit dem Alter "12"'), 6, '12', False, 7),
         (nlp('Gegeben sei ein Benutzer mit dem Alter Alice'), 6, None, True, None),
         (nlp('Gegeben sei ein Dach mit der Länge 13'), 6, '13', False, 7),
-        (nlp('Gegeben sei ein Dach mit der Länge "<length>"'), 6, Variable('length', ''), False, 7),
+        (nlp('Gegeben sei ein Dach mit der Länge "<tc_parameter>"'), 6, Variable('tc_parameter', ''), False, 7),
         (nlp('Gegeben sei ein Dach mit der Länge "3.123"'), 6, '3.123', False, 7),
     ]
 )
 def test_number_as_string_output_doc_source(doc, token_index, expected_output, raises, source_output_index):
     """Check if numbers are extracted correctly and returned as a string."""
-    extractor_output = NumberAsStringOutput(doc[token_index], doc)
+    extractor_output = NumberAsStringOutput(doc[token_index], doc, default_test_case)
 
     if not raises:
         if isinstance(expected_output, Variable):
-            assert isinstance(extractor_output.get_output(), Variable)
+            assert isinstance(extractor_output.get_output(), VariableReference)
             assert extractor_output.get_output().name_predetermined == expected_output.name_predetermined
         else:
             assert extractor_output.get_output() == expected_output
@@ -209,7 +214,7 @@ def test_number_as_string_output_doc_source(doc, token_index, expected_output, r
 @pytest.mark.parametrize(
     'source, expected_output, raises', [
         ('1', '1', False),
-        ('"<test>"', Variable('test', ''), False),
+        ('"<tc_parameter>"', Variable('tc_parameter', ''), False),
         ('3.22', '3.22', False),
         (1, '1', False),
         ('[1, 2]', None, True),
@@ -219,11 +224,11 @@ def test_number_as_string_output_doc_source(doc, token_index, expected_output, r
 )
 def test_dict_extractor_output_python_source(source, expected_output, raises):
     """Check that the dict output handles python sources as expected."""
-    extractor_output = NumberAsStringOutput(source, document)
+    extractor_output = NumberAsStringOutput(source, document, default_test_case)
 
     if not raises:
         if isinstance(expected_output, Variable):
-            assert isinstance(extractor_output.get_output(), Variable)
+            assert isinstance(extractor_output.get_output(), VariableReference)
             assert extractor_output.get_output().name_predetermined == expected_output.name_predetermined
         else:
             assert extractor_output.get_output() == expected_output
@@ -238,17 +243,17 @@ def test_dict_extractor_output_python_source(source, expected_output, raises):
         (nlp('Gegeben sei der zweite Benutzer'), 4, 2, False, 3),
         (nlp('Gegeben sei ein Benutzer mit dem Alter Alice'), 6, None, True, None),
         (nlp('Gegeben sei ein Dach mit der Länge 13'), 6, 13, False, 7),
-        (nlp('Gegeben sei ein Dach mit der Länge "<length>"'), 6, Variable('length', ''), False, 7),
+        (nlp('Gegeben sei ein Dach mit der Länge "<tc_parameter>"'), 6, Variable('tc_parameter', ''), False, 7),
         (nlp('Gegeben sei ein Dach mit der Länge "3"'), 6, 3, False, 7),
     ]
 )
 def test_integer_extractor_output_doc_source(doc, token_index, expected_output, raises, source_output_index):
     """Check if integers are extracted correctly."""
-    extractor_output = IntegerOutput(doc[token_index], doc)
+    extractor_output = IntegerOutput(doc[token_index], doc, default_test_case)
 
     if not raises:
         if isinstance(expected_output, Variable):
-            assert isinstance(extractor_output.get_output(), Variable)
+            assert isinstance(extractor_output.get_output(), VariableReference)
             assert extractor_output.get_output().name_predetermined == expected_output.name_predetermined
         else:
             assert extractor_output.get_output() == expected_output
@@ -260,7 +265,7 @@ def test_integer_extractor_output_doc_source(doc, token_index, expected_output, 
 @pytest.mark.parametrize(
     'source, expected_output, raises', [
         ('1', 1, False),
-        ('"<test>"', Variable('test', ''), False),
+        ('"<tc_parameter>"', Variable('tc_parameter', ''), False),
         ('3.22', 3, False),
         (1, 1, False),
         ('[1, 2]', None, True),
@@ -270,11 +275,11 @@ def test_integer_extractor_output_doc_source(doc, token_index, expected_output, 
 )
 def test_integer_extractor_output_python_source(source, expected_output, raises):
     """Check that the dict output handles python sources as expected."""
-    extractor_output = IntegerOutput(source, document)
+    extractor_output = IntegerOutput(source, document, default_test_case)
 
     if not raises:
         if isinstance(expected_output, Variable):
-            assert isinstance(extractor_output.get_output(), Variable)
+            assert isinstance(extractor_output.get_output(), VariableReference)
             assert extractor_output.get_output().name_predetermined == expected_output.name_predetermined
         else:
             assert extractor_output.get_output() == expected_output
@@ -294,7 +299,7 @@ def test_integer_extractor_output_python_source(source, expected_output, raises)
 )
 def test_float_extractor_output_doc_source(doc, token_index, expected_output, raises, source_output_index):
     """Check if floats are extracted correctly."""
-    extractor_output = FloatOutput(doc[token_index], doc)
+    extractor_output = FloatOutput(doc[token_index], doc, default_test_case)
 
     if not raises:
         assert extractor_output.get_output() == expected_output
@@ -316,7 +321,7 @@ def test_float_extractor_output_doc_source(doc, token_index, expected_output, ra
 )
 def test_float_extractor_output_python_source(source, expected_output, raises):
     """Check that the float output handles python sources as expected."""
-    extractor_output = FloatOutput(source, document)
+    extractor_output = FloatOutput(source, document, default_test_case)
 
     if not raises:
         if isinstance(expected_output, Variable):
@@ -332,7 +337,7 @@ def test_float_extractor_output_python_source(source, expected_output, raises):
     'doc, token_index, expected_output, source_output_index', [
         (nlp('Gegeben sei ein Benutzer der Admin ist'), 5, True, 1),
         (nlp('Gegeben sei ein Benutzer der kein Admin ist'), 6, False, 7),
-        (nlp('Gegeben sei ein Benutzer der "<is_admin>" ist'), 5, Variable('is_admin', ''), 5),
+        (nlp('Gegeben sei ein Benutzer der "<tc_parameter>" ist'), 5, Variable('tc_parameter', 'tc_parameter'), 5),
         (nlp('Gegeben sei ein Benutzer der Fußball spielt'), 5, True, 1),
         (nlp('Gegeben sei ein Benutzer der kein Fußball spielt'), 6, False, 7),
         (nlp('Gegeben sei ein Benutzer der nicht Fußball spielt.'), 6, False, 7),
@@ -341,7 +346,7 @@ def test_float_extractor_output_python_source(source, expected_output, raises):
 )
 def test_bool_extractor_output_doc_source(doc, token_index, expected_output, source_output_index):
     """Check if floats are extracted correctly."""
-    extractor_output = BooleanOutput(doc[token_index], doc)
+    extractor_output = BooleanOutput(doc[token_index], doc, default_test_case)
     assert extractor_output.get_output() == expected_output
     assert extractor_output.output_token == doc[source_output_index]
 
@@ -356,16 +361,16 @@ def test_bool_extractor_output_doc_source(doc, token_index, expected_output, sou
         ('false', False, False),
         ('ja', True, False),
         ('asdasd', False, False),
-        ('<test>', Variable('test', ''), False),
+        ('<tc_parameter>', Variable('tc_parameter', ''), False),
     ]
 )
 def test_float_extractor_output_python_source(source, expected_output, raises):
     """Check that the float output handles python sources as expected."""
-    extractor_output = BooleanOutput(source, document)
+    extractor_output = BooleanOutput(source, document, default_test_case)
 
     if not raises:
         if isinstance(expected_output, Variable):
-            assert isinstance(extractor_output.get_output(), Variable)
+            assert isinstance(extractor_output.get_output(), VariableReference)
             assert extractor_output.get_output().name_predetermined == expected_output.name_predetermined
         else:
             assert extractor_output.get_output() == expected_output
@@ -378,7 +383,7 @@ def test_float_extractor_output_python_source(source, expected_output, raises):
         (nlp('Gegeben sei ein Benutzer der Bob als Freund hat'), 7, False, 5, None),
         (nlp('Gegeben sei ein Benutzer der Alice als Freund hat'), 7, True, 5, None),
         (nlp('Gegeben sei ein Benutzer der den Freund Bob hat'), 6, False, 7, None),
-        (nlp('Gegeben sei ein Benutzer der den Freund "<friend>" hat'), 6, False, 7, Variable('friend', '')),
+        (nlp('Gegeben sei ein Benutzer der den Freund "<tc_parameter>" hat'), 6, False, 7, Variable('tc_parameter', '')),
         (nlp('Gegeben sei ein Benutzer der den Freund "Bob" hat'), 6, False, 7, None),
         (nlp('Gegeben sei ein Benutzer der den Freund asdasdasd hat'), 6, True, None, None),
     ]
@@ -387,6 +392,7 @@ def test_variable_extractor_output_doc_source(doc, token_index, raises, source_o
     """Check if variables are handled correctly."""
     suite = PyTestTestSuite('bar')
     test_case = suite.create_and_add_test_case('qweqwe')
+    test_case.add_parameter(Parameter('tc_parameter'))
     var = Variable('Bob', 'Order')
     test_case.add_statement(AssignmentStatement(
         expression=Expression(),
@@ -397,7 +403,7 @@ def test_variable_extractor_output_doc_source(doc, token_index, raises, source_o
     if not raises:
         output = extractor_output.get_output()
         if variable_in_text:
-            assert isinstance(output, Variable)
+            assert isinstance(output, VariableReference)
             assert output.name_predetermined == variable_in_text.name_predetermined
             assert output != var
         else:
@@ -410,7 +416,7 @@ def test_variable_extractor_output_doc_source(doc, token_index, raises, source_o
 
 @pytest.mark.parametrize(
     'source, expected_output, raises', [
-        ('<test>', Variable('test', ''), False),
+        ('<tc_parameter>', Variable('tc_parameter', ''), False),
         ('123', None, True),
         (123, None, True),
         ('[1, 2]', None, True),
@@ -421,11 +427,12 @@ def test_variable_extractor_output_python_source(source, expected_output, raises
     """Check that the float output handles python sources as expected."""
     suite = PyTestTestSuite('bar')
     test_case = suite.create_and_add_test_case('qweqwe')
+    test_case.add_parameter(Parameter('tc_parameter'))
     extractor_output = VariableOutput(source, document, test_case)
 
     if not raises:
         if isinstance(expected_output, Variable):
-            assert isinstance(extractor_output.get_output(), Variable)
+            assert isinstance(extractor_output.get_output(), VariableReference)
             assert extractor_output.get_output().name_predetermined == expected_output.name_predetermined
         else:
             assert extractor_output.get_output() == expected_output
@@ -439,7 +446,7 @@ def test_variable_extractor_output_python_source(source, expected_output, raises
         (nlp('Gegeben sei ein Benutzer der Bob als Freund hat'), 7, True, Order, None, None),   # <- wrong model
         (nlp('Gegeben sei ein Benutzer der Alice als Freund hat'), 7, True, User, None, None),
         (nlp('Gegeben sei ein Benutzer der den Freund Bob hat'), 6, False, User, 7, None),
-        (nlp('Gegeben sei ein Benutzer der den Freund "<friend>" hat'), 6, False, User, 7, Variable('friend', '')),
+        (nlp('Gegeben sei ein Benutzer der den Freund "<tc_parameter>" hat'), 6, False, User, 7, Variable('tc_parameter', '')),
         (nlp('Gegeben sei ein Benutzer der den Freund "Bob" hat'), 6, False, User, 7, None),
         (nlp('Gegeben sei ein Benutzer der den Freund "Bob" hat'), 6, True, Order, None, None),        # <- wrong model
         (nlp('Gegeben sei ein Benutzer der den Freund asdasdasd hat'), 6, True, User, None, None),
@@ -449,6 +456,7 @@ def test_model_variable_extractor_output(doc, token_index, raises, model_input, 
     """Check if variables are handled correctly."""
     suite = PyTestTestSuite('bar')
     test_case = suite.create_and_add_test_case('qweqwe')
+    test_case.add_parameter(Parameter('tc_parameter'))
     var = Variable('Bob', 'User')
     test_case.add_statement(AssignmentStatement(
         expression=PyTestModelFactoryExpression(ModelWrapper(User, None), [Kwarg('bar', 123)]),
@@ -460,7 +468,7 @@ def test_model_variable_extractor_output(doc, token_index, raises, model_input, 
         output = extractor_output.get_output()
 
         if variable_in_text:
-            assert isinstance(output, Variable)
+            assert isinstance(output, VariableReference)
             assert output.name_predetermined == variable_in_text.name_predetermined
             assert output != var
         else:
