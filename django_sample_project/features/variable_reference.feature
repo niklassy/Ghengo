@@ -32,15 +32,25 @@ Funktionalität: Reference
 #    Wenn Alice einen Auftrag mit der Datei "asd" erstellt
 
   Szenario:
-    Gegeben sei ein Todo 1
-    Und ein Auftrag 1 mit dem Todo 1
+    Gegeben seien die To-Dos, die nicht aus dem anderen System kommen
+      | text | number | owner |
+      | qwe  | 123123123123123123123123123123123123123123123123123123123123    | alice |
+      | qwe  | 123123123123123123123123123123123123123123123123123123123123    | alice |
 
-  Szenario:
-    Gegeben sei ein Auftrag 1
-    Und der Auftrag 1 hat den Namen "foo"
+  Szenariogrundriss:
+    Gegeben sei ein Auftrag mit dem Namen "<name>"
 
-  Szenario:
-    Gegeben sei ein Benutzer mit der Benutzerberechtigung "Auftrag sehen"
+    Beispiele:
+      | name |
+      | asdasdasdasdasdasdasdasd123123123123123123123123123123     |
+      | asdasdasdasdasdasdasdqweqweqweqwe3123123123123123123123123123     |
+
+#  Szenario:
+#    Gegeben sei ein Auftrag 1
+#    Und der Auftrag 1 hat den Namen "foo"
+#
+#  Szenario:
+#    Gegeben sei ein Benutzer mit der Benutzerberechtigung "Auftrag sehen"
 
 #    Dann sollten Benutzer mit dem Vornamen "Alice" existieren
 

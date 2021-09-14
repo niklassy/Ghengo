@@ -64,11 +64,6 @@ class FileApiModelFieldExtractor(ApiModelFieldExtractor):
     field_classes = (FileField,)
     output_class = FileVariableOutput
 
-    def get_output_kwargs(self):
-        kwargs = super().get_output_kwargs()
-        kwargs['test_case'] = self.test_case
-        return kwargs
-
 
 class ModelApiFieldExtractor(ApiModelFieldExtractor):
     field_classes = (ModelField,)
@@ -93,7 +88,6 @@ class ForeignKeyApiFieldExtractor(ApiModelFieldExtractor):
     def get_output_kwargs(self):
         kwargs = super().get_output_kwargs()
         kwargs['model'] = self.field.get_queryset().model
-        kwargs['test_case'] = self.test_case
         return kwargs
 
     def _get_output_value(self, output_instance):

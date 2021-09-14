@@ -11,9 +11,9 @@ class Statement(Replaceable, TemplateMixin, OnAddToTestCaseListenerMixin):
         self.expression = expression
         self.comment = comment
 
-    def get_template_context(self, line_indent, indent):
+    def get_template_context(self, line_indent, at_start_of_line):
         return {
-            'expression': self.expression.to_template(line_indent),
+            'expression': self.expression.to_template(line_indent, at_start_of_line=False),
             'comment': '   # {}'.format(self.comment) if self.comment else ''
         }
 
@@ -86,8 +86,8 @@ class AssignmentStatement(Statement):
             return self.template
         return '{expression}{comment}'
 
-    def get_template_context(self, line_indent, indent):
-        context = super().get_template_context(line_indent, indent)
+    def get_template_context(self, line_indent, at_start_of_line):
+        context = super().get_template_context(line_indent, at_start_of_line)
         context['variable'] = self.variable
 
         return context
@@ -107,8 +107,8 @@ class ModelFieldAssignmentStatement(Statement):
         children.append(self.variable_ref)
         return children
 
-    def get_template_context(self, line_indent, indent):
-        context = super().get_template_context(line_indent, indent)
+    def get_template_context(self, line_indent, at_start_of_line):
+        context = super().get_template_context(line_indent, at_start_of_line)
         context['variable_ref'] = self.variable_ref
         context['field_name'] = self.field_name
         return context
@@ -121,7 +121,7 @@ class PassStatement(Statement):
         # there is no expression in a pass statement
         super().__init__(None)
 
-    def get_template_context(self, line_indent, indent):
+    def get_template_context(self, line_indent, at_start_of_line):
         return {}
 
 

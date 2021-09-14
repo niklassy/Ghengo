@@ -44,7 +44,7 @@ class Argument(OnAddToTestCaseListenerMixin, Replaceable, TemplateMixin):
     def get_string_for_template(cls, string):
         return '\'{}\''.format(string) if isinstance(string, str) else str(string)
 
-    def get_template_context(self, line_indent, indent):
+    def get_template_context(self, line_indent, at_start_of_line):
         return {'value': self.value}
 
 
@@ -52,13 +52,13 @@ class _NestedArgument(Argument):
     start_symbol = ''
     end_symbol = ''
 
-    def get_template_context(self, line_indent, indent):
+    def get_template_context(self, line_indent, at_start_of_line):
         if len(str(self.value)) <= 100:
             value = self.value
         else:
             children = [Argument(value) for value in self.value]
             child_template = ',\n'.join(argument.to_template(
-                line_indent + PYTHON_INDENT_SPACES, line_indent + PYTHON_INDENT_SPACES) for argument in children)
+                line_indent + PYTHON_INDENT_SPACES, at_start_of_line=True) for argument in children)
 
             value = '{start_symbol}\n{child}\n{base_indent}{end_symbol}'.format(
                 start_symbol=self.start_symbol,
@@ -86,7 +86,7 @@ class SetArgument(_NestedArgument):
 
 
 class StringArgument(Argument):
-    def get_template_context(self, line_indent, indent):
+    def get_template_context(self, line_indent, at_start_of_line):
         return {'value': '\'{}\''.format(self.value)}
 
 
@@ -101,5 +101,5 @@ class Kwarg(OnAddToTestCaseListenerMixin, TemplateMixin):
     def get_children(self):
         return [self.value]
 
-    def get_template_context(self, line_indent, indent):
-        return {'name': self.name, 'value': self.value.to_template(line_indent, 0)}
+    def get_template_context(self, line_indent, at_start_of_line):
+        return {'name': self.name, 'value': self.value.to_template(line_indent, at_start_of_line=False)}

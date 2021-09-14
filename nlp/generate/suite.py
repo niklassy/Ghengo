@@ -31,7 +31,7 @@ class Import(Replaceable, TemplateMixin):
 
         return 'from {path} import {variables}'
 
-    def get_template_context(self, line_indent, indent):
+    def get_template_context(self, line_indent, at_start_of_line):
         return {
             'path': self.path,
             'variables': ', '.join(self.variables),
@@ -53,7 +53,7 @@ class ImportPlaceholder(Import):
     def get_template(self):
         return '{todo_message}\n{variables}'
 
-    def get_template_context(self, line_indent, indent):
+    def get_template_context(self, line_indent, at_start_of_line):
         todo_message = '\n#    '.join(self.todo_message.split('\n'))
         variables = '\n'.join('{} = None   # <- fix'.format(v) for v in self.variables)
 
@@ -106,14 +106,15 @@ class TestCaseBase(Replaceable, TemplateMixin):
             return [PassStatement()]
         return self._statements
 
-    def get_template_context(self, line_indent, indent):
+    def get_template_context(self, line_indent, at_start_of_line):
         return {
-            'decorators': '\n'.join(decorator.to_template(line_indent) for decorator in self.decorators),
+            'decorators': '\n'.join(
+                decorator.to_template(0, at_start_of_line=True) for decorator in self.decorators),
             'decorator_separator': '\n' if len(self.decorators) > 0 else '',
             'name': to_function_name('test_{}'.format(self.name.replace(' ', '_'))),
-            'parameters': ', '.join(para.to_template() for para in self.parameters),
+            'parameters': ', '.join(para.to_template(0, at_start_of_line=False) for para in self.parameters),
             'statements': '\n'.join(statement.to_template(
-                line_indent + PYTHON_INDENT_SPACES, line_indent + PYTHON_INDENT_SPACES) for statement in self.statements),
+                line_indent + PYTHON_INDENT_SPACES, at_start_of_line=True) for statement in self.statements),
         }
 
     def get_variable_by_string(self, string, reference_string):
@@ -137,6 +138,14 @@ class TestCaseBase(Replaceable, TemplateMixin):
                 return True
 
         return False
+
+    def get_parameter_by_name(self, name):
+        """Check if the test case has a given parameter."""
+        for parameter in self.parameters:
+            if Parameter(name) == parameter:
+                return parameter
+
+        return None
 
     def add_decorator(self, decorator):
         """Add a decorator to a test case."""
@@ -192,12 +201,12 @@ class TestSuiteBase(Replaceable, TemplateMixin):
         for test_case in self.test_cases:
             test_case.clean_up()
 
-    def get_template_context(self, line_indent, indent):
+    def get_template_context(self, line_indent, at_start_of_line):
         return {
             'warning_collection': self.warning_collection.to_template(),
-            'imports': '\n'.join(import_entry.to_template(line_indent) for import_entry in self.imports),
+            'imports': '\n'.join(import_entry.to_template() for import_entry in self.imports),
             'separator': '\n\n\n' if len(self.imports) > 0 else '',
-            'test_cases': '\n\n\n'.join(test_case.to_template(line_indent) for test_case in self.test_cases)
+            'test_cases': '\n\n\n'.join(test_case.to_template() for test_case in self.test_cases)
         }
 
     def create_and_add_test_case(self, name) -> TestCaseBase:

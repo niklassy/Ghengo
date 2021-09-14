@@ -55,11 +55,6 @@ class FileModelFieldExtractor(ModelFieldExtractor):
     field_classes = (FileField,)
     output_class = FileVariableOutput
 
-    def get_output_kwargs(self):
-        kwargs = super().get_output_kwargs()
-        kwargs['test_case'] = self.test_case
-        return kwargs
-
 
 class ForeignKeyModelFieldExtractor(ModelFieldExtractor):
     field_classes = (ForeignKey,)
@@ -67,7 +62,6 @@ class ForeignKeyModelFieldExtractor(ModelFieldExtractor):
 
     def get_output_kwargs(self):
         kwargs = super().get_output_kwargs()
-        kwargs['test_case'] = self.test_case
         kwargs['model'] = self.field.related_model
         return kwargs
 
@@ -112,7 +106,6 @@ class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):
 
     def get_output_kwargs(self):
         kwargs = super().get_output_kwargs()
-        del kwargs['test_case']
         del kwargs['model']
         return kwargs
 
