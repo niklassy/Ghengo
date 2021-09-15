@@ -32,18 +32,8 @@ Funktionalität: Reference
 #    Wenn Alice einen Auftrag mit der Datei "asd" erstellt
 
   Szenario:
-    Gegeben seien die To-Dos, die nicht aus dem anderen System kommen
-      | text | number | owner |
-      | qwe  | 123123123123123123123123123123123123123123123123123123123123    | alice |
-      | qwe  | 123123123123123123123123123123123123123123123123123123123123    | alice |
+    Gegeben sei ein Auftrag, der abgeschlossen ist und aus einem anderen System kommt
 
-  Szenariogrundriss:
-    Gegeben sei ein Auftrag mit dem Namen "<name>"
-
-    Beispiele:
-      | name |
-      | asdasdasdasdasdasdasdasd123123123123123123123123123123     |
-      | asdasdasdasdasdasdasdqweqweqweqwe3123123123123123123123123123     |
 
 #  Szenario:
 #    Gegeben sei ein Auftrag 1

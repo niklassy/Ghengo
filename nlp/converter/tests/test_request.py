@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 
 from core.constants import Languages
 from django_meta.api import Methods
-from django_meta.model import ModelWrapper
+from django_meta.model import ExistingModelWrapper
 from django_meta.project import DjangoProject
 from django_sample_project.apps.order.models import Order
 from gherkin.ast import Given
@@ -29,7 +29,7 @@ def test_model_request_converter(mocker):
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(User, None), [Kwarg('bar', 123)]),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(User, None), [Kwarg('bar', 123)]),
         variable=Variable('Alice', 'User'),  # <-- variable defined
     ))
     converter = RequestConverter(nlp('Wenn Alice einen Auftrag holt'), given, django_project, test_case)
@@ -52,7 +52,7 @@ def test_model_request_converter_anonymous(mocker):
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(User, None), [Kwarg('bar', 123)]),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(User, None), [Kwarg('bar', 123)]),
         variable=Variable('Alice', 'User'),  # <-- variable defined
     ))
     converter = RequestConverter(nlp('Wenn ein Auftrag erstellt wird'), given, django_project, test_case)
@@ -80,12 +80,12 @@ def test_model_request_converter_reverse_name(doc, method, reverse_name, mocker)
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(User, None), []),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(User, None), []),
         variable=Variable('Alice', 'User'),
     ))
     order_variable = Variable('1', 'Order')
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(Order, None), []),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(Order, None), []),
         variable=order_variable,
     ))
     converter = RequestConverter(doc, given, django_project, test_case)
@@ -120,19 +120,19 @@ def test_model_request_converter_with_reference(
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(User, None), []),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(User, None), []),
         variable=Variable(variable_string, 'User'),
     ))
     order_variable = Variable('1', 'Order')
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(Order, None), []),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(Order, None), []),
         variable=order_variable,
     ))
     converter = RequestConverter(doc, given, django_project, test_case)
     statements = converter.convert_to_statements()
 
     # check all the properties
-    assert isinstance(converter.model.value, ModelWrapper)
+    assert isinstance(converter.model.value, ExistingModelWrapper)
     assert converter.model.value.model == Order
     assert converter.model.token == doc[model_token_index]
     if model_variable_index is not None:
@@ -178,7 +178,7 @@ def test_model_request_converter_compatibility(doc, min_compatibility, max_compa
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(User, None), []),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(User, None), []),
         variable=Variable('Alice', 'User'),
     ))
     converter = RequestConverter(

@@ -127,3 +127,6 @@ class _Nlp(object):
 
 
 Nlp = _Nlp()
+
+b = Nlp.for_language('de')('Gegeben sei ein abgeschlossener Auftrag mit der Nummer 3.')
+c = 1

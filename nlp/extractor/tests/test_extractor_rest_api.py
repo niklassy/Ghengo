@@ -3,8 +3,8 @@ from django.db.models import CharField
 from rest_framework import serializers
 
 from core.constants import Languages
-from django_meta.api import AbstractApiFieldWrapper, ApiFieldWrapper
-from django_meta.model import ModelWrapper
+from django_meta.api import ApiFieldWrapper, ExistingApiFieldWrapper
+from django_meta.model import ExistingModelWrapper
 from django_sample_project.apps.order.api.serializers import OrderSerializer
 from django_sample_project.apps.order.models import ToDo
 from nlp.extractor.exception import ExtractionError
@@ -25,7 +25,7 @@ from test_utils import assert_callable_raises
 
 suite = PyTestTestSuite('bar')
 default_test_case = suite.create_and_add_test_case('foo')
-field = AbstractApiFieldWrapper('name')
+field = ApiFieldWrapper('name')
 nlp = Nlp.for_language(Languages.DE)
 document = nlp('Sie hat 3 Äpfel.')
 
@@ -148,13 +148,13 @@ def test_rest_dict_extractor(doc, token_index, expected_value):
 
 def test_model_field_get_output_class():
     """Check that the model api field extractor determines the output class correctly."""
-    field_read_only = AbstractApiFieldWrapper('name')
+    field_read_only = ApiFieldWrapper('name')
     field_read_only.read_only = True
 
     extractor = ModelApiFieldExtractor(default_test_case, document[1], field_read_only, document)
     assert extractor.get_output_class() == NoneOutput
 
-    field_valid = AbstractApiFieldWrapper('name_2')
+    field_valid = ApiFieldWrapper('name_2')
     serializer = OrderSerializer()
     field_valid.field = serializer.fields.fields.get('name')
     extractor = ModelApiFieldExtractor(default_test_case, document[1], field_valid, document)
@@ -174,11 +174,11 @@ def test_fk_rest_extractor(doc, token_index, expected_value):
     test_case = test_suite.create_and_add_test_case('qweqwe')
     var = Variable('Bob', 'ToDo')
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(ToDo, None), [Kwarg('bar', 123)]),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(ToDo, None), [Kwarg('bar', 123)]),
         variable=var,  # <-- variable defined
     ))
 
-    fk_field = ApiFieldWrapper(serializers.PrimaryKeyRelatedField(queryset=ToDo.objects.all()))
+    fk_field = ExistingApiFieldWrapper(serializers.PrimaryKeyRelatedField(queryset=ToDo.objects.all()))
     extractor = ForeignKeyApiFieldExtractor(test_case, doc[token_index], fk_field, doc)
     extracted_value = extractor.extract_value()
 

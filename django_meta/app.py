@@ -1,4 +1,4 @@
-from django_meta.model import ModelWrapper
+from django_meta.model import ExistingModelWrapper
 
 
 class AppWrapper(object):
@@ -11,7 +11,7 @@ class AppWrapper(object):
 
         for model in self.app.get_models():
             if as_wrapper:
-                model = ModelWrapper(model, self)
+                model = ExistingModelWrapper(model, self)
             output.append(model)
 
         return output

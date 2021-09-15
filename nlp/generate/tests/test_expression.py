@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 
-from django_meta.model import ModelWrapper, AbstractModelWrapper
+from django_meta.model import ExistingModelWrapper, ModelWrapper
 from nlp.generate.argument import Kwarg
 from nlp.generate.expression import Expression, FunctionCallExpression, ModelFactoryExpression, ModelM2MAddExpression, \
     ModelQuerysetBaseExpression
@@ -46,9 +46,9 @@ def test_m2m_add_expression():
 
 def test_model_queryset_base_expression():
     """Check that ModelQuerysetBaseExpression generates the correct template."""
-    exp = ModelQuerysetBaseExpression(ModelWrapper(User, None), 'filter', [])
+    exp = ModelQuerysetBaseExpression(ExistingModelWrapper(User, None), 'filter', [])
     assert exp.to_template() == 'User.objects.filter()'
-    exp_2 = ModelQuerysetBaseExpression(AbstractModelWrapper('Roof'), 'all', [])
+    exp_2 = ModelQuerysetBaseExpression(ModelWrapper('Roof'), 'all', [])
     assert exp_2.to_template() == 'Roof.objects.all()'
 
 
@@ -57,9 +57,9 @@ def test_model_queryset_base_expression_add_to_test_case():
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
-    exp = ModelQuerysetBaseExpression(ModelWrapper(User, None), 'filter', [])
+    exp = ModelQuerysetBaseExpression(ExistingModelWrapper(User, None), 'filter', [])
     exp.on_add_to_test_case(test_case)
-    exp_2 = ModelQuerysetBaseExpression(AbstractModelWrapper('Roof'), 'filter', [])
+    exp_2 = ModelQuerysetBaseExpression(ModelWrapper('Roof'), 'filter', [])
     exp_2.on_add_to_test_case(test_case)
 
     assert len(suite.imports) == 2

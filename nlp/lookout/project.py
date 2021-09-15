@@ -3,9 +3,9 @@ from abc import ABC
 
 from django.contrib.auth.models import Permission
 
-from django_meta.api import AbstractApiFieldWrapper, ApiFieldWrapper, Methods, AbstractUrlPatternWrapper, \
-    UrlPatternWrapper
-from django_meta.model import AbstractModelFieldWrapper, AbstractModelWrapper
+from django_meta.api import ApiFieldWrapper, ExistingApiFieldWrapper, Methods, UrlPatternWrapper, \
+    ExistingUrlPatternWrapper
+from django_meta.model import ModelFieldWrapper, ModelWrapper
 from nlp.lookout.base import Lookout
 from nlp.lookout.token import RestActionLookout
 from nlp.similarity import CosineSimilarity, ContainsSimilarity, LevenshteinSimilarity
@@ -107,7 +107,7 @@ class ClassArgumentLookout(DjangoProjectLookout):
 
 class ModelFieldLookout(DjangoProjectLookout):
     def get_output_object_fallback(self):
-        return AbstractModelFieldWrapper(name=self.translator_to_en.translate(self.text))
+        return ModelFieldWrapper(name=self.translator_to_en.translate(self.text))
 
     def get_keywords(self, field):
         return [field.name, getattr(field, 'verbose_name', None)]
@@ -118,7 +118,7 @@ class ModelFieldLookout(DjangoProjectLookout):
 
 class SerializerFieldLookout(DjangoProjectLookout):
     def get_output_object_fallback(self):
-        return AbstractApiFieldWrapper(name=self.translator_to_en.translate(self.text))
+        return ApiFieldWrapper(name=self.translator_to_en.translate(self.text))
 
     def get_keywords(self, field):
         return [field.source]
@@ -127,12 +127,12 @@ class SerializerFieldLookout(DjangoProjectLookout):
         if not serializer:
             return []
 
-        return [ApiFieldWrapper(api_field=field) for field in serializer.fields.fields.values()]
+        return [ExistingApiFieldWrapper(api_field=field) for field in serializer.fields.fields.values()]
 
 
 class ModelLookout(DjangoProjectLookout):
     def get_output_object_fallback(self):
-        return AbstractModelWrapper(name=self.translator_to_en.translate(self.text))
+        return ModelWrapper(name=self.translator_to_en.translate(self.text))
 
     def get_keywords(self, model):
         return [model.name, model.verbose_name, model.verbose_name_plural]
@@ -169,7 +169,7 @@ class UrlLookout(DjangoProjectLookout):
         self.valid_methods = [method for method in valid_methods if method]
 
     def get_output_object_fallback(self):
-        return AbstractUrlPatternWrapper(model_wrapper=self.model_wrapper)
+        return UrlPatternWrapper(model_wrapper=self.model_wrapper)
 
     def go_to_next_output(self, similarity):
         return similarity > 0.9
@@ -228,7 +228,7 @@ class UrlLookout(DjangoProjectLookout):
         results = []
 
         for pattern in url_patterns:
-            wrapper = UrlPatternWrapper(pattern)
+            wrapper = ExistingUrlPatternWrapper(pattern)
 
             if wrapper.is_represented_by_view_set:
                 # if the url does not have a valid method, skip it

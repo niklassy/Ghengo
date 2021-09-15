@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 
 from django_meta.base import ExistsInCode
-from django_meta.model import ModelWrapper
+from django_meta.model import ExistingModelWrapper
 from nlp.generate.utils import to_function_name
 
 
@@ -24,7 +24,7 @@ class Methods:
         return [cls.GET, cls.PUT, cls.POST, cls.DELETE, cls.PATCH]
 
 
-class AbstractUrlPatternWrapper(object):
+class UrlPatternWrapper(object):
     def __init__(self, model_wrapper):
         self.model_wrapper = model_wrapper
 
@@ -76,7 +76,7 @@ class AbstractUrlPatternWrapper(object):
         return None
 
 
-class UrlPatternWrapper(AbstractUrlPatternWrapper):
+class ExistingUrlPatternWrapper(UrlPatternWrapper):
     def __init__(self, url_pattern):
         self.url_pattern = url_pattern
         self._view_set_cached = None
@@ -113,7 +113,7 @@ class UrlPatternWrapper(AbstractUrlPatternWrapper):
         if not issubclass(serializer_cls, ModelSerializer):
             return None
 
-        return ModelWrapper.create_with_model(serializer_cls.Meta.model)
+        return ExistingModelWrapper.create_with_model(serializer_cls.Meta.model)
 
     @property
     def _route_kwargs(self):
@@ -283,7 +283,7 @@ class ViewSetWrapper(object):
         return actions
 
 
-class AbstractApiFieldWrapper(ExistsInCode):
+class ApiFieldWrapper(ExistsInCode):
     exists_in_code = False
 
     def __init__(self, name):
@@ -300,7 +300,7 @@ class AbstractApiFieldWrapper(ExistsInCode):
         return self.name == other.name
 
 
-class ApiFieldWrapper(AbstractApiFieldWrapper):
+class ExistingApiFieldWrapper(ApiFieldWrapper):
     exists_in_code = True
 
     def __init__(self, api_field):

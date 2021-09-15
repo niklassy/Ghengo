@@ -1,5 +1,5 @@
-from django_meta.api import UrlPatternWrapper
-from django_meta.model import AbstractModelFieldWrapper
+from django_meta.api import ExistingUrlPatternWrapper
+from django_meta.model import ModelFieldWrapper
 from nlp.converter.base.converter import ClassConverter
 from nlp.converter.property import UserReferenceVariableProperty, MethodProperty, \
     ReferenceModelVariableProperty, NewModelProperty
@@ -97,7 +97,7 @@ class RequestConverter(ClassConverter):
         """
         # if the field is referencing the model, use the extractors normally
         field = argument_wrapper.representative.field
-        if isinstance(argument_wrapper.representative, AbstractModelFieldWrapper):
+        if isinstance(argument_wrapper.representative, ModelFieldWrapper):
             return get_model_field_extractor(field)
 
         # if the field is referencing fields that exist on the serializer, use the extractors that are defined for
@@ -119,7 +119,7 @@ class RequestConverter(ClassConverter):
         return not bool(self.user.token)
 
     @property
-    def url_pattern_wrapper(self) -> UrlPatternWrapper:
+    def url_pattern_wrapper(self) -> ExistingUrlPatternWrapper:
         """
         Returns the url pattern wrapper that represents a Django URL pattern that fits the method provided.
         """

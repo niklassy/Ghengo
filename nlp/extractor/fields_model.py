@@ -1,6 +1,6 @@
 import re
 
-from django_meta.model import AbstractModelFieldWrapper, ModelWrapper
+from django_meta.model import ModelFieldWrapper, ExistingModelWrapper
 from nlp.extractor.base import FieldExtractor, ManyExtractorMixin
 from nlp.extractor.output import IntegerOutput, FloatOutput, DecimalOutput, BooleanOutput, \
     ModelVariableOutput, StringOutput, FileVariableOutput
@@ -18,7 +18,7 @@ class ModelFieldExtractor(FieldExtractor):
     """
     Extracts the value from a token for a given field of a model.
     """
-    default_field_class = AbstractModelFieldWrapper
+    default_field_class = ModelFieldWrapper
 
     def __init__(self, test_case, source, model_wrapper, field_wrapper, document, representative=None):
         super().__init__(test_case=test_case, source=source, document=document, field_wrapper=field_wrapper)
@@ -118,7 +118,7 @@ class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):
                 lookout_input,
                 self.source.lang_
             ).locate(raise_exception=True)
-            permission_wrapper = ModelWrapper.create_with_model(Permission)
+            permission_wrapper = ExistingModelWrapper.create_with_model(Permission)
 
             permission_query = ModelQuerysetFilterExpression(
                 permission_wrapper,

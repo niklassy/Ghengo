@@ -1,7 +1,7 @@
 import pytest
 
 from core.constants import Languages
-from django_meta.model import AbstractModelFieldWrapper, ModelWrapper, AbstractModelWrapper, ModelFieldWrapper
+from django_meta.model import ModelFieldWrapper, ExistingModelWrapper, ModelWrapper, ExistingModelFieldWrapper
 from django_meta.project import DjangoProject
 from nlp.extractor.fields_model import ModelFieldExtractor, IntegerModelFieldExtractor, FloatModelFieldExtractor, \
     BooleanModelFieldExtractor, ForeignKeyModelFieldExtractor, M2MModelFieldExtractor
@@ -16,8 +16,8 @@ from nlp.setup import Nlp
 
 suite = PyTestTestSuite('bar')
 default_test_case = suite.create_and_add_test_case('foo')
-model_wrapper = AbstractModelWrapper('Order')
-field = AbstractModelFieldWrapper('name')
+model_wrapper = ModelWrapper('Order')
+field = ModelFieldWrapper('name')
 nlp = Nlp.for_language(Languages.DE)
 document = nlp('Sie hat 3 Äpfel.')
 
@@ -95,7 +95,7 @@ def test_model_field_extractor_extract_number():
         test_case=default_test_case,
         source=doc[6],
         model_wrapper=model_wrapper,
-        field_wrapper=ModelFieldWrapper(ToDo._meta.get_field('system')),
+        field_wrapper=ExistingModelFieldWrapper(ToDo._meta.get_field('system')),
         document=doc
     )
     assert extractor.extract_value() == 3
@@ -103,7 +103,7 @@ def test_model_field_extractor_extract_number():
         test_case=default_test_case,
         source='3',
         model_wrapper=model_wrapper,
-        field_wrapper=ModelFieldWrapper(field),
+        field_wrapper=ExistingModelFieldWrapper(field),
         document=document
     )
     assert extractor_2.extract_value() == 3
@@ -112,7 +112,7 @@ def test_model_field_extractor_extract_number():
 def test_model_field_extractor_extract_float():
     """Checks if the float is correctly extracted."""
     from django_sample_project.apps.order.models import ToDo
-    float_field = ModelFieldWrapper(ToDo._meta.get_field('part'))
+    float_field = ExistingModelFieldWrapper(ToDo._meta.get_field('part'))
 
     # check if quotation marks are handled as wanted
     doc = nlp('Gegeben sei ein Todo aus dem Teil "0.33"')
@@ -132,7 +132,7 @@ def test_model_field_extractor_extract_float():
 def test_model_field_extractor_extract_boolean():
     """Checks if the boolean is correctly extracted."""
     from django_sample_project.apps.order.models import ToDo
-    bool_field = ModelFieldWrapper(ToDo._meta.get_field('from_other_system'))
+    bool_field = ExistingModelFieldWrapper(ToDo._meta.get_field('from_other_system'))
 
     doc = nlp('Gegeben sei ein Todo, das aus dem anderen System kommt')
     extractor = BooleanModelFieldExtractor(default_test_case, doc[9], model_wrapper, bool_field, doc)
@@ -159,10 +159,10 @@ def test_model_field_extractor_extract_fk():
     DjangoProject('django_sample_project.apps.config.settings')
     from django_sample_project.apps.order.models import Order
     from django.contrib.auth.models import User
-    fk_field = ModelFieldWrapper(Order._meta.get_field('owner'))
+    fk_field = ExistingModelFieldWrapper(Order._meta.get_field('owner'))
     doc = nlp('Gegeben sei ein Auftrag mit Alice als Besitzerin')
     statement = AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(User, None), [Kwarg('bar', 123)]),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(User, None), [Kwarg('bar', 123)]),
         variable=Variable('alice', 'User'),
     )
     fk_test_case.add_statement(statement)
@@ -195,11 +195,11 @@ def test_model_field_extractor_on_handled():
 
     # create statements that indicate previous objects (to-dos) and add them to the test_case
     test_case_statement_1 = AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(ToDo, None), [Kwarg('bar', 123)]),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(ToDo, None), [Kwarg('bar', 123)]),
         variable=Variable('1', 'ToDo'),
     )
     test_case_statement_2 = AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(ToDo, None), [Kwarg('bar', 123)]),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(ToDo, None), [Kwarg('bar', 123)]),
         variable=Variable('2', 'ToDo'),
     )
     m2m_test_case.add_statement(test_case_statement_1)
@@ -207,11 +207,11 @@ def test_model_field_extractor_on_handled():
 
     # create the statement for the factory of this object
     statement = AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(Order, None), [Kwarg('bar', 123)]),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(Order, None), [Kwarg('bar', 123)]),
         variable=Variable('order', 'Order'),
     )
     extractor = M2MModelFieldExtractor(
-        m2m_test_case, m2m_source[1], model_wrapper, ModelFieldWrapper(Order._meta.get_field('to_dos')), m2m_source)
+        m2m_test_case, m2m_source[1], model_wrapper, ExistingModelFieldWrapper(Order._meta.get_field('to_dos')), m2m_source)
     statements = [statement]
     assert len(statements) == 1
 

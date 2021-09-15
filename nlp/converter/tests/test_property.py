@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 
 from core.constants import Languages
 from django_meta.api import Methods
-from django_meta.model import ModelWrapper
+from django_meta.model import ExistingModelWrapper
 from django_meta.project import DjangoProject
 from django_sample_project.apps.order.models import Order
 from nlp.converter.property import NewModelProperty, NewModelVariableProperty, MethodProperty, \
@@ -36,7 +36,7 @@ def test_new_model_converter_property(mocker):
     doc = nlp('Gegeben sei ein Auftrag mit dem Namen "Mein Auftrag".')
     prop = NewModelProperty(ConverterMock(doc))
     assert doc[3] in prop.chunk
-    assert isinstance(prop.value, ModelWrapper)
+    assert isinstance(prop.value, ExistingModelWrapper)
     assert prop.value.model == Order
     assert prop.token == doc[3]
 
@@ -81,12 +81,12 @@ def test_reference_variable_converter_property(doc, token_index, mocker):
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(User, None), []),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(User, None), []),
         variable=Variable('Alice', 'SOME_RANDOM_VALUE'),
     ))
     variable = Variable('Alice', 'User')
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(User, None), []),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(User, None), []),
         variable=variable,
     ))
     converter.test_case = test_case
@@ -116,7 +116,7 @@ def test_reference_model_converter_property(doc, token_index, mocker):
     test_case = suite.create_and_add_test_case('bar')
     variable = Variable('Alice', 'Order')
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(Order, None), []),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(Order, None), []),
         variable=variable,
     ))
     converter.test_case = test_case
@@ -125,7 +125,7 @@ def test_reference_model_converter_property(doc, token_index, mocker):
     converter.variable_ref.calculate_value()
     prop = ReferenceModelProperty(converter, converter.variable_ref)
 
-    assert isinstance(prop.value, ModelWrapper)
+    assert isinstance(prop.value, ExistingModelWrapper)
     assert prop.value.model == Order
     assert prop.token == doc[token_index]
 
@@ -146,7 +146,7 @@ def test_reference_user_converter_property(doc, token_index, mocker):
     test_case = suite.create_and_add_test_case('bar')
     variable = Variable('Alice', 'User')
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(User, None), []),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(User, None), []),
         variable=variable,
     ))
     converter.test_case = test_case

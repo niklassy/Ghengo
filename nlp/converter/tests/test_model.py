@@ -2,7 +2,7 @@ import pytest
 from django.contrib.auth.models import User
 
 from core.constants import Languages
-from django_meta.model import ModelWrapper
+from django_meta.model import ExistingModelWrapper
 from django_meta.project import DjangoProject
 from django_sample_project.apps.order.models import Order
 from gherkin.ast import Given, TableCell, TableRow, DataTable
@@ -171,11 +171,11 @@ def test_object_qs_converter_compatibility(doc, min_compatibility, max_compatibi
 
     # add two statements: a user `alice` and an `order_1`
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(User, None), [Kwarg('bar', 123)]),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(User, None), [Kwarg('bar', 123)]),
         variable=Variable('Alice', 'User'),     # <- variable name is Alice
     ))
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(Order, None), [Kwarg('bar', 123)]),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(Order, None), [Kwarg('bar', 123)]),
         variable=Variable('1', 'Order'),
     ))
 
@@ -220,15 +220,15 @@ def test_object_qs_converter_output(doc, mocker, filter_fields, variable_type):
         referenced_variable = None
 
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(Order, None), []),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(Order, None), []),
         variable=order_variable,
     ))
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(User, None), []),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(User, None), []),
         variable=user_variable,
     ))
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(User, None), []),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(User, None), []),
         variable=user_no_name_variable,
     ))
 
@@ -259,7 +259,7 @@ def test_model_variable_reference_converter(mocker):
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(User, None), [Kwarg('bar', 123)]),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(User, None), [Kwarg('bar', 123)]),
         variable=Variable('Alice', 'User'),  # <-- variable defined
     ))
     converter = ModelVariableReferenceConverter(
@@ -281,11 +281,11 @@ def test_model_variable_reference_converter_multiple_name(mocker):
     test_case = suite.create_and_add_test_case('bar')
     user_variable = Variable('1', 'User')
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(User, None), [Kwarg('bar', 123)]),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(User, None), [Kwarg('bar', 123)]),
         variable=user_variable,
     ))
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(Order, None), [Kwarg('bar', 123)]),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(Order, None), [Kwarg('bar', 123)]),
         variable=Variable('1', 'Order'),
     ))
     converter = ModelVariableReferenceConverter(
@@ -295,22 +295,22 @@ def test_model_variable_reference_converter_multiple_name(mocker):
     assert len(statements) == 2
     assert isinstance(statements[0], ModelFieldAssignmentStatement)
     assert isinstance(statements[1].expression, ModelSaveExpression)
-    assert isinstance(converter.model.value, ModelWrapper)
+    assert isinstance(converter.model.value, ExistingModelWrapper)
     assert converter.model.value.model == User
     assert converter.variable_ref.value == user_variable
 
 
 @pytest.mark.parametrize(
     'doc, variable, model_wrapper, min_compatibility, max_compatibility', [
-        (nlp('Und Benutzer 1 erhält das Passwort "Test"'), Variable('1', 'User'), ModelWrapper(User, None), 0.7, 1),
+        (nlp('Und Benutzer 1 erhält das Passwort "Test"'), Variable('1', 'User'), ExistingModelWrapper(User, None), 0.7, 1),
         # no previous statement
         (nlp('Und Benutzer 1 erhält das Passwort "Test"'), None, None, 0, 0.1),
         # wrong model
-        (nlp('Und Benutzer 1 erhält das Passwort "Test"'), Variable('1', 'User'), ModelWrapper(Order, None), 0, 0.1),
+        (nlp('Und Benutzer 1 erhält das Passwort "Test"'), Variable('1', 'User'), ExistingModelWrapper(Order, None), 0, 0.1),
         # wrong input
-        (nlp('Gegeben sei ein Benutzer Alice'), Variable('1', 'User'), ModelWrapper(User, None), 0, 0.1),
-        (nlp('Wenn ein Auftrag erstellt wird'), Variable('1', 'User'), ModelWrapper(User, None), 0, 0.1),
-        (nlp('Und ein Auftrag mit der Nummer 2'), Variable('1', 'Order'), ModelWrapper(Order, None), 0, 0.1),
+        (nlp('Gegeben sei ein Benutzer Alice'), Variable('1', 'User'), ExistingModelWrapper(User, None), 0, 0.1),
+        (nlp('Wenn ein Auftrag erstellt wird'), Variable('1', 'User'), ExistingModelWrapper(User, None), 0, 0.1),
+        (nlp('Und ein Auftrag mit der Nummer 2'), Variable('1', 'Order'), ExistingModelWrapper(Order, None), 0, 0.1),
     ]
 )
 def test_model_variable_converter_compatibility(
