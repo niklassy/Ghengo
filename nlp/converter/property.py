@@ -1,7 +1,7 @@
 from django.apps import apps
 from django.conf.global_settings import AUTH_USER_MODEL
 
-from django_meta.model import ModelWrapper
+from django_meta.model import ExistingModelWrapper
 from nlp.converter.base.property import ConverterProperty
 from nlp.generate.expression import ModelFactoryExpression
 from nlp.generate.variable import Variable
@@ -303,7 +303,7 @@ class UserReferenceVariableProperty(ReferenceModelVariableProperty):
     def get_model_wrapper(self, statement, token):
         user_path = AUTH_USER_MODEL.split('.')
 
-        return ModelWrapper.create_with_model(
+        return ExistingModelWrapper.create_with_model(
             apps.get_model(user_path[0], user_path[1])
         )
 

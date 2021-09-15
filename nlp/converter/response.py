@@ -1,6 +1,6 @@
 from typing import Optional
 
-from django_meta.model import AbstractModelFieldWrapper
+from django_meta.model import ModelFieldWrapper
 from nlp.converter.base.converter import ClassConverter
 from nlp.converter.property import NewModelProperty, ReferenceModelVariableProperty
 from nlp.converter.wrapper import ConverterInitArgumentWrapper
@@ -97,7 +97,7 @@ class ResponseConverterBase(ClassConverter):
         if argument_wrapper.token and argument_wrapper.token in lookout_extractor_map:
             return lookout_extractor_map[argument_wrapper.token]
 
-        if isinstance(argument_wrapper.representative, AbstractModelFieldWrapper):
+        if isinstance(argument_wrapper.representative, ModelFieldWrapper):
             return get_model_field_extractor(argument_wrapper.representative.field)
 
         return get_api_model_field_extractor(argument_wrapper.representative.field)

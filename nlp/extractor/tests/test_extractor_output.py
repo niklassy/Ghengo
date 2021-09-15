@@ -2,7 +2,7 @@ import pytest
 from django.contrib.auth.models import User
 
 from core.constants import Languages
-from django_meta.model import ModelWrapper
+from django_meta.model import ExistingModelWrapper
 from django_sample_project.apps.order.models import Order
 from nlp.extractor.exception import ExtractionError
 from nlp.extractor.output import ExtractorOutput, NoneOutput, StringOutput, DictOutput, NumberAsStringOutput, \
@@ -459,7 +459,7 @@ def test_model_variable_extractor_output(doc, token_index, raises, model_input, 
     test_case.add_parameter(Parameter('tc_parameter'))
     var = Variable('Bob', 'User')
     test_case.add_statement(AssignmentStatement(
-        expression=PyTestModelFactoryExpression(ModelWrapper(User, None), [Kwarg('bar', 123)]),
+        expression=PyTestModelFactoryExpression(ExistingModelWrapper(User, None), [Kwarg('bar', 123)]),
         variable=var,  # <-- variable defined
     ))
 
