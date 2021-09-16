@@ -1,5 +1,5 @@
 import spacy
-from spacy import Language, displacy
+from spacy import Language
 from spacy.matcher import Matcher
 
 from core.constants import Languages
@@ -127,7 +127,3 @@ class _Nlp(object):
 
 
 Nlp = _Nlp()
-
-b = Nlp.for_language('de')('Gegeben sei ein Auftrag mit den Dateien 1, 2 und 3.')
-displacy.serve(b, style='dep')
-c = 1
