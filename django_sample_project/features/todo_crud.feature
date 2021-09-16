@@ -3,9 +3,6 @@ Funktionalität: Erstellen, Löschen und Ändern von ToDos
   Grundlage:
     Gegeben sei ein Benutzer Alice mit dem Benutzernamen alice, der Email a@local.local und dem Passwort Haus1234
 
-  # TODO: add permissions??
-  # TODO: add list call?
-
 #  Szenario: Erstellen von Todo - Erfolg
 #    Wenn Alice eine Anfrage zum Erstellen eines To-Do mit dem Text todo1 macht
 #    Dann sollte die Antwort den Status 200 haben
