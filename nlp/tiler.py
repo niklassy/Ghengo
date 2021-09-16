@@ -79,7 +79,6 @@ class WhenTiler(Tiler):
 
 
 class ThenTiler(Tiler):
-    # TODO: wie kann man unterscheiden zwischen: der Request wird untersucht und es wird die DB überprüft
     converter_classes = [
         ManyCheckEntryResponseConverter,
         ManyLengthResponseConverter,
