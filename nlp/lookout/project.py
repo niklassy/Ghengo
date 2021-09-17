@@ -25,7 +25,7 @@ class DjangoProjectLookout(Lookout, ABC):
         return False
 
     def get_compare_variations(self, output_object, keyword):
-        comparisons = []
+        variations = []
 
         if not self.text or not keyword:
             return []
@@ -39,13 +39,13 @@ class DjangoProjectLookout(Lookout, ABC):
 
         # create documents for english and source language to get the similarity
         # en - keyword
-        comparisons.append((self.doc_en, self.nlp_en(keyword)))
+        variations.append((self.doc_en, self.nlp_en(keyword)))
         # src - keyword
-        comparisons.append((doc_input, self.nlp_src_language(keyword)))
+        variations.append((doc_input, self.nlp_src_language(keyword)))
         # src - keyword translated to src
-        comparisons.append((doc_input, self.nlp_src_language(translated_keyword)))
+        variations.append((doc_input, self.nlp_src_language(translated_keyword)))
 
-        return comparisons
+        return variations
 
     def get_similarity(self, input_doc, target_doc):
         """Returns the similarity between two docs/ tokens in a range from 0 - 1."""
@@ -79,7 +79,7 @@ class ClassArgumentLookout(DjangoProjectLookout):
     """
     This lookout searches tokens that could represent the argument/ parameter of an __init__ of a given class.
     """
-    def get_output_object_fallback(self):
+    def get_fallback(self):
         return None
 
     def get_keywords(self, parameter_name):
@@ -106,7 +106,7 @@ class ClassArgumentLookout(DjangoProjectLookout):
 
 
 class ModelFieldLookout(DjangoProjectLookout):
-    def get_output_object_fallback(self):
+    def get_fallback(self):
         return ModelFieldWrapper(name=self.translator_to_en.translate(self.text))
 
     def get_keywords(self, field):
@@ -117,7 +117,7 @@ class ModelFieldLookout(DjangoProjectLookout):
 
 
 class SerializerFieldLookout(DjangoProjectLookout):
-    def get_output_object_fallback(self):
+    def get_fallback(self):
         return ApiFieldWrapper(name=self.translator_to_en.translate(self.text))
 
     def get_keywords(self, field):
@@ -131,7 +131,7 @@ class SerializerFieldLookout(DjangoProjectLookout):
 
 
 class ModelLookout(DjangoProjectLookout):
-    def get_output_object_fallback(self):
+    def get_fallback(self):
         return ModelWrapper(name=self.translator_to_en.translate(self.text))
 
     def get_keywords(self, model):
@@ -144,7 +144,7 @@ class ModelLookout(DjangoProjectLookout):
 class PermissionLookout(DjangoProjectLookout):
     """Can search for specific permissions in Django."""
 
-    def get_output_object_fallback(self):
+    def get_fallback(self):
         return None
 
     def get_keywords(self, permission):
@@ -168,7 +168,7 @@ class UrlLookout(DjangoProjectLookout):
 
         self.valid_methods = [method for method in valid_methods if method]
 
-    def get_output_object_fallback(self):
+    def get_fallback(self):
         return UrlPatternWrapper(model_wrapper=self.model_wrapper)
 
     def go_to_next_output(self, similarity):

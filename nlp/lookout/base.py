@@ -106,7 +106,7 @@ class Lookout(object):
     def fittest_output_object(self):
         """
         Returns the fittest output_object that was returned after `locate` was called. This will be either
-        the value that is returned from `get_output_object_fallback` or a value from `get_output_objects`
+        the value that is returned from `get_fallback` or a value from `get_output_objects`
         """
         return self._fittest_output_object
 
@@ -163,7 +163,7 @@ class Lookout(object):
         """
         return similarity > self.highest_similarity
 
-    def get_output_object_fallback(self):
+    def get_fallback(self):
         """
         In case the similarity benchmark is not met over all output_objects, this is used to return an object
         if raise_exception in `locate` is False.
@@ -183,6 +183,13 @@ class Lookout(object):
         self._highest_similarity = similarity
         self._fittest_output_object = output_object
         self._fittest_keyword = keyword
+
+    def has_invalid_fittest_output(self):
+        """
+        Check if this lookout has an invalid output. If this is true, this would normally result in a fallback
+        object or an exception.
+        """
+        return self.highest_similarity < self.get_similarity_benchmark() or self.fittest_output_object is None
 
     def locate(self, *args, raise_exception=False, **kwargs):
         """
@@ -230,13 +237,13 @@ class Lookout(object):
                         break
 
         # if the highest_similarity is too low, overwrite the values and raise an exception if wanted
-        if self.highest_similarity < self.get_similarity_benchmark() or self.fittest_output_object is None:
+        if self.has_invalid_fittest_output():
             # has to stay before raise_exception!
-            self._fittest_output_object = self.get_output_object_fallback()
+            self._fittest_output_object = self.get_fallback()
             self._fittest_keyword = None
             self._results_in_fallback = True
 
             if raise_exception:
                 raise LookoutFoundNothing()
 
-        return self._fittest_output_object
+        return self.fittest_output_object

@@ -18,7 +18,7 @@ def test_searcher_search_with_results():
             """Simply return the input_doc, which will be an integer."""
             return 1 if input_doc == 6 else 0
 
-        def get_output_object_fallback(self):
+        def get_fallback(self):
             return None
 
     searcher = Custom6Searcher('Auftrag', Languages.DE)
