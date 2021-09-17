@@ -68,7 +68,7 @@ class TokenLookout(Lookout, ABC):
     def get_output_objects(self, document, *args, **kwargs):
         return [t for t in document]
 
-    def get_output_object_fallback(self):
+    def get_fallback(self):
         return NoToken()
 
     @property

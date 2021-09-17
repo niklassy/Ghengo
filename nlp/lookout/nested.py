@@ -26,7 +26,7 @@ class NestedLookout(Lookout):
         """All the classes are used **initially** as output objects. Later on the instance is used instead."""
         return self.lookout_child_classes
 
-    def get_output_object_fallback(self):
+    def get_fallback(self):
         return None
 
     def go_to_next_output(self, similarity):
