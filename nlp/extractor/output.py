@@ -8,7 +8,6 @@ from core.exception import LanguageNotSupported
 from nlp.extractor.exception import ExtractionError
 from nlp.extractor.vocab import POSITIVE_BOOLEAN_INDICATORS, NEGATIVE_BOOLEAN_INDICATORS
 from nlp.generate.expression import ModelFactoryExpression, CreateUploadFileExpression
-from nlp.generate.variable import Variable
 from nlp.generate.warning import NO_VALUE_FOUND_CODE, VARIABLE_NOT_FOUND, DICT_AS_STRING, FILE_NOT_FOUND, NUMBER_ERROR
 from nlp.utils import is_quoted, get_all_children, get_verb_for_token, token_is_negated, \
     token_is_like_num, \
@@ -18,7 +17,7 @@ from nlp.utils import is_quoted, get_all_children, get_verb_for_token, token_is_
 
 class ExtractorOutput(object):
     """
-    This class represents the output from an extractor. It converts the source into a valid python value.
+    This class represents the output from an extractor. It converts the source into a valid native code value.
     The value can be accessed via `get_output`.
     """
     supports_variable_source = True
@@ -46,11 +45,6 @@ class ExtractorOutput(object):
     def source_is_token(self):
         """Returns if the source of this output is a Token."""
         return isinstance(self.source, Token)
-
-    @property
-    def source_is_python_value(self):
-        """Returns if the source of this output is a Token."""
-        return not self.source_is_token
 
     @classmethod
     def string_represents_variable(cls, string):
@@ -114,17 +108,17 @@ class ExtractorOutput(object):
 
         raise ValueError()
 
-    def get_output_from_python_value(self, python_value):
+    def get_output_from_native_value(self, native_value):
         """
         This method will actually return the value that will be the output. This value will be prepared one last
         time before it is returned. This method is also used if the source is not a Token.
         """
         # numbers, decimals and boolean values are simple returned
-        if isinstance(python_value, (int, float, Decimal, bool)):
-            return python_value
+        if isinstance(native_value, (int, float, Decimal, bool)):
+            return native_value
 
         # otherwise turn the value into a string to check it more
-        value_str = str(python_value)
+        value_str = str(native_value)
         if is_quoted(value_str):
             value_str = value_str[1:-1]
 
@@ -156,13 +150,13 @@ class ExtractorOutput(object):
         # just return the value as a string
         return value_str
 
-    def token_to_python(self, token) -> Tuple[Any, Token]:
+    def token_to_native_value(self, token) -> Tuple[Any, Token]:
         """
         Transforms a given token to a first string that will/ may be analyzed further later.
-        This base version will try to make assumptions about the python type by checking information about the
+        This base version will try to make assumptions about the native type by checking information about the
         token.
 
-        This will return a tuple containing the python value and the token that was used to get that python value.
+        This will return a tuple containing the native value and the token that was used to get that native value.
         """
         if token.pos_ == 'ADJ' or token.pos_ == 'VERB' or token.pos_ == 'ADV':
             # it is easier to determine from the verb if the adv is negated
@@ -193,7 +187,7 @@ class ExtractorOutput(object):
 
     def set_output_token(self, token):
         """
-        Sets the output token - the one that was actually used to get the python value.
+        Sets the output token - the one that was actually used to get the native value.
         """
         self._output_token = token
 
@@ -203,9 +197,9 @@ class ExtractorOutput(object):
         """
         return output_value
 
-    def prepare_python_value(self, value):
+    def prepare_native_value(self, value):
         """
-        Is called right before `get_output_from_python_value` is called. It can be used to modify the value.
+        Is called right before `get_output_from_native_value` is called. It can be used to modify the value.
         This is useful if the value needs to modified every time.
         """
         return str(value)
@@ -216,31 +210,32 @@ class ExtractorOutput(object):
         """
         token = self.source
 
-        python_value = token
+        native_value = token
         output_token = NoToken()
 
         try:
             # if the source is a token (is true most of the time)
             if self.source_is_token:
-                # check if the token represents the output - if yes, set it as output token and convert to python
+                # check if the token represents the output - if yes, set it as output token and convert to a native
+                # value
                 if self.source_represents_output:
                     output_token = self.source
-                    python_value = str(self.source)
+                    native_value = str(self.source)
                 else:
-                    # if not use `token_to_python` to get the python value and the output token
-                    python_value, output_token = self.token_to_python(token)
+                    # if not use `token_to_native_value` to get the native code value and the output token
+                    native_value, output_token = self.token_to_native_value(token)
 
             # set the output token afterwards - if the source holds no token, it will be NoToken
             self.set_output_token(output_token)
 
             # if the output represents a variable ('<value'), return that instead
-            if self.supports_variable_source and self.string_represents_variable(python_value):
-                return self.handle_variable_value(python_value)
+            if self.supports_variable_source and self.string_represents_variable(native_value):
+                return self.handle_variable_value(native_value)
 
             # prepare the value before getting the output, this can be useful if a class always needs to change
             # value before the final output
-            prepared_value = self.prepare_python_value(python_value)
-            output = self.get_output_from_python_value(prepared_value)
+            prepared_value = self.prepare_native_value(native_value)
+            output = self.get_output_from_native_value(prepared_value)
 
             # return the output
             return self.prepare_output(output)
@@ -286,7 +281,7 @@ class NumberAsStringOutput(ExtractorOutput):
     """
     This output is a base class for several numbers. Numbers can be found in different places than other data.
     """
-    def prepare_python_value(self, value):
+    def prepare_native_value(self, value):
         token = self.output_token
 
         if token and self.token_can_be_parsed_to_int(token):
@@ -295,9 +290,9 @@ class NumberAsStringOutput(ExtractorOutput):
             except ValueError:
                 raise ExtractionError(NUMBER_ERROR)
 
-        return super().prepare_python_value(value)
+        return super().prepare_native_value(value)
 
-    def token_to_python(self, token):
+    def token_to_native_value(self, token):
         for child in get_all_children(token):
             if child.is_digit or self.token_can_be_parsed_to_int(child):
                 return str(child), child
@@ -325,14 +320,14 @@ class NumberAsStringOutput(ExtractorOutput):
 
         raise ExtractionError(NO_VALUE_FOUND_CODE)
 
-    def get_output_from_python_value(self, python_value):
+    def get_output_from_native_value(self, native_value):
         """
         Only accept values that can become numbers.
         """
-        if isinstance(python_value, (int, float, Decimal)):
-            return python_value
+        if isinstance(native_value, (int, float, Decimal)):
+            return native_value
 
-        value_str = str(python_value)
+        value_str = str(native_value)
 
         try:
             float(value_str)
@@ -404,7 +399,7 @@ class BooleanOutput(ExtractorOutput):
     """
     This output will return a boolean.
     """
-    def token_to_python(self, token):
+    def token_to_native_value(self, token):
         # while is does not really make sense to represent values as variables when using a boolean (is normally
         # determined via the verb and its negation), still we catch the case here
         if self.string_represents_variable(token):
@@ -420,11 +415,11 @@ class BooleanOutput(ExtractorOutput):
         boolean_value = verb_value_true and token_value_true
         return boolean_value, verb
 
-    def get_output_from_python_value(self, python_value):
-        if isinstance(python_value, bool):
-            return python_value
+    def get_output_from_native_value(self, native_value):
+        if isinstance(native_value, bool):
+            return native_value
 
-        return python_value in POSITIVE_BOOLEAN_INDICATORS[self.document.lang_]
+        return native_value in POSITIVE_BOOLEAN_INDICATORS[self.document.lang_]
 
 
 class VariableOutput(ExtractorOutput):
@@ -455,14 +450,14 @@ class VariableOutput(ExtractorOutput):
         """Can be used to define if a statement should be skipped."""
         return False
 
-    def get_output_from_python_value(self, python_value):
-        python_value = super().get_output_from_python_value(python_value)
+    def get_output_from_native_value(self, native_value):
+        native_value = super().get_output_from_native_value(native_value)
 
         for statement in self.statements:
             if self.skip_statement(statement):
                 continue
 
-            if self.statement_matches_output(statement, str(python_value)):
+            if self.statement_matches_output(statement, str(native_value)):
                 return statement.variable.get_reference()
 
         raise ExtractionError(VARIABLE_NOT_FOUND)
