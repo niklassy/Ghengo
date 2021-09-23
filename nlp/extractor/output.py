@@ -108,7 +108,7 @@ class ExtractorOutput(object):
 
         raise ValueError()
 
-    def get_output_from_native_value(self, native_value):
+    def native_value_to_output(self, native_value):
         """
         This method will actually return the value that will be the output. This value will be prepared one last
         time before it is returned. This method is also used if the source is not a Token.
@@ -199,7 +199,7 @@ class ExtractorOutput(object):
 
     def prepare_native_value(self, value):
         """
-        Is called right before `get_output_from_native_value` is called. It can be used to modify the value.
+        Is called right before `native_value_to_output` is called. It can be used to modify the value.
         This is useful if the value needs to modified every time.
         """
         return str(value)
@@ -208,9 +208,7 @@ class ExtractorOutput(object):
         """
         This is the private function that gets the output.
         """
-        token = self.source
-
-        native_value = token
+        native_value = self.source
         output_token = NoToken()
 
         try:
@@ -223,7 +221,7 @@ class ExtractorOutput(object):
                     native_value = str(self.source)
                 else:
                     # if not use `token_to_native_value` to get the native code value and the output token
-                    native_value, output_token = self.token_to_native_value(token)
+                    native_value, output_token = self.token_to_native_value(self.source)
 
             # set the output token afterwards - if the source holds no token, it will be NoToken
             self.set_output_token(output_token)
@@ -235,7 +233,7 @@ class ExtractorOutput(object):
             # prepare the value before getting the output, this can be useful if a class always needs to change
             # value before the final output
             prepared_value = self.prepare_native_value(native_value)
-            output = self.get_output_from_native_value(prepared_value)
+            output = self.native_value_to_output(prepared_value)
 
             # return the output
             return self.prepare_output(output)
@@ -320,7 +318,7 @@ class NumberAsStringOutput(ExtractorOutput):
 
         raise ExtractionError(NO_VALUE_FOUND_CODE)
 
-    def get_output_from_native_value(self, native_value):
+    def native_value_to_output(self, native_value):
         """
         Only accept values that can become numbers.
         """
@@ -415,7 +413,7 @@ class BooleanOutput(ExtractorOutput):
         boolean_value = verb_value_true and token_value_true
         return boolean_value, verb
 
-    def get_output_from_native_value(self, native_value):
+    def native_value_to_output(self, native_value):
         if isinstance(native_value, bool):
             return native_value
 
@@ -450,8 +448,8 @@ class VariableOutput(ExtractorOutput):
         """Can be used to define if a statement should be skipped."""
         return False
 
-    def get_output_from_native_value(self, native_value):
-        native_value = super().get_output_from_native_value(native_value)
+    def native_value_to_output(self, native_value):
+        native_value = super().native_value_to_output(native_value)
 
         for statement in self.statements:
             if self.skip_statement(statement):
