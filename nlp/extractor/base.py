@@ -10,11 +10,11 @@ class Extractor(object):
     """
     output_class = ExtractorOutput
 
-    def __init__(self, test_case, representative, source, document, source_represents_output=False):
+    def __init__(self, test_case, reference, source, document, source_represents_output=False):
         self.test_case = test_case
         self.source = source
         self.document = document
-        self.representative = representative
+        self.reference = reference
         self.source_represents_output = source_represents_output
 
     def __str__(self):
@@ -129,7 +129,7 @@ class ManyExtractorMixin(object):
             'document': self.document,
             'source': self.source,
             'test_case': self.test_case,
-            'representative': self.representative,
+            'reference': self.reference,
         }
 
     def get_child_extractor_class(self):
@@ -221,9 +221,9 @@ class FieldExtractor(Extractor):
     default_field_class = None
     field_classes = ()
 
-    def __init__(self, test_case, source, field_wrapper, document, representative=None):
-        # representative in kwargs to have the same signature as the init from the parent
-        super().__init__(test_case=test_case, source=source, document=document, representative=field_wrapper)
+    def __init__(self, test_case, source, field_wrapper, document, reference=None):
+        # reference in kwargs to have the same signature as the init from the parent
+        super().__init__(test_case=test_case, source=source, document=document, reference=field_wrapper)
         self.field_wrapper = field_wrapper
         self.field = field_wrapper.field
 

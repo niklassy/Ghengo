@@ -16,7 +16,7 @@ class ApiModelFieldExtractor(FieldExtractor):
     field_classes = (RestApiField,)
     default_field_class = ApiFieldWrapper
 
-    def __init__(self, test_case, source, field_wrapper, document, representative=None):
+    def __init__(self, test_case, source, field_wrapper, document, reference=None):
         super().__init__(test_case=test_case, source=source, field_wrapper=field_wrapper, document=document)
         self.field_name = self.field.source
 

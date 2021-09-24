@@ -2,7 +2,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from nlp.converter.base.converter import ClassConverter
 from nlp.converter.property import FileProperty, NewFileVariableProperty
-from nlp.converter.wrapper import ConverterInitArgumentWrapper
+from nlp.converter.wrapper import ReferenceTokenWrapper
 from nlp.extractor.base import StringExtractor
 from nlp.generate.argument import Kwarg
 from nlp.generate.expression import CreateUploadFileExpression
@@ -18,7 +18,7 @@ class FileConverter(ClassConverter):
     can_use_datatables = True
     field_lookout_classes = [ClassArgumentLookout]
 
-    class ArgumentRepresentatives:
+    class ArgumentReferences:
         """The names for the arguments from SimpleUploadedFile"""
         CONTENT = 'content'
         NAME = 'name'
@@ -61,18 +61,18 @@ class FileConverter(ClassConverter):
         if not super().is_valid_search_result(search_result):
             return False
 
-        return search_result in self.ArgumentRepresentatives.get_all()
+        return search_result in self.ArgumentReferences.get_all()
 
-    def get_default_argument_wrappers(self) -> [ConverterInitArgumentWrapper]:
+    def get_default_argument_wrappers(self) -> [ReferenceTokenWrapper]:
         """
         Add some defaults values since content and name are required to create a file. `source_represents_output` is
         set by the parent.
         """
         return [
-            ConverterInitArgumentWrapper(
-                token='My content', representative=self.ArgumentRepresentatives.CONTENT),
-            ConverterInitArgumentWrapper(
-                token=self.file_variable.token or 'foo', representative=self.ArgumentRepresentatives.NAME)
+            ReferenceTokenWrapper(
+                token='My content', reference=self.ArgumentReferences.CONTENT),
+            ReferenceTokenWrapper(
+                token=self.file_variable.token or 'foo', reference=self.ArgumentReferences.NAME)
         ]
 
     def prepare_statements(self, statements):
@@ -89,12 +89,12 @@ class FileConverter(ClassConverter):
 
         extracted_value = self.extract_and_handle_output(extractor)
 
-        # get the representative which should be name or content
-        representative = extractor.representative
+        # get the reference which should be name or content
+        reference = extractor.reference
         # ignore GenerationWarnings
-        if representative == self.ArgumentRepresentatives.NAME and not extractor.generates_warning:
+        if reference == self.ArgumentReferences.NAME and not extractor.generates_warning:
             # add the file extension to the extracted value
             extracted_value = '{}.{}'.format(extracted_value, self.file_extension_lookout.fittest_keyword or 'txt')
 
-        kwarg = Kwarg(representative, extracted_value)
+        kwarg = Kwarg(reference, extracted_value)
         expression.add_kwarg(kwarg)

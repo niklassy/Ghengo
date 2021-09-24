@@ -20,7 +20,7 @@ class ModelFieldExtractor(FieldExtractor):
     """
     default_field_class = ModelFieldWrapper
 
-    def __init__(self, test_case, source, model_wrapper, field_wrapper, document, representative=None):
+    def __init__(self, test_case, source, model_wrapper, field_wrapper, document, reference=None):
         super().__init__(test_case=test_case, source=source, document=document, field_wrapper=field_wrapper)
         self.model_wrapper = model_wrapper
         self.field_name = self.field.name

@@ -3,7 +3,7 @@ from typing import Optional
 from django_meta.model import ModelFieldWrapper
 from nlp.converter.base.converter import ClassConverter
 from nlp.converter.property import NewModelProperty, ReferenceModelVariableProperty
-from nlp.converter.wrapper import ConverterInitArgumentWrapper
+from nlp.converter.wrapper import ReferenceTokenWrapper
 from nlp.extractor.base import IntegerExtractor, Extractor, StringExtractor
 from nlp.extractor.fields_model import ModelFieldExtractor, get_model_field_extractor
 from nlp.extractor.fields_rest_api import ApiModelFieldExtractor, get_api_model_field_extractor
@@ -90,29 +90,29 @@ class ResponseConverterBase(ClassConverter):
             (self.error_lookout.fittest_token, StringExtractor),
         ]
 
-    def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
+    def get_extractor_class(self, argument_wrapper: ReferenceTokenWrapper):
         """Can use serializer, model fields and the custom extractors."""
         lookout_extractor_map = self._token_to_extractor_map
 
         if argument_wrapper.token and argument_wrapper.token in lookout_extractor_map:
             return lookout_extractor_map[argument_wrapper.token]
 
-        if isinstance(argument_wrapper.representative, ModelFieldWrapper):
-            return get_model_field_extractor(argument_wrapper.representative.field)
+        if isinstance(argument_wrapper.reference, ModelFieldWrapper):
+            return get_model_field_extractor(argument_wrapper.reference.field)
 
-        return get_api_model_field_extractor(argument_wrapper.representative.field)
+        return get_api_model_field_extractor(argument_wrapper.reference.field)
 
     def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
         """Add the model and the field to the kwargs."""
         kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
 
         if extractor_cls == ApiModelFieldExtractor or issubclass(extractor_cls, ApiModelFieldExtractor):
-            kwargs['field_wrapper'] = argument_wrapper.representative
+            kwargs['field_wrapper'] = argument_wrapper.reference
 
         # since the class may be for model fields or REST fields, add the model_wrapper if needed
         if issubclass(extractor_cls, ModelFieldExtractor) or extractor_cls == ModelFieldExtractor:
             kwargs['model_wrapper'] = self.model_wrapper_from_request
-            kwargs['field_wrapper'] = argument_wrapper.representative
+            kwargs['field_wrapper'] = argument_wrapper.reference
 
         return kwargs
 
@@ -164,8 +164,8 @@ class ResponseConverterBase(ClassConverter):
         if not self.response_lookout.fittest_token:
             return valid_variables[-1].get_reference()
 
-        wrapper = ConverterInitArgumentWrapper(
-            representative=self.response_lookout.fittest_keyword,
+        wrapper = ReferenceTokenWrapper(
+            reference=self.response_lookout.fittest_keyword,
             token=self.response_lookout.fittest_token,
         )
 
@@ -209,9 +209,9 @@ class ResponseStatusCodeConverter(ResponseConverterBase):
 
     def prepare_statements(self, statements):
         if self.status_lookout.fittest_token:
-            wrapper = ConverterInitArgumentWrapper(
+            wrapper = ReferenceTokenWrapper(
                 token=self.status_lookout.fittest_token,
-                representative=self.status_lookout.fittest_keyword
+                reference=self.status_lookout.fittest_keyword
             )
             extractor = self.get_extractor_instance(wrapper)
             exp = CompareExpression(
@@ -242,9 +242,9 @@ class ResponseErrorConverter(ResponseConverterBase):
         if self.error_lookout.fittest_token:
             response_var = self.get_response_variable_reference()
 
-            wrapper = ConverterInitArgumentWrapper(
+            wrapper = ReferenceTokenWrapper(
                 token=self.error_lookout.fittest_token,
-                representative=self.error_lookout.fittest_keyword
+                reference=self.error_lookout.fittest_keyword
             )
             extractor = self.get_extractor_instance(wrapper)
             exp = CompareExpression(
@@ -449,7 +449,7 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
         if not source:
             return None
 
-        wrapper = ConverterInitArgumentWrapper(token=source, representative=source)
+        wrapper = ReferenceTokenWrapper(token=source, reference=source)
 
         # always use an integer extractor -> which entry is meant?
         return self.get_extractor_instance(wrapper, IntegerExtractor)
@@ -559,7 +559,7 @@ class ManyLengthResponseConverter(ManyResponseConverter):
         if not token:
             return None
 
-        wrapper = ConverterInitArgumentWrapper(token=token, representative=token)
+        wrapper = ReferenceTokenWrapper(token=token, reference=token)
         return self.get_extractor_instance(wrapper)
 
     def get_document_compatibility(self):

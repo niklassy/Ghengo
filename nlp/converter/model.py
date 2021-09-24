@@ -32,14 +32,14 @@ class ModelConverter(ClassConverter):
         return {'model_wrapper': self.model.value}
 
     def get_extractor_class(self, argument_wrapper):
-        """The extractor class needs to be determined based on the kwarg_representative which is a model field."""
-        return get_model_field_extractor(argument_wrapper.representative.field)
+        """The extractor class needs to be determined based on the kwarg_reference which is a model field."""
+        return get_model_field_extractor(argument_wrapper.reference.field)
 
     def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
         """Add the model and the field to the kwargs."""
         kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
         kwargs['model_wrapper'] = self.model.value
-        kwargs['field_wrapper'] = argument_wrapper.representative
+        kwargs['field_wrapper'] = argument_wrapper.reference
         return kwargs
 
 

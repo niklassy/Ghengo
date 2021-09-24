@@ -36,10 +36,10 @@ class RequestConverter(ClassConverter):
         self.model_variable_ref = ReferenceModelVariableProperty(self)
 
     def get_document_verbs(self):
-        return [t for t in self.get_possible_argument_tokens() if t.pos_ == 'VERB']
+        return [t for t in self.get_possible_reference_name_tokens() if t.pos_ == 'VERB']
 
-    def token_can_be_argument(self, token):
-        can_be_argument = super().token_can_be_argument(token)
+    def token_can_be_reference_name(self, token):
+        can_be_argument = super().token_can_be_reference_name(token)
         if not can_be_argument:
             return False
 
@@ -81,7 +81,7 @@ class RequestConverter(ClassConverter):
 
     def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
         kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
-        kwargs['field_wrapper'] = argument_wrapper.representative
+        kwargs['field_wrapper'] = argument_wrapper.reference
 
         # since the class may be for model fields or REST fields, add the model_wrapper if needed
         if issubclass(extractor_cls, ModelFieldExtractor) or extractor_cls == ModelFieldExtractor:
@@ -96,8 +96,8 @@ class RequestConverter(ClassConverter):
         classes.
         """
         # if the field is referencing the model, use the extractors normally
-        field = argument_wrapper.representative.field
-        if isinstance(argument_wrapper.representative, ModelFieldWrapper):
+        field = argument_wrapper.reference.field
+        if isinstance(argument_wrapper.reference, ModelFieldWrapper):
             return get_model_field_extractor(field)
 
         # if the field is referencing fields that exist on the serializer, use the extractors that are defined for
