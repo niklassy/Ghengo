@@ -1,4 +1,4 @@
-from nlp.converter.wrapper import ConverterInitArgumentWrapper
+from nlp.converter.wrapper import ReferenceTokenWrapper
 from nlp.generate.suite import TestCaseBase
 from nlp.lookout.nested import NestedLookout
 from nlp.utils import get_noun_chunks, get_non_stop_tokens, get_noun_chunk_of_token, token_is_verb, NoToken, \
@@ -147,13 +147,13 @@ class ClassConverter(Converter):
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
         self._fields = None
-        self._blocked_argument_tokens = []
+        self._blocked_reference_tokens = []
         self._last_document_word = None
 
-    def block_token_as_argument(self, token):
+    def block_token_as_reference(self, token):
         """Use this function to block a specific token from being taken as an argument."""
-        if token and token not in self._blocked_argument_tokens:
-            self._blocked_argument_tokens.append(token)
+        if token and token not in self._blocked_reference_tokens:
+            self._blocked_reference_tokens.append(token)
 
     @property
     def last_document_word(self):
@@ -169,14 +169,14 @@ class ClassConverter(Converter):
             self._last_document_word = last_word
         return self._last_document_word
 
-    def token_can_be_argument(self, token):
+    def token_can_be_reference_name(self, token):
         """Checks if a given token can represent an argument of the __init__ from the class"""
         # first word is always a keyword from Gherkin
         if self.document[0] == token:
             return False
 
         token_is_blocked = any([
-            blocked_token and tokens_are_equal(blocked_token, token) for blocked_token in self._blocked_argument_tokens
+            blocked_token and tokens_are_equal(blocked_token, token) for blocked_token in self._blocked_reference_tokens
         ])
         if token_is_blocked:
             return False
@@ -185,7 +185,7 @@ class ClassConverter(Converter):
             if token.pos_ != 'PROPN':
                 return False
 
-            if self.token_can_be_argument(token.head):
+            if self.token_can_be_reference_name(token.head):
                 return False
 
         # verbs with aux are fine (is done, ist abgeschlossen)
@@ -202,7 +202,7 @@ class ClassConverter(Converter):
         """Returns the kwargs that are passed to the `locate` method from a lookout."""
         return {}
 
-    def search_for_init_argument(self, span, token):
+    def search_for_reference(self, span, token):
         """
         This method will use lookouts to search for an argument of the class. It will observe the span and
         the token and will return whatever the lookout instance returns.
@@ -230,64 +230,64 @@ class ClassConverter(Converter):
         """This method can be used to filter out specific search results before they are turned into extractors."""
         return bool(search_result)
 
-    def get_default_argument_wrappers(self) -> [ConverterInitArgumentWrapper]:
+    def get_default_argument_wrappers(self) -> [ReferenceTokenWrapper]:
         """Returns a list of default arguments wrappers. For each the selected value will be forced."""
         return []
 
-    def get_possible_argument_tokens(self):
+    def get_possible_reference_name_tokens(self):
         """Returns all tokens that can possibly be an argument."""
         return get_non_stop_tokens(self.document)
 
-    def get_argument_wrappers(self) -> [ConverterInitArgumentWrapper]:
+    def get_reference_wrappers(self) -> [ReferenceTokenWrapper]:
         """
-        Returns a list of objects that hold a token and the representative for an argument of the __init__ for the
-        class. These objects are used to create extractors.
+        Returns a list of objects that hold a token and the reference for data (e.g. fields of a model).
+        These objects are used to create extractors.
         """
-        default_argument_wrappers = self.get_default_argument_wrappers()
-        argument_wrappers = []
+        default_reference_wrappers = self.get_default_argument_wrappers()
+        ref_wrappers = []
 
-        for token in self.get_possible_argument_tokens():
-            if not self.token_can_be_argument(token):
+        for token in self.get_possible_reference_name_tokens():
+            if not self.token_can_be_reference_name(token):
                 continue
 
             chunk = get_noun_chunk_of_token(token, self.document)
-            representative = self.search_for_init_argument(chunk, token)
+            reference = self.search_for_reference(chunk, token)
 
             # if the result is not valid, skip it
-            if not self.is_valid_search_result(representative):
+            if not self.is_valid_search_result(reference):
                 continue
 
-            # if the representative is already present, skip it
-            if representative in [wrapper.representative for wrapper in argument_wrappers]:
+            # if the reference is already present, skip it
+            if reference in [wrapper.reference for wrapper in ref_wrappers]:
                 continue
 
-            wrapper = ConverterInitArgumentWrapper(representative=representative, token=token)
-            argument_wrappers.append(wrapper)
+            wrapper = ReferenceTokenWrapper(reference=reference, token=token)
+            ref_wrappers.append(wrapper)
 
         # add default values if needed
-        wrapper_identifiers = [wrapper.identifier for wrapper in argument_wrappers]
-        for default_wrapper in default_argument_wrappers:
+        wrapper_identifiers = [wrapper.identifier for wrapper in ref_wrappers]
+        for default_wrapper in default_reference_wrappers:
             if default_wrapper.identifier not in wrapper_identifiers:
                 # force the result of the defaults
                 default_wrapper.source_represents_output = True
-                argument_wrappers.append(default_wrapper)
+                ref_wrappers.append(default_wrapper)
 
-        return argument_wrappers
+        return ref_wrappers
 
-    def get_extractor_class(self, argument_wrapper: ConverterInitArgumentWrapper):
+    def get_extractor_class(self, argument_wrapper: ReferenceTokenWrapper):
         """This returns the extractor class based on the ConverterInitArgumentWrapper."""
         raise NotImplementedError()
 
-    def get_extractor_kwargs(self, argument_wrapper: ConverterInitArgumentWrapper, extractor_cls):
+    def get_extractor_kwargs(self, argument_wrapper: ReferenceTokenWrapper, extractor_cls):
         """Returns the kwargs that are passed to the extractor to instanciate it."""
         return {
             'test_case': self.test_case,
             'source': argument_wrapper.token,
             'document': self.document,
-            'representative': argument_wrapper.representative,
+            'reference': argument_wrapper.reference,
         }
 
-    def get_extractor_instance(self, argument_wrapper: ConverterInitArgumentWrapper, extractor_class=None):
+    def get_extractor_instance(self, argument_wrapper: ReferenceTokenWrapper, extractor_class=None):
         """Returns an instance of an extractor for a given argument wrapper."""
         if extractor_class is None:
             extractor_class = self.get_extractor_class(argument_wrapper=argument_wrapper)
@@ -304,7 +304,7 @@ class ClassConverter(Converter):
 
     def get_extractors(self):
         """Returns the extractors for this converter."""
-        wrappers = self.get_argument_wrappers()
+        wrappers = self.get_reference_wrappers()
 
         return [self.get_extractor_instance(argument_wrapper=wrapper) for wrapper in wrappers]
 
@@ -322,18 +322,18 @@ class ClassConverter(Converter):
             extractors_copy = self.extractors.copy()
 
             for index, cell in enumerate(row.cells):
-                representative = self.search_for_init_argument(span=None, token=column_names[index])
+                reference = self.search_for_reference(span=None, token=column_names[index])
 
                 # filter any invalid search results
-                if not self.is_valid_search_result(representative):
+                if not self.is_valid_search_result(reference):
                     continue
 
-                wrapper = ConverterInitArgumentWrapper(token=cell.value, representative=representative)
+                wrapper = ReferenceTokenWrapper(token=cell.value, reference=reference)
                 extractor_instance = self.get_extractor_instance(argument_wrapper=wrapper)
 
                 existing_extract_index = -1
                 for extractor_index, extractor in enumerate(extractors_copy):
-                    if extractor.representative == representative:
+                    if extractor.reference == reference:
                         existing_extract_index = extractor_index
                         break
 

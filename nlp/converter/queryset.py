@@ -1,6 +1,6 @@
 from nlp.converter.model import ModelConverter
 from nlp.converter.property import ModelCountProperty
-from nlp.converter.wrapper import ConverterInitArgumentWrapper
+from nlp.converter.wrapper import ReferenceTokenWrapper
 from nlp.extractor.base import IntegerExtractor
 from nlp.generate.argument import Argument, Kwarg
 from nlp.generate.attribute import Attribute
@@ -164,7 +164,7 @@ class CountQuerysetConverter(QuerysetConverter):
     def prepare_converter(self):
         """Block the count token."""
         super().prepare_converter()
-        self.block_token_as_argument(self.count.token)
+        self.block_token_as_reference(self.count.token)
 
     def get_extractor_class(self, argument_wrapper):
         """
@@ -193,8 +193,8 @@ class CountQuerysetConverter(QuerysetConverter):
         qs_statement = statements[0]
 
         # extract the value of the count
-        count_wrapper = ConverterInitArgumentWrapper(
-            representative=self.count.value,
+        count_wrapper = ReferenceTokenWrapper(
+            reference=self.count.value,
             token=self.count.token,
             source_represents_output=True,
         )

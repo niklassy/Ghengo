@@ -24,22 +24,22 @@ class ModelConverter(ClassConverter):
 
     def prepare_converter(self):
         """The model and variable token are disabled as an argument."""
-        self.block_token_as_argument(self.model.token)
-        self.block_token_as_argument(self.variable.token)
+        self.block_token_as_reference(self.model.token)
+        self.block_token_as_reference(self.variable.token)
 
     def get_lookout_kwargs(self):
         """Add the model to the lookout."""
         return {'model_wrapper': self.model.value}
 
     def get_extractor_class(self, argument_wrapper):
-        """The extractor class needs to be determined based on the kwarg_representative which is a model field."""
-        return get_model_field_extractor(argument_wrapper.representative.field)
+        """The extractor class needs to be determined based on the kwarg_reference which is a model field."""
+        return get_model_field_extractor(argument_wrapper.reference.field)
 
     def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
         """Add the model and the field to the kwargs."""
         kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
         kwargs['model_wrapper'] = self.model.value
-        kwargs['field_wrapper'] = argument_wrapper.representative
+        kwargs['field_wrapper'] = argument_wrapper.reference
         return kwargs
 
 
@@ -112,7 +112,7 @@ class ModelVariableReferenceConverter(ModelConverter):
     def prepare_converter(self):
         """The model and variable token are disabled as an argument."""
         super().prepare_converter()
-        self.block_token_as_argument(self.variable_ref.token)
+        self.block_token_as_reference(self.variable_ref.token)
 
     def get_variable_model_wrapper(self):
         """
