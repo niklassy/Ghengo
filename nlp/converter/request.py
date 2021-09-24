@@ -55,12 +55,12 @@ class RequestConverter(ClassConverter):
 
     def prepare_converter(self):
         for token in (self.method.token, self.user.token, self.model_variable_ref.token, self.model.token):
-            self.block_token_as_argument(token)
+            self.block_token_as_reference(token)
 
         # if there is a user token, it might be defined as "Alice" or "User 1", if there is a token we also want
         # to block the root which would be `User` in the second example
         if self.user.token:
-            self.block_token_as_argument(self.user.chunk.root)
+            self.block_token_as_reference(self.user.chunk.root)
 
     def get_lookout_kwargs(self):
         """When searching for a serializer wrapper, we need to add the serializer class to the kwargs."""

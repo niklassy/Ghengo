@@ -39,7 +39,7 @@ class FileConverter(ClassConverter):
         self.file_extension_lookout.locate()
         # Reject tokens that represent the file, the variable or the extension.
         for t in (self.file.token, self.file_variable.token, self.file_extension_lookout.fittest_token):
-            self.block_token_as_argument(t)
+            self.block_token_as_reference(t)
 
     def get_document_compatibility(self):
         """Only if a file token was found this converter makes sense."""

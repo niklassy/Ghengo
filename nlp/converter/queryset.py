@@ -164,7 +164,7 @@ class CountQuerysetConverter(QuerysetConverter):
     def prepare_converter(self):
         """Block the count token."""
         super().prepare_converter()
-        self.block_token_as_argument(self.count.token)
+        self.block_token_as_reference(self.count.token)
 
     def get_extractor_class(self, argument_wrapper):
         """

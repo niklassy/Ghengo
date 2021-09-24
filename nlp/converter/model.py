@@ -24,8 +24,8 @@ class ModelConverter(ClassConverter):
 
     def prepare_converter(self):
         """The model and variable token are disabled as an argument."""
-        self.block_token_as_argument(self.model.token)
-        self.block_token_as_argument(self.variable.token)
+        self.block_token_as_reference(self.model.token)
+        self.block_token_as_reference(self.variable.token)
 
     def get_lookout_kwargs(self):
         """Add the model to the lookout."""
@@ -112,7 +112,7 @@ class ModelVariableReferenceConverter(ModelConverter):
     def prepare_converter(self):
         """The model and variable token are disabled as an argument."""
         super().prepare_converter()
-        self.block_token_as_argument(self.variable_ref.token)
+        self.block_token_as_reference(self.variable_ref.token)
 
     def get_variable_model_wrapper(self):
         """

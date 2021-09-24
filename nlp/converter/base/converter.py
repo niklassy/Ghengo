@@ -147,13 +147,13 @@ class ClassConverter(Converter):
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
         self._fields = None
-        self._blocked_argument_tokens = []
+        self._blocked_reference_tokens = []
         self._last_document_word = None
 
-    def block_token_as_argument(self, token):
+    def block_token_as_reference(self, token):
         """Use this function to block a specific token from being taken as an argument."""
-        if token and token not in self._blocked_argument_tokens:
-            self._blocked_argument_tokens.append(token)
+        if token and token not in self._blocked_reference_tokens:
+            self._blocked_reference_tokens.append(token)
 
     @property
     def last_document_word(self):
@@ -176,7 +176,7 @@ class ClassConverter(Converter):
             return False
 
         token_is_blocked = any([
-            blocked_token and tokens_are_equal(blocked_token, token) for blocked_token in self._blocked_argument_tokens
+            blocked_token and tokens_are_equal(blocked_token, token) for blocked_token in self._blocked_reference_tokens
         ])
         if token_is_blocked:
             return False

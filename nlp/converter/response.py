@@ -39,7 +39,7 @@ class ResponseConverterBase(ClassConverter):
         self.error_lookout = NounLookout(self.document, 'error')  # <- error
         self.error_lookout.locate()
 
-        self.model_in_text = NewModelProperty(self, blocked_tokens=self._blocked_argument_tokens)
+        self.model_in_text = NewModelProperty(self, blocked_tokens=self._blocked_reference_tokens)
         self.model_in_text_var = ReferenceModelVariableProperty(self, self.model_in_text)
 
     @property
@@ -125,12 +125,12 @@ class ResponseConverterBase(ClassConverter):
         }
 
     def prepare_converter(self):
-        self.block_token_as_argument(self.status_lookout.fittest_token)
-        self.block_token_as_argument(self.response_lookout.fittest_token)
+        self.block_token_as_reference(self.status_lookout.fittest_token)
+        self.block_token_as_reference(self.response_lookout.fittest_token)
 
         # only block the model in text if it is actually equal to the one the serializer returns
         if self.model_in_text_fits_request:
-            self.block_token_as_argument(self.model_in_text.token)
+            self.block_token_as_reference(self.model_in_text.token)
 
     def get_document_compatibility(self):
         compatibility = 1
@@ -367,9 +367,9 @@ class ManyResponseConverter(ResponseConverterBase):
         self.prepare_converter()
 
     def prepare_converter(self):
-        self.block_token_as_argument(self.response_list_lookout.fittest_token)
-        self.block_token_as_argument(self.response_length_lookout.fittest_token)
-        self.block_token_as_argument(self.response_entry_lookout.fittest_token)
+        self.block_token_as_reference(self.response_list_lookout.fittest_token)
+        self.block_token_as_reference(self.response_length_lookout.fittest_token)
+        self.block_token_as_reference(self.response_entry_lookout.fittest_token)
         # keep this at the end
         super().prepare_converter()
 
