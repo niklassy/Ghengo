@@ -1,8 +1,19 @@
 class ConverterProperty:
     """
-    Converters have a pattern that repeats again and again: Finding a token, its chunk and the that is determined
-    from that. The key difference to Extractors: extractors are changing on runtime. ConverterProperties are information
-    the Converter MUST have in order to create statements. Extractors are additional information for these statements.
+    While converters have a specific algorithm to find interesting tokens for stuff like model fields,
+    that algorithm does not work for specific cases. This class is used whenever a converter needs to find
+    very specific stuff, e.g. the name of a model in a text.
+
+    This class holds three values:
+        - the noun chunk where the token should be
+        - the token that represents what we are searching for
+        - the value that the token translates to
+
+    These values are cached and determined when fetching the value for the first time. The converter can use these
+    values in its instance over and over again.
+
+    This class is an extension to converters. It acts as a more complicated property with more data and more power.
+    This class also allows re-usage over multiple converters if they need the same stuff (e.g. finding the model).
     """
     def __init__(self, converter):
         self.converter = converter
