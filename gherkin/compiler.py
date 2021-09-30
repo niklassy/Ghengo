@@ -174,7 +174,13 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         return test_case
 
     def get_file_name(self, ast):
-        return 'test_{}'.format(to_function_name(ast.feature.name)) if ast.feature.name else 'test_generated'
+        suite_name = ast.feature.name if ast.feature else ''
+
+        if not suite_name:
+            return 'test_generated'
+
+        translator = CacheTranslator(Settings.language, 'en')
+        return 'test_{}'.format(to_function_name(translator.translate(suite_name).replace(' ', '_')))
 
     def generate(self, ast):
         if not ast.feature:
