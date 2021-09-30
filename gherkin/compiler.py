@@ -1,5 +1,3 @@
-import time
-
 from core.constants import Languages
 from django_meta.project import DjangoProject
 from gherkin.grammar import GherkinGrammar
