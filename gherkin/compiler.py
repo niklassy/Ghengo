@@ -1,3 +1,5 @@
+import time
+
 from core.constants import Languages
 from django_meta.project import DjangoProject
 from gherkin.grammar import GherkinGrammar
@@ -136,6 +138,8 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         """
         suite = self._suite
 
+        start_time = time.time()
+
         test_case_name = self.get_test_case_name(scenario)
         test_case = suite.create_and_add_test_case(test_case_name)
 
@@ -171,10 +175,17 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
             )
             tiler_instance.add_statements_to_test_case()
 
+        print("Generation of test case '{}' took {}s to run".format(test_case_name, time.time() - start_time))
         return test_case
 
     def get_file_name(self, ast):
-        return 'test_{}'.format(to_function_name(ast.feature.name)) if ast.feature.name else 'test_generated'
+        suite_name = ast.feature.name if ast.feature else ''
+
+        if not suite_name:
+            return 'test_generated'
+
+        translator = CacheTranslator(Settings.language, 'en')
+        return 'test_{}'.format(to_function_name(translator.translate(suite_name).replace(' ', '_')))
 
     def generate(self, ast):
         if not ast.feature:
