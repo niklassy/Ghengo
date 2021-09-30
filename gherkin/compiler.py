@@ -138,8 +138,6 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         """
         suite = self._suite
 
-        start_time = time.time()
-
         test_case_name = self.get_test_case_name(scenario)
         test_case = suite.create_and_add_test_case(test_case_name)
 
@@ -175,7 +173,6 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
             )
             tiler_instance.add_statements_to_test_case()
 
-        print("Generation of test case '{}' took {}s to run".format(test_case_name, time.time() - start_time))
         return test_case
 
     def get_file_name(self, ast):
