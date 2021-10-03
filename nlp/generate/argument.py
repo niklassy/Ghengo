@@ -52,17 +52,22 @@ class Argument(OnAddToTestCaseListenerMixin, Replaceable, TemplateMixin):
 class _NestedArgument(Argument):
     start_symbol = ''
     end_symbol = ''
+    force_comma = False
 
     def get_template_context(self, line_indent, at_start_of_line):
         if len(str(self.value)) <= 100:
-            if all([not isinstance(v, TemplateMixin) for v in self.value]):
-                value = self.value
-            else:
-                content = ', '.join([
-                    v.to_template(line_indent, False) if isinstance(v, TemplateMixin) else
-                    self.get_string_for_template(v) for v in self.value
-                ])
-                value = '{}{}{}'.format(self.start_symbol, content, self.end_symbol)
+            value = self.start_symbol
+
+            for i, v in enumerate(self.value):
+                if isinstance(v, TemplateMixin):
+                    value += v.to_template(line_indent, False)
+                else:
+                    value += self.get_string_for_template(v)
+
+                if self.force_comma or i < len(self.value) - 1:
+                    value += ', '
+
+            value += self.end_symbol
         else:
             children = [Argument(value) for value in self.value]
             child_template = ',\n'.join(argument.to_template(
@@ -86,6 +91,7 @@ class ListArgument(_NestedArgument):
 class TupleArgument(_NestedArgument):
     start_symbol = '('
     end_symbol = ')'
+    force_comma = True
 
 
 class SetArgument(_NestedArgument):

@@ -4,7 +4,8 @@ from nlp.converter.property import ReferenceModelVariableProperty, ReferenceMode
 from nlp.extractor.fields_model import get_model_field_extractor, M2MModelFieldExtractor
 from nlp.generate.argument import Argument, Kwarg
 from nlp.generate.attribute import Attribute
-from nlp.generate.expression import ModelSaveExpression, ModelFactoryExpression, Expression, CompareExpression
+from nlp.generate.expression import ModelSaveExpression, ModelFactoryExpression, Expression, CompareExpression, \
+    FunctionCallExpression
 from nlp.generate.statement import ModelFieldAssignmentStatement, AssignmentStatement, AssertStatement
 from nlp.lookout.project import ModelFieldLookout
 from nlp.lookout.token import ComparisonLookout
@@ -202,8 +203,16 @@ class AssertPreviousModelConverter(ModelConverter):
         compare_lookout = ComparisonLookout(chunk or self.document, reverse=False)
         extracted_value = self.extract_and_handle_output(extractor)
 
+        if isinstance(extractor, M2MModelFieldExtractor):
+            compare = FunctionCallExpression(
+                'list',
+                [Attribute(self.variable_ref.value, '{}.all()'.format(extractor.field_name))]
+            )
+        else:
+            compare = Attribute(self.variable_ref.value, extractor.field_name)
+
         exp = CompareExpression(
-            Attribute(self.variable_ref.value, extractor.field_name),
+            compare,
             compare_lookout.get_comparison_for_value(extracted_value),
             Argument(extracted_value),
         )
