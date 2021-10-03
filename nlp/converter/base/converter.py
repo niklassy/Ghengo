@@ -240,6 +240,7 @@ class ClassConverter(Converter):
         return get_non_stop_tokens(self.document)
 
     def chunk_is_allowed_as_reference(self, chunk):
+        """Check if a chunk should be used to search for a reference."""
         return True
 
     def get_reference_wrappers(self) -> [ReferenceTokenWrapper]:
