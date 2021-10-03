@@ -1,7 +1,7 @@
 from nlp.converter.base.converter import ClassConverter
 from nlp.converter.property import ReferenceModelVariableProperty, ReferenceModelProperty, NewModelProperty, \
     NewModelVariableProperty
-from nlp.extractor.fields_model import get_model_field_extractor
+from nlp.extractor.fields_model import get_model_field_extractor, M2MModelFieldExtractor
 from nlp.generate.argument import Argument, Kwarg
 from nlp.generate.attribute import Attribute
 from nlp.generate.expression import ModelSaveExpression, ModelFactoryExpression, Expression, CompareExpression
@@ -187,11 +187,20 @@ class AssertPreviousModelConverter(ModelConverter):
 
         return statements
 
+    def extract_and_handle_output(self, extractor):
+        try:
+            return super().extract_and_handle_output(extractor)
+        except self.ExtractorReturnedNone:
+            # M2MModelFieldExtractor normally adds more statements, but in this case, simple check for a list
+            if isinstance(extractor, M2MModelFieldExtractor):
+                return extractor._extract_value()
+            raise self.ExtractorReturnedNone()
+
     def handle_extractor(self, extractor, statements):
         """For each extractor, use the field to create a compare expression."""
         chunk = get_noun_chunk_of_token(extractor.source, self.document)
         compare_lookout = ComparisonLookout(chunk or self.document, reverse=False)
-        extracted_value = extractor.extract_value()
+        extracted_value = self.extract_and_handle_output(extractor)
 
         exp = CompareExpression(
             Attribute(self.variable_ref.value, extractor.field_name),
