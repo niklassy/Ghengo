@@ -1,4 +1,4 @@
-from core.performance import AveragePerformanceMeasurement
+from core.performance import StepLevelPerformanceMeasurement
 from nlp.converter.base.converter import Converter
 from nlp.converter.file import FileConverter
 from nlp.converter.model import ModelVariableReferenceConverter, ModelFactoryConverter, AssertPreviousModelConverter
@@ -39,12 +39,8 @@ class Tiler(object):
     def best_converter(self) -> Converter:
         """Returns the converter that fits the document the best."""
         if self._best_converter is None:
-            try:
-                ast_name = self.ast_object.get_parent_step().__class__.__name__
-            except AttributeError:
-                ast_name = 'foo'
-            measure_key = '------- FIND_BEST_CONVERTER_{}'.format(ast_name)
-            AveragePerformanceMeasurement.start_measure(measure_key)
+            measure_key = '------- FIND_BEST_CONVERTER'
+            StepLevelPerformanceMeasurement.start_measure(measure_key)
             highest_compatibility = 0
 
             for converter_cls in self.converter_classes:
@@ -58,7 +54,7 @@ class Tiler(object):
                     if compatibility >= 1:
                         break
 
-            AveragePerformanceMeasurement.end_measure(measure_key)
+            StepLevelPerformanceMeasurement.end_measure(measure_key)
         return self._best_converter
 
     def add_statements_to_test_case(self):
@@ -71,10 +67,10 @@ class Tiler(object):
         if not self.best_converter:
             return []
 
-        measure_key = '------- GET_STATEMENTS_{}'.format(self.ast_object.get_parent_step().__class__.__name__)
-        AveragePerformanceMeasurement.start_measure(measure_key)
+        measure_key = '------- GET_STATEMENTS_'
+        StepLevelPerformanceMeasurement.start_measure(measure_key)
         output = self.best_converter.convert_to_statements()
-        AveragePerformanceMeasurement.end_measure(measure_key)
+        StepLevelPerformanceMeasurement.end_measure(measure_key)
         return output
 
 

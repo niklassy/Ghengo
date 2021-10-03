@@ -1,5 +1,6 @@
 from core.constants import Languages
-from core.performance import AveragePerformanceMeasurement
+from core.performance import AveragePerformanceMeasurement, StepLevelPerformanceMeasurement, \
+    ScenarioLevelPerformanceMeasurement
 from nlp.lookout.exception import LookoutFoundNothing
 from nlp.setup import Nlp
 from nlp.translator import CacheTranslator
@@ -202,8 +203,8 @@ class Lookout(object):
         if self.fittest_output_object is not None:
             return self.fittest_output_object
 
-        measure_key = '----------- {}'.format(self.__class__.__name__)
-        AveragePerformanceMeasurement.start_measure(measure_key)
+        StepLevelPerformanceMeasurement.start_measure('----------- LOCATE_ST')
+        ScenarioLevelPerformanceMeasurement.start_measure('----------- LOCATE_SC')
         self._results_in_fallback = False
 
         for output_object in self.get_output_objects(*args, **kwargs):
@@ -239,7 +240,8 @@ class Lookout(object):
                     if self.go_to_next_output(similarity):
                         break
 
-        AveragePerformanceMeasurement.end_measure(measure_key)
+        StepLevelPerformanceMeasurement.end_measure('----------- LOCATE_ST')
+        ScenarioLevelPerformanceMeasurement.end_measure('----------- LOCATE_SC')
         # if the highest_similarity is too low, overwrite the values and raise an exception if wanted
         if self.has_invalid_fittest_output():
             # has to stay before raise_exception!
