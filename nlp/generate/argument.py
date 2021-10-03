@@ -55,11 +55,14 @@ class _NestedArgument(Argument):
 
     def get_template_context(self, line_indent, at_start_of_line):
         if len(str(self.value)) <= 100:
-            content = ', '.join([
-                v.to_template(line_indent, False) if isinstance(v, TemplateMixin) else
-                self.get_string_for_template(v) for v in self.value
-            ])
-            value = '{}{}{}'.format(self.start_symbol, content, self.end_symbol)
+            if all([not isinstance(v, TemplateMixin) for v in self.value]):
+                value = self.value
+            else:
+                content = ', '.join([
+                    v.to_template(line_indent, False) if isinstance(v, TemplateMixin) else
+                    self.get_string_for_template(v) for v in self.value
+                ])
+                value = '{}{}{}'.format(self.start_symbol, content, self.end_symbol)
         else:
             children = [Argument(value) for value in self.value]
             child_template = ',\n'.join(argument.to_template(
