@@ -187,11 +187,17 @@ class AssertPreviousModelConverter(ModelConverter):
 
         return statements
 
+    def extract_and_handle_output(self, extractor):
+        try:
+            return super().extract_and_handle_output(extractor)
+        except self.ExtractorReturnedNone:
+            return extractor._extract_value()
+
     def handle_extractor(self, extractor, statements):
         """For each extractor, use the field to create a compare expression."""
         chunk = get_noun_chunk_of_token(extractor.source, self.document)
         compare_lookout = ComparisonLookout(chunk or self.document, reverse=False)
-        extracted_value = extractor.extract_value()
+        extracted_value = self.extract_and_handle_output(extractor)
 
         exp = CompareExpression(
             Attribute(self.variable_ref.value, extractor.field_name),
