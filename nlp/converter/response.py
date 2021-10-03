@@ -50,7 +50,7 @@ class ResponseConverterBase(ClassConverter):
         if not referenced_variable:
             return None
 
-        return referenced_variable.value.url_wrapper.model_wrapper
+        return referenced_variable.value.action_wrapper.model_wrapper
 
     @property
     def model_in_text_fits_request(self):
