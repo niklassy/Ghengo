@@ -100,7 +100,7 @@ class ModelFieldWrapper(ExistsInCode):
     exists_in_code = False
 
     def __init__(self, name):
-        self.name = to_function_name(name)
+        self.name = to_function_name(name.replace(' ', '_'))
         self.verbose_name = self.name
         self.field = self
 
