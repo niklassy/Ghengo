@@ -1,3 +1,4 @@
+from core.performance import AveragePerformanceMeasurement
 from nlp.extractor.exception import ExtractionError
 from nlp.extractor.output import ExtractorOutput, VariableOutput, NumberAsStringOutput, StringOutput, IntegerOutput
 from nlp.generate.warning import GenerationWarning
@@ -85,7 +86,10 @@ class Extractor(object):
         The public method to extract the value. Every ExtractionError is caught here. If there is one, a
         GenerationWarning is returned instead.
         """
-        return self._extract_value()
+        AveragePerformanceMeasurement.start_measure('----------- Extractor')
+        output = self._extract_value()
+        AveragePerformanceMeasurement.end_measure('----------- Extractor')
+        return output
 
     def on_handled_by_converter(self, statements):
         """

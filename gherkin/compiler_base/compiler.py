@@ -1,5 +1,6 @@
 import inspect
 
+from core.performance import AveragePerformanceMeasurement
 from gherkin.compiler_base.grammar import Grammar
 from gherkin.compiler_base.line import Line
 from gherkin.compiler_base.token import Token
@@ -241,8 +242,11 @@ class Compiler(object):
         To use the code generator, you must call `export_as_text` or `export_as_file` afterwards.
         """
         self.ast = None
+        step_measure_key = '--- LEXER + PARSER'
+        AveragePerformanceMeasurement.start_measure(step_measure_key)
         tokens = self.use_lexer(text)
         self.ast = self.use_parser(tokens)
+        AveragePerformanceMeasurement.end_measure(step_measure_key)
 
         return self.ast
 

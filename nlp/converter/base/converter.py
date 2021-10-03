@@ -1,3 +1,4 @@
+from core.performance import AveragePerformanceMeasurement
 from nlp.converter.wrapper import ReferenceTokenWrapper
 from nlp.generate.suite import TestCaseBase
 from nlp.lookout.nested import NestedLookout
@@ -238,6 +239,9 @@ class ClassConverter(Converter):
         """Returns all tokens that can possibly be an argument."""
         return get_non_stop_tokens(self.document)
 
+    def chunk_is_allowed_as_reference(self, chunk):
+        return True
+
     def get_reference_wrappers(self) -> [ReferenceTokenWrapper]:
         """
         Returns a list of objects that hold a token and the reference for data (e.g. fields of a model).
@@ -246,11 +250,17 @@ class ClassConverter(Converter):
         default_reference_wrappers = self.get_default_argument_wrappers()
         ref_wrappers = []
 
+        measure_key = '--------- CONVERTER__FIND_REFERENCES_{}'.format(self.related_object.get_parent_step().__class__.__name__)
+        AveragePerformanceMeasurement.start_measure(measure_key)
+
         for token in self.get_possible_reference_name_tokens():
             if not self.token_can_be_reference_name(token):
                 continue
 
             chunk = get_noun_chunk_of_token(token, self.document)
+            if not self.chunk_is_allowed_as_reference(chunk):
+                chunk = None
+
             reference = self.search_for_reference(chunk, token)
 
             # if the result is not valid, skip it
@@ -272,6 +282,7 @@ class ClassConverter(Converter):
                 default_wrapper.source_represents_output = True
                 ref_wrappers.append(default_wrapper)
 
+        AveragePerformanceMeasurement.end_measure(measure_key)
         return ref_wrappers
 
     def get_extractor_class(self, argument_wrapper: ReferenceTokenWrapper):
