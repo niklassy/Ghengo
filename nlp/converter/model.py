@@ -1,7 +1,7 @@
 from nlp.converter.base.converter import ClassConverter
 from nlp.converter.property import ReferenceModelVariableProperty, ReferenceModelProperty, NewModelProperty, \
     NewModelVariableProperty
-from nlp.extractor.fields_model import get_model_field_extractor
+from nlp.extractor.fields_model import get_model_field_extractor, M2MModelFieldExtractor
 from nlp.generate.argument import Argument, Kwarg
 from nlp.generate.attribute import Attribute
 from nlp.generate.expression import ModelSaveExpression, ModelFactoryExpression, Expression, CompareExpression
@@ -191,7 +191,10 @@ class AssertPreviousModelConverter(ModelConverter):
         try:
             return super().extract_and_handle_output(extractor)
         except self.ExtractorReturnedNone:
-            return extractor._extract_value()
+            # M2MModelFieldExtractor normally adds more statements, but in this case, simple check for a list
+            if isinstance(extractor, M2MModelFieldExtractor):
+                return extractor._extract_value()
+            raise self.ExtractorReturnedNone()
 
     def handle_extractor(self, extractor, statements):
         """For each extractor, use the field to create a compare expression."""
