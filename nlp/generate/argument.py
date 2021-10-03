@@ -64,8 +64,10 @@ class _NestedArgument(Argument):
                 else:
                     value += self.get_string_for_template(v)
 
-                if self.force_comma or i < len(self.value) - 1:
+                if i < len(self.value) - 1:
                     value += ', '
+                elif self.force_comma:
+                    value += ','
 
             value += self.end_symbol
         else:
