@@ -7,11 +7,9 @@ from django_meta.api import ApiFieldWrapper, ExistingApiFieldWrapper
 from django_meta.model import ExistingModelWrapper
 from django_sample_project.apps.order.api.serializers import OrderSerializer
 from django_sample_project.apps.order.models import ToDo
-from nlp.extractor.exception import ExtractionError
 from nlp.extractor.fields_rest_api import ApiModelFieldExtractor, BooleanApiModelFieldExtractor, \
     IntegerApiModelFieldExtractor, FloatApiModelFieldExtractor, NoneApiModelFieldExtractor, \
-    StringApiModelFieldExtractor, ModelApiFieldExtractor, ForeignKeyApiFieldExtractor, DictApiFieldExtractor, \
-    ListApiFieldExtractor
+    StringApiModelFieldExtractor, ModelApiFieldExtractor, ForeignKeyApiFieldExtractor, DictApiFieldExtractor
 from nlp.extractor.output import NoneOutput, StringOutput
 from nlp.generate.argument import Kwarg
 from nlp.generate.attribute import Attribute
@@ -21,7 +19,6 @@ from nlp.generate.statement import AssignmentStatement
 from nlp.generate.variable import Variable
 from nlp.generate.warning import GenerationWarning
 from nlp.setup import Nlp
-from test_utils import assert_callable_raises
 
 suite = PyTestTestSuite('bar')
 default_test_case = suite.create_and_add_test_case('foo')

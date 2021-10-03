@@ -39,7 +39,11 @@ class Tiler(object):
     def best_converter(self) -> Converter:
         """Returns the converter that fits the document the best."""
         if self._best_converter is None:
-            measure_key = '------- FIND_BEST_CONVERTER_{}'.format(self.ast_object.get_parent_step().__class__.__name__)
+            try:
+                ast_name = self.ast_object.get_parent_step().__class__.__name__
+            except AttributeError:
+                ast_name = 'foo'
+            measure_key = '------- FIND_BEST_CONVERTER_{}'.format(ast_name)
             AveragePerformanceMeasurement.start_measure(measure_key)
             highest_compatibility = 0
 

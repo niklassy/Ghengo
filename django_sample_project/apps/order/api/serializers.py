@@ -1,12 +1,15 @@
+from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer, PrimaryKeyRelatedField
 
 from django_sample_project.apps.order.models import Order, Product
 
 
 class OrderSerializer(ModelSerializer):
+    name = serializers.ModelField(Order.name)   # <-- needed for tests
+
     class Meta:
         model = Order
-        fields = ['id', 'owner', 'number']
+        fields = ['id', 'owner', 'number', 'name']
 
 
 class ProductSerializer(ModelSerializer):
