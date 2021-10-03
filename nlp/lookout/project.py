@@ -154,7 +154,7 @@ class PermissionLookout(DjangoProjectLookout):
         return Permission.objects.all()
 
 
-class UrlLookout(DjangoProjectLookout):
+class ApiActionLookout(DjangoProjectLookout):
     """
     This lookout will find urls in the django project.
     """
@@ -170,10 +170,11 @@ class UrlLookout(DjangoProjectLookout):
 
     def get_fallback(self):
         url_wrapper = UrlPatternWrapper(model_wrapper=self.model_wrapper)
+
         return ApiActionWrapper(
             url_pattern_wrapper=url_wrapper,
-            method='get',
-            fn_name=str(self.text),
+            method=self.valid_methods[0] if self.valid_methods else Methods.GET,
+            fn_name=self.translator_to_en.translate(str(self.text)),
             url_name='detail',
         )
 

@@ -25,6 +25,10 @@ class Methods:
 
 
 class ApiActionWrapper:
+    """
+    Every viewset can have actions which represent an action of an url. One url can have multiple actions because
+    of different methods.
+    """
     def __init__(self, url_pattern_wrapper, fn_name, method, url_name):
         self.fn_name = fn_name
         self.url_name = url_name
@@ -78,9 +82,13 @@ class UrlPatternWrapper(object):
         return key == 'pk' or key == 'id'
 
     def get_all_actions_for_model_wrapper(self, model_wrapper):
+        """Returns all the actions that support the model wrapper"""
         return []
 
     def supports_model_wrapper(self, model_wrapper):
+        """
+        Check if this url pattern supports the given model wrapper.
+        """
         return self.model_wrapper.models_are_equal(model_wrapper)
 
     @property

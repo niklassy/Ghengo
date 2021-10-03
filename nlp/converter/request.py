@@ -10,7 +10,7 @@ from nlp.generate.attribute import Attribute
 from nlp.generate.expression import RequestExpression, APIClientAuthenticateExpression, APIClientExpression
 from nlp.generate.statement import AssignmentStatement
 from nlp.generate.variable import Variable
-from nlp.lookout.project import SerializerFieldLookout, ModelFieldLookout, UrlLookout
+from nlp.lookout.project import SerializerFieldLookout, ModelFieldLookout, ApiActionLookout
 from nlp.utils import tokens_are_equal, NoToken
 
 
@@ -121,7 +121,7 @@ class RequestConverter(ClassConverter):
     @property
     def action_wrapper(self) -> ApiActionWrapper:
         """
-        Returns the url pattern wrapper that represents a Django URL pattern that fits the method provided.
+        Returns the action pattern wrapper that represents a combination of method and url.
         """
         if self._url_pattern_wrapper is None:
             all_verbs = self.get_document_verbs()
@@ -130,7 +130,7 @@ class RequestConverter(ClassConverter):
             except IndexError:
                 last_verb = NoToken()
 
-            lookout = UrlLookout(
+            lookout = ApiActionLookout(
                 # use either the method or the verb to determine the url
                 text=str(self.method.token or last_verb),
                 language=self.language,
