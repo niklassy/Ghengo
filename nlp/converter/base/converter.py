@@ -238,6 +238,10 @@ class ClassConverter(Converter):
         """Returns all tokens that can possibly be an argument."""
         return get_non_stop_tokens(self.document)
 
+    def chunk_is_allowed_as_reference(self, chunk):
+        """Check if a chunk should be used to search for a reference."""
+        return True
+
     def get_reference_wrappers(self) -> [ReferenceTokenWrapper]:
         """
         Returns a list of objects that hold a token and the reference for data (e.g. fields of a model).
@@ -251,6 +255,9 @@ class ClassConverter(Converter):
                 continue
 
             chunk = get_noun_chunk_of_token(token, self.document)
+            if not self.chunk_is_allowed_as_reference(chunk):
+                chunk = None
+
             reference = self.search_for_reference(chunk, token)
 
             # if the result is not valid, skip it

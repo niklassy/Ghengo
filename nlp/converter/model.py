@@ -49,6 +49,9 @@ class ModelFactoryConverter(ModelConverter):
     """
     can_use_datatables = True
 
+    def chunk_is_allowed_as_reference(self, chunk):
+        return chunk and self.model.token not in chunk
+
     def prepare_statements(self, statements):
         """
         Before working with the extractors, create an assignment statement with the model factory. That statement
