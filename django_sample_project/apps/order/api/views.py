@@ -1,13 +1,19 @@
 from rest_framework.decorators import action
 from rest_framework.viewsets import ModelViewSet
 
-from django_sample_project.apps.order.api.serializers import OrderSerializer, ToDoSerializer
+from django_sample_project.apps.order.api.serializers import OrderSerializer, ToDoSerializer, OrderBookSerializer
 from django_sample_project.apps.order.models import Order, ToDo
 
 
 class OrderViewSet(ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
+
+    def get_serializer_class(self):
+        if self.action == 'book':
+            return OrderBookSerializer
+
+        return self.serializer_class
 
     def list(self, *args, **kwargs):
         return super().list(*args, **kwargs)

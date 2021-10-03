@@ -194,13 +194,13 @@ class ReverseCallExpression(FunctionCallExpression):
 class RequestExpression(FunctionCallExpression):
     template = '{client_variable_ref}.{fn_name}({long_content_start}{reverse}{kwargs}{long_content_end})'
 
-    def __init__(self, function_name, function_kwargs, reverse_name, client_variable_ref, reverse_kwargs, url_wrapper):
+    def __init__(self, function_name, function_kwargs, reverse_name, client_variable_ref, reverse_kwargs, action_wrapper):
         super().__init__(function_name, function_kwargs)
         assert not isinstance(client_variable_ref, Variable), 'You must not use Variable as client_ref. Use' \
                                                               ' VariableReference instead'
         self.client_variable_ref = client_variable_ref
         self.reverse_expression = ReverseCallExpression(reverse_name, reverse_kwargs)
-        self.url_wrapper = url_wrapper
+        self.action_wrapper = action_wrapper
 
     def get_children(self):
         references = super().get_children()
@@ -208,7 +208,7 @@ class RequestExpression(FunctionCallExpression):
 
     @property
     def serializer_class(self):
-        return self.url_wrapper.get_serializer_class(self.function_name)
+        return self.action_wrapper.serializer_cls
 
     def get_template_context(self, line_indent, at_start_of_line):
         context = super().get_template_context(line_indent, at_start_of_line)

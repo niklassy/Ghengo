@@ -24,6 +24,49 @@ class Methods:
         return [cls.GET, cls.PUT, cls.POST, cls.DELETE, cls.PATCH]
 
 
+class ApiActionWrapper:
+    def __init__(self, url_pattern_wrapper, fn_name, method, url_name):
+        self.fn_name = fn_name
+        self.url_name = url_name
+        self.method = method
+        self.url_pattern_wrapper = url_pattern_wrapper
+
+    def __str__(self):
+        return '{} - {} - {}'.format(self.method, self.fn_name, self.url_name)
+
+    @property
+    def serializer_cls(self):
+        return lambda *args, **kwargs: None
+
+    @property
+    def model_wrapper(self):
+        return self.url_pattern_wrapper.model_wrapper
+
+
+class ExistingApiActionWrapper(ApiActionWrapper):
+    @property
+    def serializer_cls(self):
+        url_pattern_wrapper = self.url_pattern_wrapper
+
+        view_cls = url_pattern_wrapper.view_cls
+        try:
+            view = view_cls(request=None, format_kwarg=None, action=self.fn_name)
+        except TypeError:
+            return None
+
+        try:
+            return view.get_serializer_class()
+        except Exception:
+            return None
+
+    @property
+    def model_wrapper(self):
+        if not issubclass(self.serializer_cls, ModelSerializer):
+            return None
+
+        return ExistingModelWrapper.create_with_model(self.serializer_cls.Meta.model)
+
+
 class UrlPatternWrapper(object):
     def __init__(self, model_wrapper):
         self.model_wrapper = model_wrapper
@@ -33,6 +76,12 @@ class UrlPatternWrapper(object):
         Check if a given key exists in the kwargs of the url. By default only pk and id are given in urls.
         """
         return key == 'pk' or key == 'id'
+
+    def get_all_actions_for_model_wrapper(self, model_wrapper):
+        return []
+
+    def supports_model_wrapper(self, model_wrapper):
+        return self.model_wrapper.models_are_equal(model_wrapper)
 
     @property
     def is_represented_by_view_set(self):
@@ -67,7 +116,7 @@ class UrlPatternWrapper(object):
         """Get a guessed reverse name for the pattern."""
         return '{}-{}'.format(self.model_wrapper.name.lower(), 'detail')
 
-    def get_serializer_class(self, for_method):
+    def get_serializer_class(self, action_wrapper):
         """
         Returns the class of the serializer for a given method. By default None is returned.
 
@@ -81,15 +130,30 @@ class ExistingUrlPatternWrapper(UrlPatternWrapper):
         self.url_pattern = url_pattern
         self._view_set_cached = None
         self._api_view_cached = None
+        self._view_cls = None
         self._view_set_determined = False
         self._api_view_determined = False
-        super().__init__(model_wrapper=self._get_model_wrapper())
+        super().__init__(model_wrapper=None)
 
     def key_exists_in_route_kwargs(self, key):
         """
         Function that checks if a given key exists in the route_kwargs.
         """
         return key in self._route_kwargs
+
+    def supports_model_wrapper(self, model_wrapper):
+        return any([model_wrapper.models_are_equal(mw) for mw in self._all_models])
+
+    def get_all_actions_for_model_wrapper(self, model_wrapper):
+        if not self.supports_model_wrapper(model_wrapper):
+            return []
+
+        output = []
+        for action in self._all_api_actions:
+            if action.model_wrapper.models_are_equal(model_wrapper):
+                output.append(action)
+
+        return output
 
     @property
     def reverse_name(self):
@@ -98,22 +162,11 @@ class ExistingUrlPatternWrapper(UrlPatternWrapper):
         """
         return self.url_pattern.name
 
-    def _get_model_wrapper(self):
-        view_cls = self._get_view_cls()
-        try:
-            view = view_cls(request=None, format_kwarg=None)
-        except TypeError:
-            return None
-
-        try:
-            serializer_cls = view.get_serializer_class()
-        except Exception:
-            return None
-
-        if not issubclass(serializer_cls, ModelSerializer):
-            return None
-
-        return ExistingModelWrapper.create_with_model(serializer_cls.Meta.model)
+    @property
+    def view_cls(self):
+        if self._view_cls is None:
+            self._view_cls = self._get_view_cls()
+        return self._view_cls
 
     @property
     def _route_kwargs(self):
@@ -125,25 +178,37 @@ class ExistingUrlPatternWrapper(UrlPatternWrapper):
             return []
 
     @property
+    def _all_models(self):
+        return [action.model_wrapper for action in self._all_api_actions]
+
+    @property
     def _all_api_actions(self):
         """
         Returns all api actions for the view set.
         """
         if self._api_view is not None:
-            return self._api_view.get_all_actions()
+            actions = self._api_view.get_all_actions()
+        elif self._view_set is not None:
+            actions = self._view_set.get_all_actions()
+        else:
+            actions = []
 
-        return self._view_set.get_all_actions()
+        return [
+            ExistingApiActionWrapper(
+                url_pattern_wrapper=self,
+                fn_name=fn_name,
+                method=method,
+                url_name=url_name,
+            ) for fn_name, method, url_name in actions
+        ]
 
-    def get_serializer_class(self, for_method):
+    def get_serializer_class(self, action_wrapper):
         """
         Returns the serializer class that is responsible for the url.
         """
-        for fn_name, method, url_name in self._all_api_actions:
-            if for_method == method and url_name == self.reverse_url_name:
-                view_cls = self._get_view_cls()
-                view = view_cls(request=None, format_kwarg=None, action=fn_name)
-                return view.get_serializer_class()
-        return None
+        view_cls = self.view_cls
+        view = view_cls(request=None, format_kwarg=None, action=action_wrapper.fn_name)
+        return view.get_serializer_class()
 
     @property
     def methods(self):
@@ -198,15 +263,18 @@ class ExistingUrlPatternWrapper(UrlPatternWrapper):
         Returns the api view that belongs to the url pattern.
         """
         if self._api_view_determined is False:
-            view_cls = self._get_view_cls()
+            view_cls = self.view_cls
 
-            is_valid_api_view = issubclass(view_cls, APIView) and view_cls != APIRootView
-            is_view_set = issubclass(view_cls, GenericViewSet)
-
-            if inspect.isclass(view_cls) and is_valid_api_view and not is_view_set:
-                self._api_view_cached = ApiViewWrapper(view_cls(request=None, format_kwargs=None))
-            else:
+            if not inspect.isclass(view_cls):
                 self._api_view_cached = None
+            else:
+                is_valid_api_view = issubclass(view_cls, APIView) and view_cls != APIRootView
+                is_view_set = issubclass(view_cls, GenericViewSet)
+
+                if is_valid_api_view and not is_view_set:
+                    self._api_view_cached = ApiViewWrapper(view_cls(request=None, format_kwargs=None))
+                else:
+                    self._api_view_cached = None
 
             self._api_view_determined = True
         return self._api_view_cached
@@ -221,9 +289,9 @@ class ExistingUrlPatternWrapper(UrlPatternWrapper):
         Returns the view set that represents the url pattern. May be None
         """
         if self._view_set_determined is False:
-            view_cls = self._get_view_cls()
+            view_cls = self.view_cls
 
-            if inspect.isclass(view_cls) and issubclass(view_cls, GenericViewSet):
+            if view_cls and inspect.isclass(view_cls) and issubclass(view_cls, GenericViewSet):
                 self._view_set_cached = ViewSetWrapper(view_cls(request=None, format_kwarg=None))
             else:
                 self._view_set_cached = None

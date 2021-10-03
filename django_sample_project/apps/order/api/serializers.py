@@ -15,6 +15,14 @@ class OrderSerializer(ModelSerializer):
         fields = ['id', 'uses_coal', 'name', 'owner', 'collections', 'file']
 
 
+class OrderBookSerializer(ModelSerializer):
+    ok = serializers.BooleanField()
+
+    class Meta:
+        model = Order
+        fields = ['id', 'uses_coal', 'name', 'owner', 'collections', 'file']
+
+
 class ToDoSerializer(ModelSerializer):
     system = serializers.IntegerField()
 

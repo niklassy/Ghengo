@@ -1,4 +1,4 @@
-from django_meta.api import ExistingUrlPatternWrapper
+from django_meta.api import ExistingUrlPatternWrapper, ApiActionWrapper
 from django_meta.model import ModelFieldWrapper
 from nlp.converter.base.converter import ClassConverter
 from nlp.converter.property import UserReferenceVariableProperty, MethodProperty, \
@@ -66,11 +66,11 @@ class RequestConverter(ClassConverter):
         """When searching for a serializer wrapper, we need to add the serializer class to the kwargs."""
         serializer = None
 
-        if self.url_pattern_wrapper:
-            serializer_class = self.url_pattern_wrapper.get_serializer_class(self.method.value)
+        if self.action_wrapper:
+            serializer_class = self.action_wrapper.serializer_cls
 
             if serializer_class:
-                serializer = self.url_pattern_wrapper.get_serializer_class(self.method.value)()
+                serializer = serializer_class()
             else:
                 serializer = None
 
@@ -109,7 +109,7 @@ class RequestConverter(ClassConverter):
         For now there are not many alternatives for a request converter, if there are any new, this has to be
         refactored
         """
-        if not self.url_pattern_wrapper:
+        if not self.action_wrapper:
             return 0
         return 1
 
@@ -119,7 +119,7 @@ class RequestConverter(ClassConverter):
         return not bool(self.user.token)
 
     @property
-    def url_pattern_wrapper(self) -> ExistingUrlPatternWrapper:
+    def action_wrapper(self) -> ApiActionWrapper:
         """
         Returns the url pattern wrapper that represents a Django URL pattern that fits the method provided.
         """
@@ -145,18 +145,13 @@ class RequestConverter(ClassConverter):
         Returns the method for the statements. This also has the fallback for the cases where the text
         has no obvious hint about the method. It will use the url pattern wrapper instead.
         """
-        try:
-            fallback_method = self.url_pattern_wrapper.methods[0]
-        except IndexError:
-            fallback_method = 'get'
-
-        return self.method.value or fallback_method
+        return self.method.value or self.action_wrapper.method
 
     def prepare_statements(self, statements):
         """
         When preparing the statements, there are several things that need to be done before adding the fields.
         """
-        if not self.url_pattern_wrapper:
+        if not self.action_wrapper:
             return statements
 
         # check if there is already a statement with a client that was created
@@ -181,7 +176,7 @@ class RequestConverter(ClassConverter):
         reverse_kwargs = []
         model_token = self.model_variable_ref.token
         user_token = self.user.token
-        pk_in_route_kwargs = self.url_pattern_wrapper.key_exists_in_route_kwargs('pk')
+        pk_in_route_kwargs = self.action_wrapper.url_pattern_wrapper.key_exists_in_route_kwargs('pk')
 
         if model_token and not tokens_are_equal(model_token, user_token) and pk_in_route_kwargs:
             reverse_kwargs.append(Kwarg('pk', Attribute(self.model_variable_ref.value, 'pk')))
@@ -190,10 +185,10 @@ class RequestConverter(ClassConverter):
         expression_request = RequestExpression(
             self.extract_method(),
             function_kwargs=[],
-            reverse_name=self.url_pattern_wrapper.reverse_name,
+            reverse_name=self.action_wrapper.url_pattern_wrapper.reverse_name,
             client_variable_ref=variable_client.get_reference(),
             reverse_kwargs=reverse_kwargs,
-            url_wrapper=self.url_pattern_wrapper,
+            action_wrapper=self.action_wrapper,
         )
 
         # get the variable name by checking how many other request expressions already exist
@@ -204,7 +199,7 @@ class RequestConverter(ClassConverter):
         else:
             variable_name = 'response_{}'.format(len(other_request_expressions))
 
-        response_variable = Variable(variable_name, self.url_pattern_wrapper.reverse_name)
+        response_variable = Variable(variable_name, self.action_wrapper.url_pattern_wrapper.reverse_name)
         statement_request = AssignmentStatement(expression_request, response_variable)
         statements.append(statement_request)
 
@@ -227,7 +222,7 @@ class RequestConverter(ClassConverter):
 
         # some data may be passed via the url or the body, so check if the defined field exists on the url; if yes
         # add it to the reverse expression instead
-        if self.url_pattern_wrapper.key_exists_in_route_kwargs(extractor.field_name):
+        if self.action_wrapper.url_pattern_wrapper.key_exists_in_route_kwargs(extractor.field_name):
             kwarg_list = kwargs_for_url
         else:
             kwarg_list = kwarg_for_body

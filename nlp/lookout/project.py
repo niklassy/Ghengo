@@ -4,7 +4,7 @@ from abc import ABC
 from django.contrib.auth.models import Permission
 
 from django_meta.api import ApiFieldWrapper, ExistingApiFieldWrapper, Methods, UrlPatternWrapper, \
-    ExistingUrlPatternWrapper
+    ExistingUrlPatternWrapper, ApiActionWrapper
 from django_meta.model import ModelFieldWrapper, ModelWrapper
 from nlp.lookout.base import Lookout
 from nlp.lookout.token import RestActionLookout
@@ -169,17 +169,25 @@ class UrlLookout(DjangoProjectLookout):
         self.valid_methods = [method for method in valid_methods if method]
 
     def get_fallback(self):
-        return UrlPatternWrapper(model_wrapper=self.model_wrapper)
+        url_wrapper = UrlPatternWrapper(model_wrapper=self.model_wrapper)
+        return ApiActionWrapper(
+            url_pattern_wrapper=url_wrapper,
+            method='get',
+            fn_name=str(self.text),
+            url_name='detail',
+        )
 
     def go_to_next_output(self, similarity):
         return similarity > 0.9
 
-    def is_new_fittest_output_object(self, similarity, url_wrapper, input_doc, output_doc):
+    def is_new_fittest_output_object(self, similarity, action_wrapper, input_doc, output_doc):
         """
         For different urls there might be multiple endpoints with the same methods. To identify which one is meant,
         the reverse name and url name is used to determine which endpoint is better suited.
         """
-        fittest_url = self.fittest_output_object
+        url_wrapper = action_wrapper.url_pattern_wrapper
+        fittest_action = self.fittest_output_object
+        fittest_url = fittest_action.url_pattern_wrapper if fittest_action else None
 
         if fittest_url and similarity == self.highest_similarity and url_wrapper != fittest_url:
             best_similarity = 0
@@ -206,19 +214,19 @@ class UrlLookout(DjangoProjectLookout):
 
         return super().is_new_fittest_output_object(similarity, url_wrapper, input_doc, output_doc)
 
-    def get_keywords(self, url_wrapper):
-        keywords = [url_wrapper.reverse_url_name, url_wrapper.reverse_name]
+    def get_keywords(self, action_wrapper):
+        keywords = [action_wrapper.url_name, action_wrapper.fn_name]
 
-        if url_wrapper.method_is_supported(Methods.GET):
+        if action_wrapper.method == Methods.GET:
             keywords += RestActionLookout.GET_KEYWORDS
 
-        if url_wrapper.method_is_supported(Methods.POST):
+        if action_wrapper.method == Methods.POST:
             keywords += RestActionLookout.CREATE_KEYWORDS
 
-        if url_wrapper.method_is_supported(Methods.PUT) or url_wrapper.method_is_supported(Methods.PATCH):
+        if action_wrapper.method == Methods.PUT or action_wrapper.method == Methods.PATCH:
             keywords += RestActionLookout.UPDATE_KEYWORDS
 
-        if url_wrapper.method_is_supported(Methods.DELETE):
+        if action_wrapper.method == Methods.DELETE:
             keywords += RestActionLookout.DELETE_KEYWORDS
 
         return keywords
@@ -236,11 +244,9 @@ class UrlLookout(DjangoProjectLookout):
                 if self.valid_methods and not any([m in self.valid_methods for m in wrapper.methods]):
                     continue
 
-                # if the model is not the same, skip it
-                if wrapper.model_wrapper.model != self.model_wrapper.model:
-                    continue
-
-                results.append(wrapper)
+                # get all actions for this model
+                actions = wrapper.get_all_actions_for_model_wrapper(self.model_wrapper)
+                results += actions
 
         return results
 
