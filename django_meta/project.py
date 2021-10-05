@@ -8,17 +8,71 @@ from django_meta.setup import setup_django
 
 
 class DjangoProject(object):
+    class RegisterKeys:
+        THIRD_PARTY = 'third_party'
+        DJANGO = 'django'
+        FROM_APP = 'from_app'
+
     def __init__(self, settings_path):
         self.settings = importlib.import_module(settings_path)
 
         # django needs to know where the settings are, so set it in the env and setup django afterwards
         setup_django(settings_path)
 
+        self._urls = None
+
+        self._apps_cached = False
+        self._app_dict = {
+            self.RegisterKeys.THIRD_PARTY: [],
+            self.RegisterKeys.DJANGO: [],
+            self.RegisterKeys.FROM_APP: [],
+        }
+
     def get_reverse_keys(self):
         """Returns all keys that are used in the project that can be used via reverse"""
         return get_resolver().reverse_dict.keys()
 
-    def list_urls(self, url_pattern=None, url_list=None, as_pattern=False):
+    def _cache_app(self, app, third_party=False, from_django=False):
+        """Cache an app for later usage."""
+        if third_party:
+            key = self.RegisterKeys.THIRD_PARTY
+        elif from_django:
+            key = self.RegisterKeys.DJANGO
+        else:
+            key = self.RegisterKeys.FROM_APP
+
+        app_list = self._app_dict[key]
+        if app not in app_list:
+            app_list.append(app)
+
+    def _find_and_cache_apps(self):
+        all_apps = list(apps.get_app_configs())
+
+        for app in all_apps:
+            app_wrapper = AppWrapper(app, self)
+
+            if app_wrapper.defined_by_django:
+                self._cache_app(app_wrapper, from_django=True)
+                continue
+
+            # add third party apps if wanted
+            if app_wrapper.defined_by_third_party:
+                self._cache_app(app_wrapper, third_party=True)
+                continue
+
+            # add project apps if wanted
+            if app_wrapper.defined_by_project:
+                self._cache_app(app_wrapper)
+
+        self._apps_cached = True
+
+    @property
+    def urls(self):
+        if self._urls is None:
+            self._urls = self._list_urls(as_pattern=True)
+        return self._urls
+
+    def _list_urls(self, url_pattern=None, url_list=None, as_pattern=False):
         """
         Returns all urls that are available in the project.
 
@@ -43,10 +97,10 @@ class DjangoProject(object):
 
             elif isinstance(url_entry, URLResolver):
                 if as_pattern:
-                    self.list_urls(url_entry.url_patterns, url_list, as_pattern)
+                    self._list_urls(url_entry.url_patterns, url_list, as_pattern)
                 else:
                     for pattern in url_entry.url_patterns:
-                        url_list.append(self.list_urls([pattern], [str(url_entry.pattern)], as_pattern))
+                        url_list.append(self._list_urls([pattern], [str(url_entry.pattern)], as_pattern))
 
         return url_list
 
@@ -60,33 +114,24 @@ class DjangoProject(object):
             include_third_party (bool): should apps from third party be returned (not django)?
             as_wrapper (bool): should the return value be [AppConfig] (false) or [AppWrapper] (true)?
         """
-        # get all apps from application
-        all_apps = list(apps.get_app_configs())
-
-        # if all should be returned, return here
-        if include_django and include_third_party and include_project:
-            return all_apps
+        if self._apps_cached is False:
+            self._find_and_cache_apps()
 
         output = []
 
-        for app in all_apps:
-            app_wrapper = AppWrapper(app, self)
+        if include_django:
+            output += self._app_dict[self.RegisterKeys.DJANGO]
 
-            # add django apps if wanted
-            if include_django and app_wrapper.defined_by_django:
-                output.append(app_wrapper if as_wrapper else app)
-                continue
+        if include_third_party:
+            output += self._app_dict[self.RegisterKeys.THIRD_PARTY]
 
-            # add third party apps if wanted
-            if include_third_party and app_wrapper.defined_by_third_party:
-                output.append(app_wrapper if as_wrapper else app)
-                continue
+        if include_project:
+            output += self._app_dict[self.RegisterKeys.FROM_APP]
 
-            # add project apps if wanted
-            if include_project and app_wrapper.defined_by_project:
-                output.append(app_wrapper if as_wrapper else app)
+        if as_wrapper:
+            return output
 
-        return output
+        return [wrapper.app for wrapper in output]
 
     def get_models(self, include_django=False, include_third_party=False, include_project=True, as_wrapper=False):
         """
