@@ -33,7 +33,7 @@ class ApiActionWrapper:
         self.fn_name = fn_name
         self.url_name = url_name
         self.method = method
-        self.url_pattern_wrapper = url_pattern_wrapper
+        self.url_pattern_wrapper: UrlPatternWrapper = url_pattern_wrapper
 
     def __str__(self):
         return '{} - {} - {}'.format(self.method, self.fn_name, self.url_name)
@@ -46,8 +46,23 @@ class ApiActionWrapper:
     def model_wrapper(self):
         return self.url_pattern_wrapper.model_wrapper
 
+    def supports_model_wrapper(self, model_wrapper):
+        return self.model_wrapper and self.model_wrapper.models_are_equal(model_wrapper)
+
 
 class ExistingApiActionWrapper(ApiActionWrapper):
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+
+        return all([
+            self.serializer_cls == other.serializer_cls,
+            self.url_pattern_wrapper == other.url_pattern_wrapper,
+            self.fn_name == other.fn_name,
+            self.method == other.method,
+            self.url_name == other.url_name,
+        ])
+
     @property
     def serializer_cls(self):
         url_pattern_wrapper = self.url_pattern_wrapper
@@ -74,6 +89,12 @@ class ExistingApiActionWrapper(ApiActionWrapper):
 class UrlPatternWrapper(object):
     def __init__(self, model_wrapper):
         self.model_wrapper = model_wrapper
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+
+        return self.reverse_name == other.reverse_name
 
     def key_exists_in_route_kwargs(self, key):
         """
@@ -141,6 +162,9 @@ class ExistingUrlPatternWrapper(UrlPatternWrapper):
         self._view_cls = None
         self._view_set_determined = False
         self._api_view_determined = False
+
+        self._api_actions = None
+
         super().__init__(model_wrapper=None)
 
     def key_exists_in_route_kwargs(self, key):
@@ -150,15 +174,17 @@ class ExistingUrlPatternWrapper(UrlPatternWrapper):
         return key in self._route_kwargs
 
     def supports_model_wrapper(self, model_wrapper):
-        return any([model_wrapper.models_are_equal(mw) for mw in self._all_models])
+        """Checks if this instance supports the given model wrapper."""
+        return any([model_wrapper.models_are_equal(mw) for mw in self._models])
 
     def get_all_actions_for_model_wrapper(self, model_wrapper):
+        """Returns all actions that support the given model wrapper."""
         if not self.supports_model_wrapper(model_wrapper):
             return []
 
         output = []
-        for action in self._all_api_actions:
-            if action.model_wrapper.models_are_equal(model_wrapper):
+        for action in self.api_actions:
+            if action.supports_model_wrapper(model_wrapper):
                 output.append(action)
 
         return output
@@ -186,13 +212,13 @@ class ExistingUrlPatternWrapper(UrlPatternWrapper):
             return []
 
     @property
-    def _all_models(self):
-        return [action.model_wrapper for action in self._all_api_actions]
+    def _models(self):
+        """Returns all models that this url can possibly reference (in serializers)."""
+        return [action.model_wrapper for action in self.api_actions]
 
-    @property
-    def _all_api_actions(self):
+    def _get_api_actions(self) -> [ApiActionWrapper]:
         """
-        Returns all api actions for the view set.
+        Returns all action wrappers that the url supports.
         """
         if self._api_view is not None:
             actions = self._api_view.get_all_actions()
@@ -201,14 +227,29 @@ class ExistingUrlPatternWrapper(UrlPatternWrapper):
         else:
             actions = []
 
-        return [
-            ExistingApiActionWrapper(
-                url_pattern_wrapper=self,
-                fn_name=fn_name,
-                method=method,
-                url_name=url_name,
-            ) for fn_name, method, url_name in actions
-        ]
+        action_wrappers = []
+        for fn_name, method, url_name in actions:
+            # filter any actions that have a method or url name that does not fit
+            if method in self.methods and url_name == self.reverse_url_name:
+                action_wrappers.append(
+                    ExistingApiActionWrapper(
+                        url_pattern_wrapper=self,
+                        fn_name=fn_name,
+                        method=method,
+                        url_name=url_name,
+                    )
+                )
+
+        return action_wrappers
+
+    @property
+    def api_actions(self) -> [ApiActionWrapper]:
+        """
+        Returns all api actions for the view set.
+        """
+        if self._api_actions is None:
+            self._api_actions = self._get_api_actions()
+        return self._api_actions
 
     def get_serializer_class(self, action_wrapper):
         """

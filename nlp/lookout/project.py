@@ -186,34 +186,34 @@ class ApiActionLookout(DjangoProjectLookout):
         For different urls there might be multiple endpoints with the same methods. To identify which one is meant,
         the reverse name and url name is used to determine which endpoint is better suited.
         """
-        url_wrapper = action_wrapper.url_pattern_wrapper
         fittest_action = self.fittest_output_object
-        fittest_url = fittest_action.url_pattern_wrapper if fittest_action else None
 
-        if fittest_url and similarity == self.highest_similarity and url_wrapper != fittest_url:
-            best_similarity = 0
-            best_conv = fittest_url
+        if not fittest_action or similarity != self.highest_similarity or fittest_action == action_wrapper:
+            return super().is_new_fittest_output_object(similarity, action_wrapper, input_doc, output_doc)
 
-            for conv in [fittest_url, url_wrapper]:
-                reverse_url_name_translated = self.translator_to_src.translate(conv.reverse_url_name)
-                reverse_name_translated = self.translator_to_src.translate(conv.reverse_name)
+        best_similarity = 0
+        conversion_default_route = action_wrapper.url_name in ['detail', 'list']
+        fittest_conversion_default_route = fittest_action.url_name in ['detail', 'list']
+        best_action = fittest_action
 
-                for check in [reverse_name_translated, reverse_url_name_translated]:
-                    exact_similarity = self.get_similarity(input_doc, self.nlp_src_language(check))
-                    if exact_similarity > best_similarity:
-                        best_conv = conv
-                        best_similarity = exact_similarity
+        # compare the two actions more detailed
+        for action in [fittest_action, action_wrapper]:
+            reverse_name = action.url_pattern_wrapper.reverse_name
+            reverse_url_name_translated = self.translator_to_src.translate(action.url_name)
+            reverse_name_translated = self.translator_to_src.translate(reverse_name)
 
-            # sometimes we are not provided with the reverse url name but only the method; if there are default
-            # api routes by an ApiView, use them instead
-            conversion_default_route = url_wrapper.reverse_url_name in ['detail', 'list']
-            fittest_conversion_default_route = fittest_url.reverse_url_name in ['detail', 'list']
-            if best_similarity < 0.4 and conversion_default_route and not fittest_conversion_default_route:
-                best_conv = url_wrapper
+            for check in [reverse_name_translated, reverse_url_name_translated]:
+                exact_similarity = self.get_similarity(input_doc, self.nlp_src_language(check))
+                if exact_similarity > best_similarity:
+                    best_action = action
+                    best_similarity = exact_similarity
 
-            return best_conv == url_wrapper
+        # sometimes we are not provided with the reverse url name but only the method; if there are default
+        # api routes by an ApiView, use them instead
+        if best_similarity < 0.4 and conversion_default_route and not fittest_conversion_default_route:
+            best_action = action_wrapper
 
-        return super().is_new_fittest_output_object(similarity, url_wrapper, input_doc, output_doc)
+        return best_action == action_wrapper
 
     def get_keywords(self, action_wrapper):
         keywords = [action_wrapper.url_name, action_wrapper.fn_name]
@@ -232,22 +232,29 @@ class ApiActionLookout(DjangoProjectLookout):
 
         return keywords
 
+    @property
+    def only_selected_methods(self):
+        return bool(self.valid_methods)
+
     def get_output_objects(self, django_project, *args, **kwargs):
-        url_patterns = django_project.list_urls(as_pattern=True)
         results = []
 
-        for pattern in url_patterns:
+        for pattern in django_project.urls:
             wrapper = ExistingUrlPatternWrapper(pattern)
 
-            if wrapper.is_represented_by_view_set:
-                # if the url does not have a valid method, skip it
-                # if there are no valid methods provided, allow all
-                if self.valid_methods and not any([m in self.valid_methods for m in wrapper.methods]):
-                    continue
+            if not wrapper.is_represented_by_view_set:
+                continue
 
-                # get all actions for this model
-                actions = wrapper.get_all_actions_for_model_wrapper(self.model_wrapper)
-                results += actions
+            # if the url does not have a valid method, skip it
+            # if there are no valid methods provided, allow all
+            if self.only_selected_methods and not any([m in self.valid_methods for m in wrapper.methods]):
+                continue
+
+            # get all actions for this model
+            actions = wrapper.get_all_actions_for_model_wrapper(self.model_wrapper)
+            for action in actions:
+                if action not in results and (not self.only_selected_methods or action.method in self.valid_methods):
+                    results.append(action)
 
         return results
 
