@@ -26,7 +26,7 @@ from nlp.tests.utils import MockTranslator
 )
 def test_input_output_files(input_file_name, output_file_name, mocker):
     """Check that the input results in the correct output"""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
 
     this_file_path = os.path.abspath(__file__).split('/')
     folder_path = this_file_path[:len(this_file_path) - 1]

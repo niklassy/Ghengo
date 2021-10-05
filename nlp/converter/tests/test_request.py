@@ -24,7 +24,7 @@ django_project = DjangoProject('django_sample_project.apps.config.settings')
 
 def test_model_request_converter(mocker):
     """Check that the RequestConverter correctly creates statements to send requests."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     given = Given(keyword='Wenn', text='Alice einen Auftrag holt')
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
@@ -47,7 +47,7 @@ def test_model_request_converter(mocker):
 
 def test_model_request_converter_anonymous(mocker):
     """Check that the RequestConverter correctly creates statements to send requests from an anonymous user."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     given = Given(keyword='Wenn', text='Alice einen Auftrag holt')
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
@@ -75,7 +75,7 @@ def test_model_request_converter_anonymous(mocker):
 )
 def test_model_request_converter_reverse_name(doc, method, reverse_name, mocker):
     """Check that the correct reverse is given."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     given = Given(keyword='Wenn', text='Alice einen Auftrag holt')
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
@@ -115,7 +115,7 @@ def test_model_request_converter_with_reference(
     data_field_names,
 ):
     """Check that a converter with a reference to a model sets all properties correctly and has the correct output."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     given = Given(keyword='Wenn', text='Alice einen Auftrag holt')
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
@@ -174,7 +174,7 @@ def test_model_request_converter_with_reference(
 )
 def test_model_request_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
     """Check that the RequestConverter calculates the compatibility."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
     test_case.add_statement(AssignmentStatement(
