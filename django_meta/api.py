@@ -164,6 +164,7 @@ class ExistingUrlPatternWrapper(UrlPatternWrapper):
         self._api_view_determined = False
 
         self._api_actions = None
+        self._methods = None
 
         super().__init__(model_wrapper=None)
 
@@ -259,11 +260,8 @@ class ExistingUrlPatternWrapper(UrlPatternWrapper):
         view = view_cls(request=None, format_kwarg=None, action=action_wrapper.fn_name)
         return view.get_serializer_class()
 
-    @property
-    def methods(self):
-        """
-        Returns all the methods that the api view/ view set supports.
-        """
+    def _get_methods(self):
+        """Private method that is used to receive all methods that this url supports."""
         if self._view_set is None and self._api_view is None:
             return []
 
@@ -280,6 +278,15 @@ class ExistingUrlPatternWrapper(UrlPatternWrapper):
                 methods.append(method)
 
         return methods
+
+    @property
+    def methods(self):
+        """
+        Returns all the methods that the api view/ view set supports.
+        """
+        if self._methods is None:
+            self._methods = self._get_methods()
+        return self._methods
 
     def _get_view_cls(self):
         """

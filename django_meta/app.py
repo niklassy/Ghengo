@@ -6,15 +6,16 @@ class AppWrapper(object):
         self.app = app
         self.project = project
 
+        self._models = None
+
     def get_models(self, as_wrapper=False):
-        output = []
+        if self._models is None:
+            self._models = [ExistingModelWrapper(model, self) for model in self.app.get_models()]
 
-        for model in self.app.get_models():
-            if as_wrapper:
-                model = ExistingModelWrapper(model, self)
-            output.append(model)
+        if as_wrapper:
+            return self._models
 
-        return output
+        return [wrapper.model for wrapper in self._models]
 
     @property
     def defined_by_project(self):
