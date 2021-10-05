@@ -14,11 +14,19 @@ class DjangoProject(object):
         # django needs to know where the settings are, so set it in the env and setup django afterwards
         setup_django(settings_path)
 
+        self._urls = None
+
     def get_reverse_keys(self):
         """Returns all keys that are used in the project that can be used via reverse"""
         return get_resolver().reverse_dict.keys()
 
-    def list_urls(self, url_pattern=None, url_list=None, as_pattern=False):
+    @property
+    def urls(self):
+        if self._urls is None:
+            self._urls = self._list_urls(as_pattern=True)
+        return self._urls
+
+    def _list_urls(self, url_pattern=None, url_list=None, as_pattern=False):
         """
         Returns all urls that are available in the project.
 
@@ -43,10 +51,10 @@ class DjangoProject(object):
 
             elif isinstance(url_entry, URLResolver):
                 if as_pattern:
-                    self.list_urls(url_entry.url_patterns, url_list, as_pattern)
+                    self._list_urls(url_entry.url_patterns, url_list, as_pattern)
                 else:
                     for pattern in url_entry.url_patterns:
-                        url_list.append(self.list_urls([pattern], [str(url_entry.pattern)], as_pattern))
+                        url_list.append(self._list_urls([pattern], [str(url_entry.pattern)], as_pattern))
 
         return url_list
 
