@@ -46,7 +46,7 @@ def add_request_statement(test_case, doc=None):
 )
 def test_response_base_converter_compatibility(doc, min_compatibility, max_compatibility, mocker, with_request):
     """Check that the ResponseConverterBase detects the compatibility of different documents correctly."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
@@ -73,7 +73,7 @@ def test_response_base_converter_compatibility(doc, min_compatibility, max_compa
 )
 def test_response_base_converter_model_in_text(mocker, doc, expected_value, request_doc):
     """Check that the converter correctly detects if the model in the text fits the request."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
     add_request_statement(test_case, request_doc)
@@ -99,7 +99,7 @@ def test_response_base_converter_model_in_text(mocker, doc, expected_value, requ
 )
 def test_many_check_entry_response_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
     """Check that the ManyCheckEntryResponseConverter detects the compatibility of different documents correctly."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
@@ -131,7 +131,7 @@ def test_many_check_entry_response_converter_compatibility(doc, min_compatibilit
 )
 def test_many_check_entry_response_converter_output(doc, desired_entry_index, mocker, field_count):
     """Check that the ManyCheckEntryResponseConverter detects the compatibility of different documents correctly."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
@@ -170,7 +170,7 @@ def test_many_check_entry_response_converter_output(doc, desired_entry_index, mo
 )
 def test_many_check_length_response_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
     """Check that the ManyLengthResponseConverter detects the compatibility of different documents correctly."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
@@ -199,7 +199,7 @@ def test_many_check_length_response_converter_compatibility(doc, min_compatibili
 )
 def test_many_check_length_response_converter_output(doc, desired_length, mocker):
     """Check that the output of ManyLengthResponseConverter is correct."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
@@ -235,7 +235,7 @@ def test_many_check_length_response_converter_output(doc, desired_length, mocker
 )
 def test_many_response_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
     """Check that the ManyResponseConverter detects the compatibility of different documents correctly."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
@@ -262,7 +262,7 @@ def test_many_response_converter_compatibility(doc, min_compatibility, max_compa
 )
 def test_response_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
     """Check that the ResponseConverter detects the compatibility of different documents correctly."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
@@ -288,7 +288,7 @@ def test_response_converter_compatibility(doc, min_compatibility, max_compatibil
 )
 def test_response_converter_output(doc, mocker, field_names):
     """Check that the output of ResponseConverter is correct."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
@@ -328,7 +328,7 @@ def test_response_converter_output(doc, mocker, field_names):
 )
 def test_many_response_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
     """Check that the ResponseStatusCodeConverter detects the compatibility of different documents correctly."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
@@ -355,7 +355,7 @@ def test_many_response_converter_compatibility(doc, min_compatibility, max_compa
 )
 def test_response_converter_output(doc, mocker, status_code):
     """Check that the output of ResponseStatusCodeConverter is correct."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
@@ -387,7 +387,7 @@ def test_response_converter_output(doc, mocker, status_code):
 )
 def test_many_response_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
     """Check that the ResponseErrorConverter detects the compatibility of different documents correctly."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
@@ -413,7 +413,7 @@ def test_many_response_converter_compatibility(doc, min_compatibility, max_compa
 )
 def test_response_converter_output(doc, mocker, error_str):
     """Check that the output of ResponseErrorConverter is correct."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 

@@ -20,7 +20,7 @@ django_project = DjangoProject('django_sample_project.apps.config.settings')
 
 def test_qs_converter(mocker):
     """Check that the QuerysetConverter creates the correct statements."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
@@ -49,7 +49,7 @@ def test_qs_converter(mocker):
 
 def test_qs_count_converter(mocker):
     """Check that the CountQuerysetConverter creates the correct statements."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
@@ -82,7 +82,7 @@ def test_qs_count_converter(mocker):
 
 def test_qs_exists_converter(mocker):
     """Check that the ExistsQuerysetConverter creates the correct statements."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
@@ -126,7 +126,7 @@ def test_qs_exists_converter(mocker):
 )
 def test_object_qs_converter_compatibility(doc, min_compatibility, max_compatibility, mocker):
     """Check that the ObjectQuerysetConverter detects the compatibility of different documents correctly."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 
@@ -153,7 +153,7 @@ def test_object_qs_converter_compatibility(doc, min_compatibility, max_compatibi
 )
 def test_object_qs_converter_output(doc, mocker, filter_fields, assert_field):
     """Check that the output of ObjectQuerysetConverter is correct."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
 

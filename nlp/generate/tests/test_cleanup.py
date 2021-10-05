@@ -9,7 +9,7 @@ from nlp.tests.utils import MockTranslator
 
 def test_cleanup_variables(mocker):
     """Check if variables are cleaned up."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('yup')
     test_case = suite.create_and_add_test_case('foo')
 

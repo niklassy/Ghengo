@@ -1,8 +1,16 @@
 # number of spaces for an indent in Python
+import os
+
+from dotenv import load_dotenv
+
 from core.constants import Languages
 
 PYTHON_INDENT_SPACES = 4
 GHERKIN_INDENT_SPACES = 2
+
+
+# load the .env
+load_dotenv()
 
 
 class GenerationType:
@@ -34,6 +42,10 @@ class _Settings:
 
     # the gherkin file which is imported
     test_import_file = Defaults.TEST_IMPORT_FILE
+
+    # == values that are imported from .env and are constants ==
+    DEEPL_API_KEY = os.getenv('DEEPL_API_KEY')
+    DEEPL_USE_FREE_API = os.getenv('DEEPL_USE_FREE_API') == 'True'
 
     def reset(self):
         """Reset the settings to the default values."""

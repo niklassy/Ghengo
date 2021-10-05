@@ -76,7 +76,7 @@ def test_tiler_best_converter():
     ]
 )
 def test_then_tiler_best_converter(mocker, keyword, text, expected_converter_cls):
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
     Settings.language = Languages.DE
