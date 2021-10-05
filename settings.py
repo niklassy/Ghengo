@@ -9,6 +9,7 @@ PYTHON_INDENT_SPACES = 4
 GHERKIN_INDENT_SPACES = 2
 
 
+# load the .env
 load_dotenv()
 
 

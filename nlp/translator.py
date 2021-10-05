@@ -21,11 +21,13 @@ class CacheTranslator(object):
         self.src_language = src_language
         self.target_language = target_language
 
-        if self.src_language != self.target_language:
+        api_key = Settings.DEEPL_API_KEY
+        if self.src_language != self.target_language and api_key:
+            # use deepl for translation
             self.translator = DeepL(
                 source=src_language,
                 target=target_language,
-                api_key=Settings.DEEPL_API_KEY,
+                api_key=api_key,
                 use_free_api=Settings.DEEPL_USE_FREE_API
             )
         else:
