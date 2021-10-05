@@ -74,6 +74,13 @@ pipenv run python -m spacy download de_core_news_lg-<VERSION> --direct
 > 
 > `pipenv run python -m spacy download de_core_news_lg-3.1.0 --direct`
 
+Create an env file afterwards. You need to fill in the **value for the API key for DeepL**. You can create a free
+account on their website.
+
+```bash
+cp .env.example .env
+```
+
 ## Start test generator
 ```bash
 pipenv run python main.py

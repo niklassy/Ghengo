@@ -4,7 +4,9 @@ import os
 from json import JSONDecodeError
 from pathlib import Path
 
-from deep_translator import GoogleTranslator
+from deep_translator import DeepL
+
+from settings import Settings
 
 
 class CacheTranslator(object):
@@ -20,7 +22,12 @@ class CacheTranslator(object):
         self.target_language = target_language
 
         if self.src_language != self.target_language:
-            self.translator = GoogleTranslator(source=src_language, target=target_language)
+            self.translator = DeepL(
+                source=src_language,
+                target=target_language,
+                api_key=Settings.DEEPL_API_KEY,
+                use_free_api=Settings.DEEPL_USE_FREE_API
+            )
         else:
             self.translator = None
 
