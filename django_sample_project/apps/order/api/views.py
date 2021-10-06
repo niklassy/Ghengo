@@ -19,11 +19,11 @@ class OrderViewSet(ModelViewSet):
 
 class ProductViewSet(ModelViewSet):
     queryset = Product.objects.all()
-    serializer_class = ProductAddSerializer
+    serializer_class = ProductSerializer
 
     def get_serializer_class(self):
-        # if self.action == 'add':
-        #     return ProductAddSerializer
+        if self.action == 'add':
+            return ProductAddSerializer
 
         return self.serializer_class
 

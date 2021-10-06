@@ -11,7 +11,7 @@ Funktionalität: Produkte und Aufträge
     Wenn Bob ein Produkt mit dem Namen "Briefmarke" erstellt
     Dann sollte ein Produkt existieren
 
-  Szenario: Produkte erstellen
+  Szenario: Produkte hinzufügen
     Gegeben sei ein Benutzer Bob
     Und ein Auftrag 1
     Und ein Produkt 1 mit dem Namen "Briefmarke"
