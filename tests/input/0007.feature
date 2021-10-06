@@ -8,3 +8,7 @@ Funktionalität: Reference
   Szenario:
     Wenn der Auftrag 1 so geändert wird, dass der Name "bar" ist
     Dann sollten Aufträge mit dem Namen "bar" existieren
+  Szenario:
+    Wenn Auftrag 1 gelöscht wird
+    Dann sollten keine Aufträge existieren
+

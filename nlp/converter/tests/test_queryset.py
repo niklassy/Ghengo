@@ -96,7 +96,7 @@ def test_qs_exists_converter(mocker):
     statements = converter.convert_to_statements()
     assert len(statements) == 2
     assert isinstance(statements[0].expression, ModelQuerysetFilterExpression)
-    assert str(statements[1]) == 'assert qs_0.exists()'
+    assert str(statements[1]) == 'assert qs_0.exists() is True'
 
     for s in statements:
         test_case.add_statement(s)
@@ -111,7 +111,20 @@ def test_qs_exists_converter(mocker):
     statements = converter.convert_to_statements()
     assert len(statements) == 2
     assert isinstance(statements[0].expression, ModelQuerysetAllExpression)
-    assert str(statements[1]) == 'assert qs_1.exists()'
+    assert str(statements[1]) == 'assert qs_1.exists() is True'
+
+    converter = ExistsQuerysetConverter(
+        nlp('Dann sollte kein Auftrag existieren'),
+        Then(keyword='Dann', text='sollte kein Auftrag existieren'),
+        django_project,
+        test_case,
+    )
+    statements = converter.convert_to_statements()
+    assert len(statements) == 2
+    assert isinstance(statements[0].expression, ModelQuerysetAllExpression)
+    assert str(statements[1]) == 'assert qs_1.exists() is False'
+
+
 
 
 
