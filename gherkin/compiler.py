@@ -194,7 +194,7 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
             return 'test_generated'
 
         translator = CacheTranslator(Settings.language, 'en')
-        return 'test_{}'.format(to_function_name(translator.translate(suite_name).replace(' ', '_')))
+        return 'test_{}'.format(to_function_name(translator.translate(suite_name).lstrip().replace(' ', '_')))
 
     def generate(self, ast):
         if not ast.feature:

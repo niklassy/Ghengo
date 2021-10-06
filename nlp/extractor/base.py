@@ -1,6 +1,7 @@
 from core.performance import AveragePerformanceMeasurement
 from nlp.extractor.exception import ExtractionError
-from nlp.extractor.output import ExtractorOutput, VariableOutput, NumberAsStringOutput, StringOutput, IntegerOutput
+from nlp.extractor.output import ExtractorOutput, VariableOutput, NumberAsStringOutput, StringOutput, IntegerOutput, \
+    BooleanOutput
 from nlp.generate.warning import GenerationWarning
 from nlp.utils import get_all_children, is_quoted, get_next_token, token_can_represent_variable
 
@@ -211,6 +212,10 @@ class StringExtractor(Extractor):
 
 class IntegerExtractor(Extractor):
     output_class = IntegerOutput
+
+
+class BooleanExtractor(Extractor):
+    output_class = BooleanOutput
 
 
 class ManyExtractor(ManyExtractorMixin, Extractor):

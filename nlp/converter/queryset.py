@@ -1,7 +1,7 @@
 from nlp.converter.model import ModelConverter
 from nlp.converter.property import ModelCountProperty
 from nlp.converter.wrapper import ReferenceTokenWrapper
-from nlp.extractor.base import IntegerExtractor
+from nlp.extractor.base import IntegerExtractor, BooleanExtractor
 from nlp.generate.argument import Argument, Kwarg
 from nlp.generate.attribute import Attribute
 from nlp.generate.constants import CompareChar
@@ -220,12 +220,28 @@ class ExistsQuerysetConverter(QuerysetConverter):
     """
     This converter creates a queryset and an assert statement to check if that queryset exists.
     """
+    def get_extractor_kwargs(self, argument_wrapper, extractor_cls):
+        kwargs = super().get_extractor_kwargs(argument_wrapper, extractor_cls)
+
+        if argument_wrapper.token == self.model.token:
+            del kwargs['model_wrapper']
+            del kwargs['field_wrapper']
+
+        return kwargs
+
     def prepare_statements(self, statements):
         statements = super().prepare_statements(statements)
         qs_statement = statements[0]
 
+        wrapper = ReferenceTokenWrapper(token=self.model.token, reference=self.model.value)
+        extractor = self.get_extractor_instance(wrapper, BooleanExtractor)
+
         statement = AssertStatement(
-            Expression(Attribute(qs_statement.variable.get_reference(), 'exists()'))
+            CompareExpression(
+                Attribute(qs_statement.variable.get_reference(), 'exists()'),
+                CompareChar.IS,
+                Argument(extractor.extract_value()),
+            )
         )
         statements.append(statement)
 
