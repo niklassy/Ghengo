@@ -1,15 +1,15 @@
 # language: de
 Funktionalität: Produkte und Aufträge
-#  Szenario: Produkte löschen
-#    Gegeben sei ein Produkt 1 mit dem Namen "Briefmarke"
-#    Und ein Benutzer Bob
-#    Wenn Bob das Produkt 1 löscht
-#    Dann sollten keine Produkte existieren
-#
-#  Szenario: Produkte erstellen
-#    Gegeben sei ein Benutzer Bob
-#    Wenn Bob ein Produkt mit dem Namen "Briefmarke" erstellt
-#    Dann sollte ein Produkt existieren
+  Szenario: Produkte löschen
+    Gegeben sei ein Produkt 1 mit dem Namen "Briefmarke"
+    Und ein Benutzer Bob
+    Wenn Bob das Produkt 1 löscht
+    Dann sollten keine Produkte existieren
+
+  Szenario: Produkte erstellen
+    Gegeben sei ein Benutzer Bob
+    Wenn Bob ein Produkt mit dem Namen "Briefmarke" erstellt
+    Dann sollte ein Produkt existieren
 
   Szenario: Produkte erstellen
     Gegeben sei ein Benutzer Bob
