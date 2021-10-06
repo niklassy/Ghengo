@@ -9,3 +9,6 @@ generated_tests/*
 nlp/translation_cache/*
 !**/.gitkeep
 
+# include .env.example
+.env
+

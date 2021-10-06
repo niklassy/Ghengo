@@ -21,6 +21,9 @@ def run_around_tests():
     """For now the settings are used for the language, in some tests that language may be changed, so reset it here."""
     Settings.language = Settings.Defaults.LANGUAGE
     Settings.generate_test_type = None
+
+    # no api key for deepl while testing
+    Settings.DEEPL_API_KEY = 'INVALID_API_KEY_jer&&&iu23p48sldfjhjkl9'
     yield
     Settings.reset()
 

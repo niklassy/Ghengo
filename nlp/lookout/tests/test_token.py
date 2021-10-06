@@ -13,7 +13,7 @@ nlp = Nlp.for_language(Languages.DE)
 
 def test_lookout_fittest_token(mocker):
     """Check that the fittest token is only determined when locate is called."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     lookout = TokenLookout(nlp('Sie spielt mit drei Bällen.'))
     assert lookout.fittest_output_object is None
     lookout.locate()
@@ -23,7 +23,7 @@ def test_lookout_fittest_token(mocker):
 
 def test_lookout_get_variations(mocker):
     """Check that the fittest token is only determined when locate is called."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     lookout = TokenLookout(nlp('Sie spielt mit drei Bällen.'))
     variations = lookout.get_compare_variations(nlp('Auftrag')[0], 'User')
     assert len(variations) == 3
@@ -46,7 +46,7 @@ def test_lookout_get_variations(mocker):
 )
 def test_file_extension_lookout(doc, token_index, output, mocker):
     """Check that the file extension lookout works as expected."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     lookout = FileExtensionLookout(doc)
     lookout.locate()
     assert lookout.fittest_output_object == doc[token_index]
@@ -63,7 +63,7 @@ def test_file_extension_lookout(doc, token_index, output, mocker):
 )
 def test_word_lookout(word, doc, token_index, mocker):
     """Checks if the word lookout works as expected."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     lookout = WordLookout(doc, word)
     lookout.locate()
     assert lookout.fittest_output_object == doc[token_index]
@@ -81,7 +81,7 @@ def test_word_lookout(word, doc, token_index, mocker):
 )
 def test_word_lookout(doc, token_index, output, mocker):
     """Checks if the Comparisonlookout works as expected."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     lookout = ComparisonLookout(doc)
     lookout.locate()
     assert lookout._comparison == output
@@ -104,7 +104,7 @@ def test_word_lookout(doc, token_index, output, mocker):
 )
 def test_word_lookout(doc, token_index, output, mocker):
     """Checks if the RestActionlookout works as expected."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     lookout = RestActionLookout(doc)
     lookout.locate()
     assert lookout.method == output

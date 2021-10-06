@@ -32,7 +32,7 @@ class ConverterMock:
 
 def test_new_model_converter_property(mocker):
     """Check that when creating a new model with the property, that the value, chunk and token are set correctly."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     doc = nlp('Gegeben sei ein Auftrag mit dem Namen "Mein Auftrag".')
     prop = NewModelProperty(ConverterMock(doc))
     assert doc[3] in prop.chunk
@@ -51,7 +51,7 @@ def test_new_model_converter_property(mocker):
 )
 def test_new_variable_converter_property(mocker, doc, token_index):
     """Check that when creating a new variable with the property, that the value, chunk and token are set correctly."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     converter = ConverterMock(doc)
     suite = PyTestTestSuite('foo')
     converter.test_case = suite.create_and_add_test_case('bar')
@@ -76,7 +76,7 @@ def test_new_variable_converter_property(mocker, doc, token_index):
 )
 def test_reference_variable_converter_property(doc, token_index, mocker):
     """Check that the property for referencing an earlier model works as expected."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     converter = ConverterMock(doc)
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
@@ -110,7 +110,7 @@ def test_reference_variable_converter_property(doc, token_index, mocker):
 )
 def test_reference_model_converter_property(doc, token_index, mocker):
     """Referencing earlier models works via the property."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     converter = ConverterMock(doc)
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
@@ -140,7 +140,7 @@ def test_reference_model_converter_property(doc, token_index, mocker):
 )
 def test_reference_user_converter_property(doc, token_index, mocker):
     """Referencing earlier users works via the property."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     converter = ConverterMock(doc)
     suite = PyTestTestSuite('foo')
     test_case = suite.create_and_add_test_case('bar')
@@ -177,7 +177,7 @@ def test_reference_user_converter_property(doc, token_index, mocker):
 )
 def test_method_converter_property(mocker, doc, token_index, expected_method):
     """Check that when searching for a method with the property, that the value, chunk and token are set correctly."""
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     converter = ConverterMock(doc)
     prop = MethodProperty(converter)
     assert prop.chunk is None
@@ -193,7 +193,7 @@ def test_method_converter_property(mocker, doc, token_index, expected_method):
     ]
 )
 def test_model_count_property(mocker, doc, token_index, expected_value):
-    mocker.patch('deep_translator.GoogleTranslator.translate', MockTranslator())
+    mocker.patch('deep_translator.DeepL.translate', MockTranslator())
     converter = ConverterMock(doc)
     prop = ModelCountProperty(converter)
     converter.model = NewModelProperty(converter)
