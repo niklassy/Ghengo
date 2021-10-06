@@ -23,10 +23,11 @@ class _Settings:
     """
     class Defaults:
         LANGUAGE = Languages.EN
+        MEASURE_PERFORMANCE = False
         GENERATE_TEST_TYPE = GenerationType.PY_TEST
         DJANGO_SETTINGS_PATH = 'django_sample_project.apps.config.settings'
         TEST_EXPORT_DIRECTORY = 'generated_tests/'
-        TEST_IMPORT_FILE = 'django_sample_project/features/bewertung_s3.feature'
+        TEST_IMPORT_FILE = 'django_sample_project/features/bewertung_s2.feature'
 
     # the language in gherkin
     language = Defaults.LANGUAGE
@@ -43,6 +44,9 @@ class _Settings:
     # the gherkin file which is imported
     test_import_file = Defaults.TEST_IMPORT_FILE
 
+    # set if Ghengo should measure its performance and print out information at the end
+    measure_performance = Defaults.MEASURE_PERFORMANCE
+
     # == values that are imported from .env and are constants ==
     DEEPL_API_KEY = os.getenv('DEEPL_API_KEY')
     DEEPL_USE_FREE_API = os.getenv('DEEPL_USE_FREE_API') == 'True'
@@ -54,6 +58,7 @@ class _Settings:
         self.django_settings_path = self.Defaults.DJANGO_SETTINGS_PATH
         self.test_export_directory = self.Defaults.TEST_EXPORT_DIRECTORY
         self.test_import_file = self.Defaults.TEST_IMPORT_FILE
+        self.measure_performance = self.Defaults.MEASURE_PERFORMANCE
 
 
 Settings = _Settings()

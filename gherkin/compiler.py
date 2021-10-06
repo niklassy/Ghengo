@@ -1,6 +1,7 @@
 from core.constants import Languages
-from core.performance import AveragePerformanceMeasurement, SumPerformanceMeasurement, \
-    ScenarioLevelPerformanceMeasurement, MeasureKeys, StepLevelPerformanceMeasurement
+from core.performance import AveragePerformanceMeasurement, \
+    MeasureKeys, StepLevelPerformanceMeasurement, measure, \
+    before_step_measure, after_scenario_done
 from django_meta.project import DjangoProject
 from gherkin.grammar import GherkinGrammar
 from nlp.generate.pytest.decorator import PyTestMarkDecorator, PyTestParametrizeDecorator
@@ -132,6 +133,28 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         translator = CacheTranslator(src_language=Settings.language, target_language=Languages.EN)
         return translator.translate(scenario.name.lstrip())
 
+    @measure(
+        by=StepLevelPerformanceMeasurement,
+        key=MeasureKeys.STEP,
+        reset=True,
+        export_to=AveragePerformanceMeasurement,
+        before_measure=before_step_measure,
+    )
+    def step_to_statements(self, project, test_case, step):
+        """Transforms each step into statements."""
+        # the parent step will always be given, when or then; if and or but are used, the parent is returned
+        parent_step = step.get_parent_step()
+
+        tiler_cls = self.STEP_TO_TILER[parent_step.__class__]
+        tiler_instance = tiler_cls(
+            ast_object=step,
+            django_project=project,
+            language=Settings.language,
+            test_case=test_case,
+        )
+        tiler_instance.add_statements_to_test_case()
+
+    @measure(by=AveragePerformanceMeasurement, key=MeasureKeys.SCENARIO, after_measure=after_scenario_done)
     def scenario_to_test_case(self, scenario, project):
         """
         Does everything to transform a scenario object into a test case object.
@@ -140,8 +163,6 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
 
         test_case_name = self.get_test_case_name(scenario)
         test_case = suite.create_and_add_test_case(test_case_name)
-        scenario_measure_key = '--- GENERATOR_SCENARIO'
-        AveragePerformanceMeasurement.start_measure(scenario_measure_key)
 
         # handle tags
         for tag in scenario.tags:
@@ -163,28 +184,8 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
                     pass
 
         for i, step in enumerate(scenario.steps):
-            step_measure_key = MeasureKeys.STEP
-            StepLevelPerformanceMeasurement.set_step_type(step.get_parent_step().__class__)
-            StepLevelPerformanceMeasurement.start_measure(step_measure_key)
-            # the parent step will always be given, when or then; if and or but are used, the parent is returned
-            parent_step = step.get_parent_step()
+            self.step_to_statements(project=project, step=step, test_case=test_case)
 
-            tiler_cls = self.STEP_TO_TILER[parent_step.__class__]
-            tiler_instance = tiler_cls(
-                ast_object=step,
-                django_project=project,
-                language=Settings.language,
-                test_case=test_case,
-            )
-            tiler_instance.add_statements_to_test_case()
-            StepLevelPerformanceMeasurement.end_measure(step_measure_key)
-
-            StepLevelPerformanceMeasurement.export_to_other(AveragePerformanceMeasurement)
-            StepLevelPerformanceMeasurement.reset()
-
-        ScenarioLevelPerformanceMeasurement.export_to_other(AveragePerformanceMeasurement)
-        ScenarioLevelPerformanceMeasurement.reset()
-        AveragePerformanceMeasurement.end_measure(scenario_measure_key)
         return test_case
 
     def get_file_name(self, ast):

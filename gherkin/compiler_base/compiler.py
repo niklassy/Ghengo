@@ -1,6 +1,6 @@
 import inspect
 
-from core.performance import AveragePerformanceMeasurement
+from core.performance import AveragePerformanceMeasurement, measure, MeasureKeys
 from gherkin.compiler_base.grammar import Grammar
 from gherkin.compiler_base.line import Line
 from gherkin.compiler_base.token import Token
@@ -236,18 +236,15 @@ class Compiler(object):
         """A wrapper around the validation and creation of the AST. It can be used by children to do something."""
         return self.parser.parse(tokens)
 
+    @measure(by=AveragePerformanceMeasurement, key=MeasureKeys.LEXER_PARSER)
     def compile_text(self, text):
         """
         Compiles a given text by using the Lexer and the Parser. It will return and save the resulting AST.
         To use the code generator, you must call `export_as_text` or `export_as_file` afterwards.
         """
         self.ast = None
-        step_measure_key = '--- LEXER + PARSER'
-        AveragePerformanceMeasurement.start_measure(step_measure_key)
         tokens = self.use_lexer(text)
         self.ast = self.use_parser(tokens)
-        AveragePerformanceMeasurement.end_measure(step_measure_key)
-
         return self.ast
 
     def compile_file(self, path):

@@ -1,6 +1,5 @@
 from core.constants import Languages
-from core.performance import AveragePerformanceMeasurement, StepLevelPerformanceMeasurement, \
-    ScenarioLevelPerformanceMeasurement
+from core.performance import StepLevelPerformanceMeasurement, ScenarioLevelPerformanceMeasurement, measure, MeasureKeys
 from nlp.lookout.exception import LookoutFoundNothing
 from nlp.setup import Nlp
 from nlp.translator import CacheTranslator
@@ -193,6 +192,8 @@ class Lookout(object):
         """
         return self.highest_similarity < self.get_similarity_benchmark() or self.fittest_output_object is None
 
+    @measure(by=StepLevelPerformanceMeasurement, key=MeasureKeys.LOOKOUT_STEP)
+    @measure(by=ScenarioLevelPerformanceMeasurement, key=MeasureKeys.LOOKOUT_SCENARIO)
     def locate(self, *args, raise_exception=False, **kwargs):
         """
         The main function that looks for the fittest_output_object.
@@ -203,8 +204,6 @@ class Lookout(object):
         if self.fittest_output_object is not None:
             return self.fittest_output_object
 
-        StepLevelPerformanceMeasurement.start_measure('----------- LOCATE_ST')
-        ScenarioLevelPerformanceMeasurement.start_measure('----------- LOCATE_SC')
         self._results_in_fallback = False
 
         for output_object in self.get_output_objects(*args, **kwargs):
@@ -240,8 +239,6 @@ class Lookout(object):
                     if self.go_to_next_output(similarity):
                         break
 
-        StepLevelPerformanceMeasurement.end_measure('----------- LOCATE_ST')
-        ScenarioLevelPerformanceMeasurement.end_measure('----------- LOCATE_SC')
         # if the highest_similarity is too low, overwrite the values and raise an exception if wanted
         if self.has_invalid_fittest_output():
             # has to stay before raise_exception!
