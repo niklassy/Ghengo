@@ -212,7 +212,11 @@ class ClassConverter(Converter):
 
         search_texts = []
         if span:
-            search_texts += [str(span), str(span.root.lemma_)]
+            search_texts += [str(span)]
+
+            root_text = str(span.root.lemma_)
+            if root_text not in search_texts:
+                search_texts.append(root_text)
 
         if token and str(token) not in search_texts:
             search_texts.append(str(token))
