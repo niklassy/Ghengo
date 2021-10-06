@@ -11,7 +11,12 @@ class NestedLookout(Lookout):
 
     def __init__(self, lookout_child_classes, texts, language, locate_kwargs):
         super().__init__('', language)
-        self.lookout_child_classes = list(set(lookout_child_classes))
+
+        # filter out any duplicate entries, can't use set() because it could change the order of entries which is
+        # important
+        unique_lookout_classes = list(dict.fromkeys(lookout_child_classes))
+
+        self.lookout_child_classes = unique_lookout_classes
         self.texts = texts
         self.locate_kwargs = locate_kwargs
         self._lookout_child_instances = None
