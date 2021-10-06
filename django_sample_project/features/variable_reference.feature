@@ -32,7 +32,9 @@ Funktionalität: Reference
 #    Wenn Alice einen Auftrag mit der Datei "asd" erstellt
 
   Szenario:
-    Gegeben sei ein Auftrag, der abgeschlossen ist und aus einem anderen System kommt
+    Gegeben sei ein Auftrag 1
+    Wenn Auftrag 1 gelöscht wird
+    Dann sollte ein Auftrag existieren
 
 
 #  Szenario:

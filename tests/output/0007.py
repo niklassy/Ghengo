@@ -19,4 +19,13 @@ def test_1(order_factory):
     client = APIClient()
     client.put(reverse('orders-detail', {'pk': order_1.pk}), {'name': 'bar'})
     qs_0 = Order.objects.filter(name='bar')
-    assert qs_0.exists()
+    assert qs_0.exists() is True
+
+
+@pytest.mark.django_db
+def test_2(order_factory):
+    order_1 = order_factory()
+    client = APIClient()
+    client.delete(reverse('orders-detail', {'pk': order_1.pk}))
+    qs_0 = Order.objects.all()
+    assert qs_0.exists() is False
