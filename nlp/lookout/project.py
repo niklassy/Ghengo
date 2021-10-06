@@ -210,8 +210,11 @@ class ApiActionLookout(DjangoProjectLookout):
 
         # sometimes we are not provided with the reverse url name but only the method; if there are default
         # api routes by an ApiView, use them instead
-        if best_similarity < 0.4 and conversion_default_route and not fittest_conversion_default_route:
-            best_action = action_wrapper
+        if best_similarity < 0.4:
+            if conversion_default_route and not fittest_conversion_default_route:
+                best_action = action_wrapper
+            elif not conversion_default_route and fittest_conversion_default_route:
+                best_action = fittest_action
 
         return best_action == action_wrapper
 
