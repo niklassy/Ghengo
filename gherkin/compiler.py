@@ -183,7 +183,7 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
                 except test_case.DecoratorAlreadyPresent:
                     pass
 
-        for i, step in enumerate(scenario.steps):
+        for step in scenario.steps:
             self.step_to_statements(project=project, step=step, test_case=test_case)
 
         return test_case
