@@ -1,8 +1,9 @@
 from django.apps import apps
+from django.contrib.contenttypes.models import ContentType
 from django.db.models.base import ModelBase
 
 from django_meta.base import ExistsInCode
-from nlp.generate.utils import to_function_name
+from nlp.generate.utils import to_function_name, camel_to_snake_case
 
 
 class ModelWrapper(ExistsInCode):
@@ -117,3 +118,60 @@ class ExistingModelFieldWrapper(ModelFieldWrapper):
         super().__init__(field.name)
         self.name = field.name
         self.field = field
+
+
+class PermissionWrapper(ExistsInCode):
+    """Represents a permission object from Django."""
+    def __init__(self, description, model_wrapper):
+        self.model_wrapper = model_wrapper
+        self._description = description
+
+    @property
+    def codename(self):
+        no_can = self._description.lower().replace('can', '').lstrip()
+        return to_function_name(no_can.replace(' ', '_'))
+
+    @property
+    def name(self):
+        return self._description
+
+    @property
+    def app_label(self):
+        return self.model_label
+
+    @property
+    def model_label(self):
+        return camel_to_snake_case(self.model_wrapper.name)
+
+
+class ExistingPermissionWrapper(PermissionWrapper):
+    exists_in_code = True
+
+    def __init__(self, permission):
+        self.permission = permission
+        super().__init__(self.name, self._get_model_wrapper())
+
+    @property
+    def codename(self):
+        return self.permission.codename
+
+    @property
+    def name(self):
+        return self.permission.name
+
+    @property
+    def app_label(self):
+        return self.permission.content_type.app_label
+
+    def _get_model_wrapper(self):
+        content_type = self.permission.content_type
+        model_class = content_type.model_class()
+
+        if model_class is None:
+            return ModelWrapper(str(content_type))
+
+        return ExistingModelWrapper.create_with_model(model=model_class)
+
+    @property
+    def model_label(self):
+        return self.permission.content_type.model

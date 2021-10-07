@@ -1,14 +1,17 @@
 import inspect
+import re
 from abc import ABC
 
 from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 
 from django_meta.api import ApiFieldWrapper, ExistingApiFieldWrapper, Methods, UrlPatternWrapper, \
     ExistingUrlPatternWrapper, ApiActionWrapper
-from django_meta.model import ModelFieldWrapper, ModelWrapper
+from django_meta.model import ModelFieldWrapper, ModelWrapper, PermissionWrapper, ExistingPermissionWrapper
 from nlp.lookout.base import Lookout
 from nlp.lookout.token import RestActionLookout
 from nlp.similarity import CosineSimilarity, ContainsSimilarity, LevenshteinSimilarity
+from settings import Settings
 
 
 class DjangoProjectLookout(Lookout, ABC):
@@ -143,15 +146,66 @@ class ModelLookout(DjangoProjectLookout):
 
 class PermissionLookout(DjangoProjectLookout):
     """Can search for specific permissions in Django."""
+    def __init__(self, text, src_language, locate_on_init=False, *args, **kwargs):
+        self._raw_text = text
+
+        if self.text_input_is_permission_code:
+            text = text.split('.')[1].replace('_', ' ')
+
+        super().__init__(text, src_language, locate_on_init, *args, **kwargs)
+
+        self._model_token = None
+        self._find_model_token()
+        self._model_wrapper = None
+
+    @property
+    def text_input_is_permission_code(self):
+        """Checks if the provided text is in the format <model>.<name>."""
+        re_permission_string = re.compile(r'(\w)+\.(\w)+$')
+        return re_permission_string.match(self._raw_text)
+
+    def _find_model_token(self):
+        """Tries to find the model token in the text that was provided."""
+        if self.text_input_is_permission_code:
+            # if the text is in the permission format (<model>.<name>) take the first part and use nlp
+            self._model_token = self.nlp_src_language(self._raw_text.split('.')[0])[0]
+        else:
+            # else search for a noun
+            for token in self.doc_src_language:
+                if token.pos_ == 'NOUN':
+                    self._model_token = token
+                    break
 
     def get_fallback(self):
-        return None
+        """Fallback is a permission wrapper class."""
+        return PermissionWrapper(self.translator_to_en.translate(self.text), self.model_wrapper)
+
+    @property
+    def model_wrapper(self):
+        """Search for a model wrapper with the model token."""
+        if not self._model_token:
+            return None
+
+        if self._model_wrapper is None:
+            model_lookout = ModelLookout(str(self._model_token.lemma_), self.src_language)
+            self._model_wrapper = model_lookout.locate(Settings.django_project_wrapper)
+        return self._model_wrapper
 
     def get_keywords(self, permission):
         return [permission.codename, permission.name]
 
     def get_output_objects(self, *args, **kwargs):
-        return Permission.objects.all()
+        """
+        By default we want to filter out any permission objects that do not fit the model. If the model does not exist
+        in the code, we should just go to the fallback.
+        """
+        if not self._model_token or self.model_wrapper.exists_in_code is False:
+            qs = Permission.objects.none()
+        else:
+            content_type = ContentType.objects.get_for_model(self.model_wrapper.model)
+            qs = Permission.objects.filter(content_type=content_type)
+
+        return [ExistingPermissionWrapper(p) for p in qs]
 
 
 class ApiActionLookout(DjangoProjectLookout):

@@ -27,6 +27,7 @@ class _Settings:
         DJANGO_SETTINGS_PATH = 'django_sample_project.apps.config.settings'
         TEST_EXPORT_DIRECTORY = 'generated_tests/'
         TEST_IMPORT_FILE = 'django_sample_project/features/variable_reference.feature'
+        DJANGO_PROJECT_WRAPPER = None
 
     # the language in gherkin
     language = Defaults.LANGUAGE
@@ -43,6 +44,9 @@ class _Settings:
     # the gherkin file which is imported
     test_import_file = Defaults.TEST_IMPORT_FILE
 
+    # Django uses this to store an instance of the django project
+    django_project_wrapper = Defaults.DJANGO_PROJECT_WRAPPER
+
     # == values that are imported from .env and are constants ==
     DEEPL_API_KEY = os.getenv('DEEPL_API_KEY')
     DEEPL_USE_FREE_API = os.getenv('DEEPL_USE_FREE_API') == 'True'
@@ -54,6 +58,7 @@ class _Settings:
         self.django_settings_path = self.Defaults.DJANGO_SETTINGS_PATH
         self.test_export_directory = self.Defaults.TEST_EXPORT_DIRECTORY
         self.test_import_file = self.Defaults.TEST_IMPORT_FILE
+        self.django_project_wrapper = self.Defaults.DJANGO_PROJECT_WRAPPER
 
 
 Settings = _Settings()

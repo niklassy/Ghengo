@@ -114,18 +114,19 @@ class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):
         factory_statement = statements[0]
 
         try:
-            permission = PermissionLookout(
+            lookout = PermissionLookout(
                 lookout_input,
                 self.source.lang_
-            ).locate(raise_exception=True)
-            permission_wrapper = ExistingModelWrapper.create_with_model(Permission)
+            )
+            permission_wrapper = lookout.locate(raise_exception=False)
+            permission_model_wrapper = ExistingModelWrapper.create_with_model(Permission)
 
             permission_query = ModelQuerysetFilterExpression(
-                permission_wrapper,
+                permission_model_wrapper,
                 [
-                    Kwarg('content_type__model', permission.content_type.model),
-                    Kwarg('content_type__app_label', permission.content_type.app_label),
-                    Kwarg('codename', permission.codename),
+                    Kwarg('content_type__model', permission_wrapper.model_label),
+                    Kwarg('content_type__app_label', permission_wrapper.app_label),
+                    Kwarg('codename', permission_wrapper.codename),
                 ]
             )
         except LookoutFoundNothing:
@@ -151,7 +152,7 @@ class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):
             reg_ex = re.compile('([a-z_]+)(\.)([a-z_]+)')
 
             if reg_ex.match(token_str):
-                statement = self.get_permission_statement(token_str.split('.')[1].replace('_', ' '), statements)
+                statement = self.get_permission_statement(token_str, statements)
                 statements.append(statement)
                 continue
 
