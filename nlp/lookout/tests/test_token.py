@@ -71,18 +71,18 @@ def test_word_lookout(word, doc, token_index, mocker):
 
 
 @pytest.mark.parametrize(
-    'doc, token_index, output', [
-        (nlp('Es sind weniger als drei Spieler'), 2, CompareChar.SMALLER),
-        (nlp('Wir brauchen zwei oder weniger Träger'), 4, CompareChar.SMALLER_EQUAL),
-        (nlp('Wir brauchen zwei oder mehr Träger'), 4, CompareChar.GREATER_EQUAL),
-        (nlp('Wir brauchen mehr als sieben Träger'), 2, CompareChar.GREATER),
-        (nlp('Es sollten zehn Ausgaben sein.'), None, CompareChar.EQUAL),
+    'doc, token_index, output_token_index, output', [
+        (nlp('Es sind weniger als drei Spieler'), 2, 5, CompareChar.SMALLER),
+        (nlp('Wir brauchen zwei oder weniger Träger'), 4, 2, CompareChar.SMALLER_EQUAL),
+        (nlp('Wir brauchen zwei oder mehr Träger'), 4, 2, CompareChar.GREATER_EQUAL),
+        (nlp('Wir brauchen mehr als sieben Träger'), 2, 4, CompareChar.GREATER),
+        (nlp('Es sollten zehn Ausgaben sein.'), None, 2, CompareChar.EQUAL),
     ]
 )
-def test_word_lookout(doc, token_index, output, mocker):
+def test_word_lookout(doc, token_index, output, output_token_index, mocker):
     """Checks if the Comparisonlookout works as expected."""
     mocker.patch('deep_translator.DeepL.translate', MockTranslator())
-    lookout = ComparisonLookout(doc)
+    lookout = ComparisonLookout(doc, doc[output_token_index])
     lookout.locate()
     assert lookout._comparison == output
 
