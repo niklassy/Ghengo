@@ -67,11 +67,14 @@ class Tiler(object):
             self.test_case.add_statement(statement)
 
     @measure(by=StepLevelPerformanceMeasurement, key=MeasureKeys.TILER_STATEMENTS)
+    def _get_statements(self):
+        return self.best_converter.convert_to_statements()
+
     def get_statements(self):
         if not self.best_converter:
             return []
 
-        return self.best_converter.convert_to_statements()
+        return self._get_statements()
 
 
 class GivenTiler(Tiler):

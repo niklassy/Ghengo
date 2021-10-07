@@ -44,7 +44,7 @@ def main():
         _main()
         print('============== ROUND {} DONE ================='.format(i + 1))
 
-    AveragePerformanceMeasurement.print_all()
+    AveragePerformanceMeasurement.print_measurements()
 
 
 if __name__ == '__main__':

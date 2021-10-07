@@ -64,15 +64,15 @@ class _PerformanceMeasurement:
         return self._result_time_map[key]
 
     def _get_print_keys(self):
-        """Returns all keys that will be printed. This is used by `print_all`."""
+        """Returns all keys that will be printed. This is used by `print_measurements`."""
         return [key for key in self._result_time_map]
 
     def _get_print_message(self, key):
-        """Returns the message for each key that is printed in `print_all`."""
+        """Returns the message for each key that is printed in `print_measurements`."""
         return '{} took {} ({} times measured)'.format(
                 key, round(self.get_time_for(key), 2), self.times_measured(key))
 
-    def print_all(self):
+    def print_measurements(self):
         """Prints all the the information about all measurements of this instance."""
         for key in self._get_print_keys():
             print(self._get_print_message(key))
@@ -119,6 +119,10 @@ class _SumPerformanceMeasurement(_MultiplePerformanceMeasurementBase):
 
 class _AveragePerformanceMeasurement(_MultiplePerformanceMeasurementBase):
     """Returns the average of all times of a given key."""
+    def _get_print_message(self, key):
+        return '{} took an average of {}s ({} times measured)'.format(
+                key, round(self.get_time_for(key), 2), self.times_measured(key))
+
     def get_time_for(self, key):
         all_times = super().get_time_for(key)
         return sum(all_times) / len(all_times)
