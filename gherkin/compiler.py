@@ -1,4 +1,7 @@
 from core.constants import Languages
+from core.performance import AveragePerformanceMeasurement, \
+    MeasureKeys, StepLevelPerformanceMeasurement, measure, \
+    before_step_measure, after_scenario_done
 from django_meta.project import DjangoProject
 from gherkin.grammar import GherkinGrammar
 from nlp.generate.pytest.decorator import PyTestMarkDecorator, PyTestParametrizeDecorator
@@ -130,6 +133,28 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         translator = CacheTranslator(src_language=Settings.language, target_language=Languages.EN)
         return translator.translate(scenario.name.lstrip())
 
+    @measure(
+        by=StepLevelPerformanceMeasurement,
+        key=MeasureKeys.STEP,
+        reset=True,
+        export_to=AveragePerformanceMeasurement,
+        before_measure=before_step_measure,
+    )
+    def step_to_statements(self, project, test_case, step):
+        """Transforms each step into statements."""
+        # the parent step will always be given, when or then; if and or but are used, the parent is returned
+        parent_step = step.get_parent_step()
+
+        tiler_cls = self.STEP_TO_TILER[parent_step.__class__]
+        tiler_instance = tiler_cls(
+            ast_object=step,
+            django_project=project,
+            language=Settings.language,
+            test_case=test_case,
+        )
+        tiler_instance.add_statements_to_test_case()
+
+    @measure(by=AveragePerformanceMeasurement, key=MeasureKeys.SCENARIO, after_measure=after_scenario_done)
     def scenario_to_test_case(self, scenario, project):
         """
         Does everything to transform a scenario object into a test case object.
@@ -159,17 +184,7 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
                     pass
 
         for step in scenario.steps:
-            # the parent step will always be given, when or then; if and or but are used, the parent is returned
-            parent_step = step.get_parent_step()
-
-            tiler_cls = self.STEP_TO_TILER[parent_step.__class__]
-            tiler_instance = tiler_cls(
-                ast_object=step,
-                django_project=project,
-                language=Settings.language,
-                test_case=test_case,
-            )
-            tiler_instance.add_statements_to_test_case()
+            self.step_to_statements(project=project, step=step, test_case=test_case)
 
         return test_case
 

@@ -1,19 +1,13 @@
 from rest_framework.decorators import action
 from rest_framework.viewsets import ModelViewSet
 
-from django_sample_project.apps.order.api.serializers import OrderSerializer, ToDoSerializer, OrderBookSerializer
-from django_sample_project.apps.order.models import Order, ToDo
+from django_sample_project.apps.order.api.serializers import OrderSerializer, ProductSerializer, ProductAddSerializer
+from django_sample_project.apps.order.models import Order, Product
 
 
 class OrderViewSet(ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
-
-    def get_serializer_class(self):
-        if self.action == 'book':
-            return OrderBookSerializer
-
-        return self.serializer_class
 
     def list(self, *args, **kwargs):
         return super().list(*args, **kwargs)
@@ -23,7 +17,16 @@ class OrderViewSet(ModelViewSet):
         return super().create(*args, **kwargs)
 
 
-# Currently not used
-class ToDoViewSet(ModelViewSet):
-    queryset = ToDo.objects.all()
-    serializer_class = ToDoSerializer
+class ProductViewSet(ModelViewSet):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+    def get_serializer_class(self):
+        if self.action == 'add':
+            return ProductAddSerializer
+
+        return self.serializer_class
+
+    @action(detail=True, methods=['post'])
+    def add(self, *args, **kwargs):
+        return super().create(*args, **kwargs)

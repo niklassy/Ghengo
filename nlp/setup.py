@@ -4,6 +4,7 @@ from spacy.matcher import Matcher
 
 from core.constants import Languages
 from core.exception import LanguageNotSupported
+from core.performance import MeasureKeys, ScenarioLevelPerformanceMeasurement, measure
 
 
 class CacheNlp:
@@ -16,7 +17,7 @@ class CacheNlp:
         self.nlp = spacy.load(name)
         self.cache = {}
 
-    def get_document(self, text):
+    def _get_document(self, text):
         """Get the document from the cache."""
         return self.cache[text].copy()
 
@@ -24,10 +25,14 @@ class CacheNlp:
         """Cache the document for a given text."""
         self.cache[text] = self.nlp(text)
 
-    def __call__(self, text):
+    @measure(by=ScenarioLevelPerformanceMeasurement, key=MeasureKeys.NLP)
+    def get_document(self, text):
         if text not in self.cache:
             self.cache_document(text)
 
+        return self._get_document(text)
+
+    def __call__(self, text):
         return self.get_document(text)
 
 
@@ -119,6 +124,10 @@ class _Nlp(object):
             return self.en_nlp
 
         raise LanguageNotSupported()
+
+    def reset_cache(self):
+        self._de_nlp = None
+        self._en_nlp = None
 
     def setup_languages(self, languages):
         """Setups NLP for all the given languages."""

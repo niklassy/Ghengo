@@ -1,31 +1,26 @@
 from rest_framework import serializers
-from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import ModelSerializer, PrimaryKeyRelatedField
 
-from django_sample_project.apps.order.models import Order, ToDo
+from django_sample_project.apps.order.models import Order, Product
 
 
 class OrderSerializer(ModelSerializer):
-    uses_coal = serializers.BooleanField()
-    name = serializers.ModelField(Order.name)
-    file = serializers.FileField()
-    collections = serializers.PrimaryKeyRelatedField(many=True, queryset=ToDo.objects.all())
+    name = serializers.ModelField(Order.name)   # <-- needed for tests
 
     class Meta:
         model = Order
-        fields = ['id', 'uses_coal', 'name', 'owner', 'collections', 'file']
+        fields = ['id', 'owner', 'number', 'name']
 
 
-class OrderBookSerializer(ModelSerializer):
-    ok = serializers.BooleanField()
+class ProductSerializer(ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ['id', 'name']
+
+
+class ProductAddSerializer(ModelSerializer):
+    order = PrimaryKeyRelatedField(queryset=Order.objects.all())
 
     class Meta:
-        model = Order
-        fields = ['id', 'uses_coal', 'name', 'owner', 'collections', 'file']
-
-
-class ToDoSerializer(ModelSerializer):
-    system = serializers.IntegerField()
-
-    class Meta:
-        model = ToDo
-        fields = ['system']
+        model = Product
+        fields = ['order']

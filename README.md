@@ -97,3 +97,10 @@ Run in root of project:
 ```bash
 pipenv run python manage.py runserver
 ```
+
+## Measure the performance
+
+Run in root of project:
+```bash
+pipenv run python main_measure.py
+```

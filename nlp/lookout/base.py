@@ -1,4 +1,5 @@
 from core.constants import Languages
+from core.performance import StepLevelPerformanceMeasurement, ScenarioLevelPerformanceMeasurement, measure, MeasureKeys
 from nlp.lookout.exception import LookoutFoundNothing
 from nlp.setup import Nlp
 from nlp.translator import CacheTranslator
@@ -191,6 +192,8 @@ class Lookout(object):
         """
         return self.highest_similarity < self.get_similarity_benchmark() or self.fittest_output_object is None
 
+    @measure(by=StepLevelPerformanceMeasurement, key=MeasureKeys.LOOKOUT_STEP)
+    @measure(by=ScenarioLevelPerformanceMeasurement, key=MeasureKeys.LOOKOUT_SCENARIO)
     def locate(self, *args, raise_exception=False, **kwargs):
         """
         The main function that looks for the fittest_output_object.

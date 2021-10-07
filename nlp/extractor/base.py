@@ -1,3 +1,4 @@
+from core.performance import AveragePerformanceMeasurement, measure, MeasureKeys
 from nlp.extractor.exception import ExtractionError
 from nlp.extractor.output import ExtractorOutput, VariableOutput, NumberAsStringOutput, StringOutput, IntegerOutput, \
     BooleanOutput
@@ -81,6 +82,7 @@ class Extractor(object):
         except ExtractionError as e:
             return GenerationWarning(e.code)
 
+    @measure(by=AveragePerformanceMeasurement, key=MeasureKeys.EXTRACTOR)
     def extract_value(self):
         """
         The public method to extract the value. Every ExtractionError is caught here. If there is one, a

@@ -1,3 +1,4 @@
+from core.performance import StepLevelPerformanceMeasurement, measure, MeasureKeys
 from nlp.converter.base.converter import Converter
 from nlp.converter.file import FileConverter
 from nlp.converter.model import ModelVariableReferenceConverter, ModelFactoryConverter, AssertPreviousModelConverter
@@ -34,23 +35,29 @@ class Tiler(object):
             self._document = Nlp.for_language(self.language)(self.ast_as_text)
         return self._document
 
+    @measure(by=StepLevelPerformanceMeasurement, key=MeasureKeys.TILER_BEST_CONVERTER)
+    def _get_best_converter(self):
+        highest_compatibility = 0
+        best_converter = None
+
+        for converter_cls in self.converter_classes:
+            converter = converter_cls(self.document, self.ast_object, self.django_project, self.test_case)
+            compatibility = converter.get_document_compatibility()
+
+            if compatibility > highest_compatibility:
+                highest_compatibility = compatibility
+                best_converter = converter
+
+                if compatibility >= 1:
+                    break
+
+        return best_converter
+
     @property
     def best_converter(self) -> Converter:
         """Returns the converter that fits the document the best."""
         if self._best_converter is None:
-            highest_compatibility = 0
-
-            for converter_cls in self.converter_classes:
-                converter = converter_cls(self.document, self.ast_object, self.django_project, self.test_case)
-                compatibility = converter.get_document_compatibility()
-
-                if compatibility > highest_compatibility:
-                    highest_compatibility = compatibility
-                    self._best_converter = converter
-
-                    if compatibility >= 1:
-                        break
-
+            self._best_converter = self._get_best_converter()
         return self._best_converter
 
     def add_statements_to_test_case(self):
@@ -59,11 +66,15 @@ class Tiler(object):
         for statement in statements:
             self.test_case.add_statement(statement)
 
+    @measure(by=StepLevelPerformanceMeasurement, key=MeasureKeys.TILER_STATEMENTS)
+    def _get_statements(self):
+        return self.best_converter.convert_to_statements()
+
     def get_statements(self):
         if not self.best_converter:
             return []
 
-        return self.best_converter.convert_to_statements()
+        return self._get_statements()
 
 
 class GivenTiler(Tiler):
