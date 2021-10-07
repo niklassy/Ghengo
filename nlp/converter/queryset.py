@@ -59,6 +59,16 @@ class QuerysetConverter(ModelConverter):
         statements.append(AssignmentStatement(variable=self.assignment_variable, expression=expression))
         return statements
 
+    @classmethod
+    def _get_filter_kwarg_name(cls, field_name, compare_char):
+        mapping = {
+            CompareChar.GREATER: '{}__gt'.format(field_name),
+            CompareChar.GREATER_EQUAL: '{}__gte'.format(field_name),
+            CompareChar.SMALLER: '{}__lt'.format(field_name),
+            CompareChar.SMALLER_EQUAL: '{}__lte'.format(field_name),
+        }
+        return mapping.get(compare_char, field_name)
+
     def handle_extractor(self, extractor, statements):
         super().handle_extractor(extractor, statements)
 
@@ -69,7 +79,15 @@ class QuerysetConverter(ModelConverter):
         factory_kwargs = qs_statement.expression.function_kwargs
 
         extracted_value = self.extract_and_handle_output(extractor)
-        kwarg = Kwarg(extractor.field_name, extracted_value)
+
+        compare_lookout = ComparisonLookout(self.document, extractor.output.output_token)
+        compare_lookout.locate()
+        kwarg_name = self._get_filter_kwarg_name(
+            extractor.field_name,
+            compare_lookout.get_comparison_for_value(extracted_value)
+        )
+
+        kwarg = Kwarg(kwarg_name, extracted_value)
         factory_kwargs.append(kwarg)
 
 
@@ -202,7 +220,11 @@ class CountQuerysetConverter(QuerysetConverter):
         count_value = self.extract_and_handle_output(count_extractor)
 
         # get the _comparison value (==, <= etc.)
-        compare_lookout = ComparisonLookout(self.count.chunk, reverse=False)
+        compare_lookout = ComparisonLookout(
+            self.count.chunk,
+            compare_token=count_extractor.output.output_token,
+            reverse=False,
+        )
 
         # create expression and statement
         expression = CompareExpression(

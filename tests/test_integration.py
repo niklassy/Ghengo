@@ -22,6 +22,7 @@ from nlp.tests.utils import MockTranslator
         ('0010', '0010'),
         ('0011', '0011'),
         ('0012', '0012'),
+        ('0013', '0013'),
     ]
 )
 def test_input_output_files(input_file_name, output_file_name, mocker):

@@ -326,7 +326,7 @@ class ResponseConverter(ResponseConverterBase):
         super().handle_extractor(extractor, statements)
 
         chunk = get_noun_chunk_of_token(extractor.source, self.document)
-        compare_lookout = ComparisonLookout(chunk or self.document, reverse=False)
+        compare_lookout = ComparisonLookout(chunk or self.document, extractor.output.output_token, reverse=False)
         extracted_value = self.extract_and_handle_output(extractor)
 
         assert_statement = AssertStatement(
@@ -415,7 +415,7 @@ class ManyCheckEntryResponseConverter(ManyResponseConverter):
     def __init__(self, document, related_object, django_project, test_case):
         super().__init__(document, related_object, django_project, test_case)
 
-        if self.get_entry_extractor() is not None:
+        if self.model_wrapper_from_request and self.get_entry_extractor() is not None:
             extractor = self.get_entry_extractor()
             extracted_value = extractor.extract_value()
 
@@ -585,9 +585,9 @@ class ManyLengthResponseConverter(ManyResponseConverter):
         statements = super().prepare_statements(statements)
 
         chunk = get_noun_chunk_of_token(self.get_length_token(), self.document)
-        compare_lookout = ComparisonLookout(chunk or self.document, reverse=False)
 
         length_extractor = self.get_length_extractor()
+        compare_lookout = ComparisonLookout(chunk or self.document, length_extractor.output.output_token, reverse=False)
         extracted_value = self.extract_and_handle_output(length_extractor)
 
         if not length_extractor:

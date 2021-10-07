@@ -4,7 +4,7 @@ from django_meta.api import Methods
 from nlp.generate.constants import CompareChar
 from nlp.lookout.base import Lookout
 from nlp.similarity import CosineSimilarity
-from nlp.utils import NoToken, token_is_noun, token_is_verb
+from nlp.utils import NoToken, token_is_noun, token_is_verb, tokens_are_equal
 from nlp.vocab import FILE_EXTENSIONS
 
 
@@ -12,11 +12,15 @@ class TokenLookout(Lookout, ABC):
     similarity_benchmark = 0.8
     use_lemma_for_variation = True
 
-    def __init__(self, document, locate_on_init=False):
-        try:
-            doc_language = document.lang_
-        except AttributeError:
-            doc_language = document[0].lang_
+    def __init__(self, document, language=None, locate_on_init=False):
+        if isinstance(document, list):
+            assert language is not None, 'You must pass the language when giving a list of tokens instead of a document'
+            doc_language = language
+        else:
+            try:
+                doc_language = document.lang_
+            except AttributeError:
+                doc_language = document[0].lang_
 
         self.document = document
         super().__init__(
@@ -78,8 +82,8 @@ class TokenLookout(Lookout, ABC):
 
 
 class WordLookout(TokenLookout):
-    def __init__(self, document, words, locate_on_init=False):
-        super().__init__(document, locate_on_init=locate_on_init)
+    def __init__(self, document, words, locate_on_init=False, language=None):
+        super().__init__(document, locate_on_init=locate_on_init, language=language)
         self.words = words
 
     def get_keywords(self, token):
@@ -162,32 +166,61 @@ class ComparisonLookout(TokenLookout):
         CompareChar.GREATER_EQUAL: CompareChar.SMALLER_EQUAL,
     }
 
-    def __init__(self, document, reverse=False):
+    def __init__(self, document, compare_token, reverse=False):
         """
         You can pass reverse to reverse the _comparison value. This can be useful in cases where the code output
         is not in the order of the text.
         """
-        super().__init__(document)
-        self.reverse = reverse
+        compare_token_i = compare_token.i
+        interesting_tokens = []
 
-        self.or_lookout = WordLookout(self.document, 'or')
+        for i in range(5):
+            i += compare_token_i
+
+            if i - 2 < 0:
+                continue
+
+            try:
+                token = document.doc[i - 2]
+            except IndexError:
+                continue
+
+            if tokens_are_equal(token, compare_token):
+                continue
+
+            interesting_tokens.append(token)
+
+        try:
+            doc_language = document.lang_
+        except AttributeError:
+            doc_language = document[0].lang_
+
+        super().__init__(interesting_tokens, language=doc_language)
+        self.reverse = reverse
+        self.interesting_tokens = interesting_tokens
+        self.compare_token = compare_token
+
+        self.or_lookout = WordLookout(interesting_tokens, 'or', language=doc_language)
         self.or_lookout.locate()
+
+    @property
+    def has_or(self):
+        """Returns if there is an indicator for an OR in the interesting tokens."""
+        return bool(self.or_lookout.fittest_output_object)
 
     def _get_comparison(self):
         """
         Returns the _comparison char for the given document.
         """
         # if there is an or, it is expected to be fine to be equal too
-        has_or = bool(self.or_lookout.fittest_output_object)
-
         if self.fittest_keyword in self.GREATER_KEYWORDS:
-            if has_or:
+            if self.has_or:
                 return CompareChar.GREATER_EQUAL
 
             return CompareChar.GREATER
 
         if self.fittest_keyword in self.SMALLER_KEYWORDS:
-            if has_or:
+            if self.has_or:
                 return CompareChar.SMALLER_EQUAL
 
             return CompareChar.SMALLER
@@ -214,6 +247,9 @@ class ComparisonLookout(TokenLookout):
         if python_value is None or isinstance(python_value, bool):
             return CompareChar.IS
 
+        if not isinstance(python_value, int):
+            return CompareChar.EQUAL
+
         return self._comparison
 
     def get_keywords(self, output_object):
@@ -222,7 +258,7 @@ class ComparisonLookout(TokenLookout):
 
     def output_object_is_relevant(self, token):
         """More, less etc. determiners. So skip everything else."""
-        return token.pos_ == 'DET'
+        return token.pos_ == 'DET' or token.pos_ == 'PRON'
 
 
 class RestActionLookout(TokenLookout):
