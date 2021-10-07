@@ -33,6 +33,7 @@ Funktionalität: Reference
 
   Szenario:
     Gegeben sei ein Auftrag 1
+    Und ein Benutzer Bob mit der Benutzerberechtigung "Kann Dach sehen"
     Wenn Auftrag 1 gelöscht wird
     Dann sollte ein Auftrag existieren
 
