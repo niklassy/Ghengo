@@ -204,6 +204,7 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         # first set the test type and get the django project
         Settings.generate_test_type = GenerationType.PY_TEST
         project = DjangoProject(Settings.django_settings_path)
+        Settings.django_project_wrapper = project
 
         # create a suite
         self._suite = PyTestTestSuite(ast.feature.name if ast.feature else '')
@@ -215,6 +216,7 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
         # clean up the test suite
         self._suite.clean_up()
         Settings.generate_test_type = Settings.Defaults.GENERATE_TEST_TYPE
+        Settings.django_project_wrapper = Settings.Defaults.DJANGO_PROJECT_WRAPPER
 
         # return the suite as a template string
         return self._suite.to_template()

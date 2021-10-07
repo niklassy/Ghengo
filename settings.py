@@ -28,6 +28,7 @@ class _Settings:
         DJANGO_SETTINGS_PATH = 'django_sample_project.apps.config.settings'
         TEST_EXPORT_DIRECTORY = 'generated_tests/'
         TEST_IMPORT_FILE = 'django_sample_project/features/bewertung_s4.feature'
+        DJANGO_PROJECT_WRAPPER = None
 
     # the language in gherkin
     language = Defaults.LANGUAGE
@@ -47,6 +48,9 @@ class _Settings:
     # set if Ghengo should measure its performance and print out information at the end
     measure_performance = Defaults.MEASURE_PERFORMANCE
 
+    # Django uses this to store an instance of the django project
+    django_project_wrapper = Defaults.DJANGO_PROJECT_WRAPPER
+
     # == values that are imported from .env and are constants ==
     DEEPL_API_KEY = os.getenv('DEEPL_API_KEY')
     DEEPL_USE_FREE_API = os.getenv('DEEPL_USE_FREE_API') == 'True'
@@ -59,6 +63,7 @@ class _Settings:
         self.test_export_directory = self.Defaults.TEST_EXPORT_DIRECTORY
         self.test_import_file = self.Defaults.TEST_IMPORT_FILE
         self.measure_performance = self.Defaults.MEASURE_PERFORMANCE
+        self.django_project_wrapper = self.Defaults.DJANGO_PROJECT_WRAPPER
 
 
 Settings = _Settings()
