@@ -1,6 +1,6 @@
 import time
 
-from gherkin.ast import Given, When, Then
+from gherkin.ast import Given, When, Then, Step
 from settings import Settings
 
 
@@ -201,12 +201,12 @@ def measure(by: _PerformanceMeasurement, key, reset=False, export_to=None, befor
     return decorator
 
 
-def before_step_measure(measure_instance: _StepLevelPerformanceMeasurement, key, step, **kwargs):
+def before_step_measure(measure_instance: _StepLevelPerformanceMeasurement, key: str, step: Step, **kwargs):
     """The _StepLevelPerformanceMeasurement saves the current step type. This function will set the value."""
     measure_instance.set_step_type(step.get_parent_step().__class__)
 
 
-def after_scenario_done(measure_instance, key, **kwargs):
+def after_scenario_done(measure_instance: _PerformanceMeasurement, key: str, **kwargs):
     """After measuring a scenario, export its value to the AveragePerformanceMeasurement."""
     ScenarioLevelPerformanceMeasurement.export_to_other(AveragePerformanceMeasurement)
     ScenarioLevelPerformanceMeasurement.reset()

@@ -27,7 +27,7 @@ class _Settings:
         GENERATE_TEST_TYPE = GenerationType.PY_TEST
         DJANGO_SETTINGS_PATH = 'django_sample_project.apps.config.settings'
         TEST_EXPORT_DIRECTORY = 'generated_tests/'
-        TEST_IMPORT_FILE = 'django_sample_project/features/bewertung_s2.feature'
+        TEST_IMPORT_FILE = 'django_sample_project/features/bewertung_s4.feature'
 
     # the language in gherkin
     language = Defaults.LANGUAGE
