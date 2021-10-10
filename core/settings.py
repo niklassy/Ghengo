@@ -67,6 +67,10 @@ class SettingsBase:
         self.MEASURE_PERFORMANCE = self.Defaults.MEASURE_PERFORMANCE
 
     def _validate(self):
+        # ignore validation for tests
+        if os.environ.get('RUNNING_TESTS') == 'True':
+            return
+
         if not self.DEEPL_API_KEY:
             raise ValueError('You must provide a DEEPL_API_KEY in a .env file.')
 
