@@ -8,6 +8,10 @@ from nlp.setup import Nlp
 from settings import Settings
 
 
+Settings.django_settings_path = 'django_sample_project.apps.config.settings'
+Settings.django_apps_folder = '/Users/niklas/HdM/Master_CSM/Masterarbeit/project/django_sample_project/apps'
+
+
 # setup django before collecting all the tests
 setup_django('django_sample_project.apps.config.settings')
 
