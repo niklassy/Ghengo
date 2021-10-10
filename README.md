@@ -82,8 +82,26 @@ cp .env.example .env
 ```
 
 ## Start test generator
+Use this command after setting all values in the settings.py
+
 ```bash
 pipenv run python main.py
+```
+
+OR
+
+Use this command and fill out everything that is needed:
+
+```bash
+pipenv run python main.py --apps /User/.../apps/ --settings apps.config.settings --export-dir generated_tests/ --feature django_sample_project/features/variable_reference.feature
+```
+
+The same arguments apply for the following commands.
+
+Also, run this for help:
+
+```bash
+pipenv run python main.py -h
 ```
 
 ## Open the UI
