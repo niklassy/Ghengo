@@ -12,7 +12,7 @@ class Replaceable(object):
 
     @classmethod
     def should_be_replaced(cls, sub_class):
-        return sub_class.should_replace(cls) and Settings.generate_test_type == sub_class.for_test_type
+        return sub_class.should_replace(cls) and Settings.GENERATE_TEST_TYPE == sub_class.for_test_type
 
     @classmethod
     def should_replace(cls, parent):

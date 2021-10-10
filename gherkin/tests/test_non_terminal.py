@@ -864,13 +864,13 @@ def test_feature_non_terminal_valid():
     assert all([child.parent == output for child in output.children])
 
     # with background
-    Settings.language = Settings.Defaults.LANGUAGE
+    Settings.language = Languages.EN
     output = non_terminal.convert(get_sequence(base_sequence + background_sequence + scenario_sequence))
     assert output.name == 'name123'
     assert output.description == 'desc123'
     assert output.background is not None
     assert len(output.children) == 1
-    assert output.language == Settings.Defaults.LANGUAGE
+    assert output.language == Languages.EN
     assert all([child.parent == output for child in output.children])
     assert len(output.tags) == 0
 
@@ -888,7 +888,7 @@ def test_feature_non_terminal_valid():
     assert output.background is not None
     assert len(output.children) == 3
     assert all([child.parent == output for child in output.children])
-    assert output.language == Settings.Defaults.LANGUAGE
+    assert output.language == Languages.EN
 
     # with tags
     output = non_terminal.convert(get_sequence(
@@ -899,7 +899,7 @@ def test_feature_non_terminal_valid():
         + scenario_outline_sequence
         + scenario_sequence
     ))
-    assert output.language == Settings.Defaults.LANGUAGE
+    assert output.language == Languages.EN
     assert len(output.tags) == 1
     assert output.name == 'name123'
     assert output.description == 'desc123'

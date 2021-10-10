@@ -11,7 +11,7 @@ ENV_SETTINGS_KEY = 'DJANGO_SETTINGS_MODULE'
 
 def setup_django(settings_path, print_warning=False):
     """Sets up django."""
-    if not Settings.django_apps_folder or not settings_path:
+    if not Settings.DJANGO_APPS_FOLDER or not settings_path:
         if print_warning:
             warnings.warn(
                 '\n ================================================================================ \n'
@@ -25,7 +25,7 @@ def setup_django(settings_path, print_warning=False):
 
     if ENV_SETTINGS_KEY not in os.environ:
         print('Setting up Django...')
-        sys.path.insert(1, Settings.django_apps_folder)
+        sys.path.insert(1, Settings.DJANGO_APPS_FOLDER)
         os.environ[ENV_SETTINGS_KEY] = settings_path
         setup()
         print('Django is ready!')

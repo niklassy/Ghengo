@@ -1,6 +1,6 @@
 from gherkin.compiler import GherkinToPyTestCompiler
 from gherkin.utils import get_sequence_as_lines, get_indent_level_for_next_line
-from settings import GHERKIN_INDENT_SPACES
+from core.settings import GHERKIN_INDENT_SPACES
 from ui.window import WindowValues
 
 

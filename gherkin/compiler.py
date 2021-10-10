@@ -7,7 +7,7 @@ from gherkin.grammar import GherkinGrammar
 from nlp.generate.pytest.decorator import PyTestMarkDecorator, PyTestParametrizeDecorator
 from nlp.generate.pytest.suite import PyTestTestSuite
 from nlp.translator import CacheTranslator
-from settings import GenerationType
+from core.constants import GenerationType
 from nlp.generate.utils import to_function_name
 from gherkin.compiler_base.compiler import Lexer, Compiler, Parser, CodeGenerator
 
@@ -49,7 +49,7 @@ class GherkinLexer(Lexer):
 
     def on_start_tokenize(self):
         # in case this tokenizing is done multiple times, reset the value before starting again
-        Settings.language = Settings.Defaults.LANGUAGE
+        Settings.language = Languages.EN
 
     def on_token_added(self, token):
         # the first line may contain the language, so if it is found, set it
@@ -202,8 +202,8 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
             return ''
 
         # first set the test type and get the django project
-        Settings.generate_test_type = GenerationType.PY_TEST
-        project = DjangoProject(Settings.django_settings_path)
+        Settings.GENERATE_TEST_TYPE = GenerationType.PY_TEST
+        project = DjangoProject(Settings.DJANGO_SETTINGS_PATH)
         Settings.django_project_wrapper = project
 
         # create a suite
@@ -215,8 +215,8 @@ class GherkinToPyTestCodeGenerator(CodeGenerator):
 
         # clean up the test suite
         self._suite.clean_up()
-        Settings.generate_test_type = Settings.Defaults.GENERATE_TEST_TYPE
-        Settings.django_project_wrapper = Settings.Defaults.DJANGO_PROJECT_WRAPPER
+        Settings.GENERATE_TEST_TYPE = Settings.Defaults.GENERATE_TEST_TYPE
+        Settings.django_project_wrapper = None
 
         # return the suite as a template string
         return self._suite.to_template()

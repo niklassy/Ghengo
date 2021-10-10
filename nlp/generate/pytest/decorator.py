@@ -1,7 +1,7 @@
 from nlp.generate.argument import Argument
 from nlp.generate.decorator import Decorator
 from nlp.generate.parameter import Parameter
-from settings import PYTHON_INDENT_SPACES
+from core.settings import PYTHON_INDENT_SPACES
 from nlp.generate.suite import Import
 
 
