@@ -15,6 +15,8 @@ class SettingsBase:
     """
     Settings that can/ will be changed during runtime and generation of code.
     """
+    validate = True
+
     class Defaults:
         MEASURE_PERFORMANCE = False
         GENERATE_TEST_TYPE = GenerationType.PY_TEST
@@ -68,7 +70,7 @@ class SettingsBase:
 
     def _validate(self):
         # ignore validation for tests
-        if os.environ.get('RUNNING_TESTS') == 'True':
+        if not self.validate:
             return
 
         if not self.DEEPL_API_KEY:
