@@ -7,13 +7,13 @@ from core.settings import SettingsBase
 
 # keep this here, must come before import of settings and setup of django
 SettingsBase.validate = False
+SettingsBase.Defaults.DJANGO_APPS_FOLDER = str(Path(__file__).parent.absolute()) + '/django_sample_project/apps'
 
 from nlp.setup import Nlp
 from django_meta.setup import setup_django
 from settings import Settings
 
 Settings.Defaults.DJANGO_SETTINGS_PATH = 'django_sample_project.apps.config.settings'
-Settings.Defaults.DJANGO_APPS_FOLDER = str(Path(__file__).parent.absolute()) + '/django_sample_project/apps'
 Settings.DEEPL_API_KEY = 'INVALID_API_KEY_jer&&&iu23p48sldfjhjkl9'
 
 # setup django before collecting all the tests
