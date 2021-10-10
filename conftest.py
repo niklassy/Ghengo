@@ -3,12 +3,12 @@ from pathlib import Path
 
 from core.constants import Languages
 import pytest
-from nlp.setup import Nlp
 from core.settings import SettingsBase
 
 # keep this here, must come before import of settings and setup of django
 SettingsBase.validate = False
 
+from nlp.setup import Nlp
 from django_meta.setup import setup_django
 from settings import Settings
 
