@@ -2,14 +2,14 @@ import os
 from pathlib import Path
 
 from core.constants import Languages
-from django_meta.setup import setup_django
 import pytest
 from nlp.setup import Nlp
 from core.settings import SettingsBase
 
-# keep this here, must come before import of settings
+# keep this here, must come before import of settings and setup of django
 SettingsBase.validate = False
 
+from django_meta.setup import setup_django
 from settings import Settings
 
 Settings.Defaults.DJANGO_SETTINGS_PATH = 'django_sample_project.apps.config.settings'
