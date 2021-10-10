@@ -1,6 +1,6 @@
 from core.performance import AveragePerformanceMeasurement, measure, MeasureKeys
 from django_meta.setup import setup_django
-from settings import Settings
+from settings import Settings, read_arguments
 
 # KEEP THIS AT THE TOP OF THE FILE!!!
 Settings.measure_performance = True
@@ -36,6 +36,7 @@ def main():
 
     # import this after it was defined to measure the er
     from nlp.setup import Nlp
+    read_arguments()
     # this need to be executed before importing the compiler!
     setup_django(Settings.django_settings_path)
 

@@ -1,5 +1,7 @@
 # number of spaces for an indent in Python
+import argparse
 import os
+import re
 
 from dotenv import load_dotenv
 
@@ -26,6 +28,7 @@ class _Settings:
         MEASURE_PERFORMANCE = False
         GENERATE_TEST_TYPE = GenerationType.PY_TEST
         DJANGO_SETTINGS_PATH = 'django_sample_project.apps.config.settings'
+        DJANGO_APPS_FOLDER = '/Users/niklas/HdM/Master_CSM/Masterarbeit/project/django_sample_project/apps'
         TEST_EXPORT_DIRECTORY = 'generated_tests/'
         TEST_IMPORT_FILE = 'django_sample_project/features/variable_reference.feature'
         DJANGO_PROJECT_WRAPPER = None
@@ -38,6 +41,7 @@ class _Settings:
 
     # the settings path to the django project
     django_settings_path = Defaults.DJANGO_SETTINGS_PATH
+    django_apps_folder = Defaults.DJANGO_APPS_FOLDER
 
     # the directory to which tests are exported to
     test_export_directory = Defaults.TEST_EXPORT_DIRECTORY
@@ -67,3 +71,93 @@ class _Settings:
 
 
 Settings = _Settings()
+
+
+def _is_folder_path(string, absolute=False):
+    """Check if a string is a valid path to a folder. Set absolute to check if the string should be absolute."""
+    end_str = '((\w+)\/)*((\w+)(\/)?)$'
+    if absolute:
+        end_str = '\/' + end_str
+
+    end_str = '^' + end_str
+
+    return re.match(end_str, string)
+
+
+def _is_module_path(string):
+    """Check if a string is a valid module path (one that would be used as an import)."""
+    return re.match(r'^(\w)+(\.\w+)*$', string)
+
+
+def _is_feature_file_path(string):
+    """Check if a string is a valid path to a feature file."""
+    return re.match(r'((\w+)\/)*(\w)+\.feature$', string)
+
+
+def read_arguments():
+    """
+    Reads all the arguments that are provided by the command line and saves them in the Settings object.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--apps',
+        type=str,
+        help='The path to all the apps of a django project. Please add an absolute, full path here, '
+             'like: /User/.../apps/'
+    )
+    parser.add_argument(
+        '--settings',
+        type=str,
+        help='The module path to the settings that would be used in your code to get the settings of Django, '
+             'like: apps.config.settings'
+    )
+    parser.add_argument(
+        '--export-dir',
+        type=str,
+        help='The directory to which Ghengo will export the test files. Like: `generated_tests/`'
+    )
+    parser.add_argument(
+        '--feature',
+        type=str,
+        help='The feature file that Ghengo will use as an import to generate tests. Like: features/foo.feature'
+    )
+    args = parser.parse_args()
+
+    django_app_folder = args.apps
+    django_settings_path = args.settings
+    export_directory = args.export_dir
+    feature_file_path = args.feature
+
+    if django_app_folder:
+        if not _is_folder_path(django_app_folder, absolute=True):
+            raise ValueError(
+                'You must pass a folder path to the apps in the format `/my/absolute/path/to/apps` '
+                '(you provided `{}`)'.format(django_app_folder)
+            )
+        Settings.django_apps_folder = django_app_folder
+
+    if django_settings_path:
+        if not _is_module_path(django_settings_path):
+            raise ValueError(
+                'You must pass a folder path to the django settings in the format `apps.to.settings` '
+                '(you provided `{}`)'.format(django_settings_path)
+            )
+
+        Settings.django_settings_path = django_settings_path
+
+    if export_directory:
+        if not _is_folder_path(export_directory, absolute=False):
+            raise ValueError(
+                'You must pass a folder path where Ghengo should export files in the format '
+                '`/my/absolute/path/to/export_dir` (you provided `{}`)'.format(export_directory)
+            )
+        Settings.test_export_directory = export_directory
+
+    if feature_file_path:
+        if not _is_feature_file_path(feature_file_path):
+            raise ValueError(
+                'You must pass the path to the feature file that is imported in the format '
+                '`/my/absolute/path/to/file.feature` (you provided `{}`)'.format(feature_file_path)
+            )
+
+        Settings.test_import_file = feature_file_path

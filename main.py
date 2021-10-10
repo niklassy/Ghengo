@@ -1,9 +1,10 @@
 from django_meta.setup import setup_django
-from settings import Settings
+from settings import Settings, read_arguments
 
 
 def main():
     # this need to be executed before importing the compiler!
+    read_arguments()
     setup_django(Settings.django_settings_path)
 
     from gherkin.compiler import GherkinToPyTestCompiler
