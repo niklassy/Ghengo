@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from core.constants import Languages
 from django_meta.setup import setup_django
@@ -9,7 +10,8 @@ from settings import Settings
 
 
 Settings.Defaults.DJANGO_SETTINGS_PATH = 'django_sample_project.apps.config.settings'
-Settings.Defaults.DJANGO_APPS_FOLDER = '/Users/niklas/HdM/Master_CSM/Masterarbeit/project/django_sample_project/apps'
+Settings.Defaults.DJANGO_APPS_FOLDER = str(Path(__file__).parent.absolute()) + '/django_sample_project/apps'
+Settings.DEEPL_API_KEY = 'INVALID_API_KEY_jer&&&iu23p48sldfjhjkl9'
 
 
 # setup django before collecting all the tests
@@ -25,9 +27,6 @@ def run_around_tests():
     """For now the settings are used for the language, in some tests that language may be changed, so reset it here."""
     Settings.language = Languages.EN
     Settings.GENERATE_TEST_TYPE = None
-
-    # no api key for deepl while testing
-    Settings.DEEPL_API_KEY = 'INVALID_API_KEY_jer&&&iu23p48sldfjhjkl9'
     yield
     Settings.reset()
 

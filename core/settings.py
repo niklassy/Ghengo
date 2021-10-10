@@ -67,8 +67,8 @@ class SettingsBase:
         self.MEASURE_PERFORMANCE = self.Defaults.MEASURE_PERFORMANCE
 
     def _validate(self):
-        if not self.DEEPL_API_KEY or not self.DEEPL_USE_FREE_API:
-            raise ValueError('You must provide a DEEPL_API_KEY and a DEEPL_USE_FREE_API in a .env file.')
+        if not self.DEEPL_API_KEY:
+            raise ValueError('You must provide a DEEPL_API_KEY in a .env file.')
 
     def reset(self):
         self._set_defaults()
