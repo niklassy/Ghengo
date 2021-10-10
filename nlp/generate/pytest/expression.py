@@ -1,7 +1,7 @@
 from nlp.generate.expression import ModelFactoryExpression, FunctionCallExpression
 from nlp.generate.parameter import Parameter
 from nlp.generate.pytest.decorator import DjangoDBDecorator
-from settings import GenerationType
+from core.constants import GenerationType
 
 
 class PyTestModelFactoryExpression(ModelFactoryExpression):

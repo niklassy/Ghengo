@@ -1,7 +1,7 @@
 from nlp.generate.mixin import TemplateMixin, OnAddToTestCaseListenerMixin
 from nlp.generate.replaceable import Replaceable
 from nlp.generate.variable import Variable
-from settings import PYTHON_INDENT_SPACES
+from core.settings import PYTHON_INDENT_SPACES
 
 
 class Argument(OnAddToTestCaseListenerMixin, Replaceable, TemplateMixin):

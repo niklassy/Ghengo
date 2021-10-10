@@ -1,5 +1,5 @@
 from nlp.generate.suite import TestCaseBase, TestSuiteBase
-from settings import GenerationType
+from core.constants import GenerationType
 
 
 class PyTestTestCase(TestCaseBase):

@@ -5,7 +5,7 @@ from settings import Settings
 def test_replaceable_correct_test_type():
     """Check that if the circumstances are correct, a subclass of Replaceable is indeed replaced."""
     test_placeholder = 'THIS_IS_A_PLACEHOLDER'
-    Settings.generate_test_type = test_placeholder
+    Settings.GENERATE_TEST_TYPE = test_placeholder
 
     class SubClass(Replaceable):
         pass
@@ -20,7 +20,7 @@ def test_replaceable_correct_test_type():
 def test_replaceable_incorrect_test_type():
     """Check that if the test type is not correct, the class is not replaced."""
     test_placeholder = 'THIS_IS_A_PLACEHOLDER'
-    Settings.generate_test_type = test_placeholder
+    Settings.GENERATE_TEST_TYPE = test_placeholder
 
     class SubClass(Replaceable):
         pass

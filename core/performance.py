@@ -169,7 +169,7 @@ def measure(by: _PerformanceMeasurement, key, reset=False, export_to=None, befor
     """
     def decorator(function):
         # simply return the normal function if we dont measure the performance
-        if Settings.measure_performance is False:
+        if Settings.MEASURE_PERFORMANCE is False:
             return function
 
         def wrapper(*args, **kwargs):

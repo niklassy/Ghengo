@@ -1,5 +1,5 @@
 from nlp.generate.mixin import TemplateMixin
-from settings import PYTHON_INDENT_SPACES
+from core.settings import PYTHON_INDENT_SPACES
 
 
 NO_VALUE_FOUND_CODE = '001'

@@ -1,5 +1,4 @@
 from django.apps import apps
-from django.contrib.contenttypes.models import ContentType
 from django.db.models.base import ModelBase
 
 from django_meta.base import ExistsInCode

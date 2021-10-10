@@ -14,10 +14,13 @@ class DjangoProject(object):
         FROM_APP = 'from_app'
 
     def __init__(self, settings_path):
-        self.settings = importlib.import_module(settings_path)
-
         # django needs to know where the settings are, so set it in the env and setup django afterwards
-        setup_django(settings_path)
+        success = setup_django(settings_path)
+
+        if success:
+            self.settings = importlib.import_module(settings_path)
+        else:
+            self.settings = None
 
         self._urls = None
 
@@ -69,7 +72,10 @@ class DjangoProject(object):
     @property
     def urls(self):
         if self._urls is None:
-            self._urls = self._list_urls(as_pattern=True)
+            if self.settings is None:
+                self._urls = []
+            else:
+                self._urls = self._list_urls(as_pattern=True)
         return self._urls
 
     def _list_urls(self, url_pattern=None, url_list=None, as_pattern=False):
@@ -114,6 +120,9 @@ class DjangoProject(object):
             include_third_party (bool): should apps from third party be returned (not django)?
             as_wrapper (bool): should the return value be [AppConfig] (false) or [AppWrapper] (true)?
         """
+        if self.settings is None:
+            return []
+
         if self._apps_cached is False:
             self._find_and_cache_apps()
 

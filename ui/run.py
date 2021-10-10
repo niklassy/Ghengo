@@ -9,7 +9,7 @@ from ui.window import WindowValues
 
 
 def run_ui():
-    setup_django(Settings.django_settings_path)
+    setup_django(Settings.DJANGO_SETTINGS_PATH, print_warning=True)
     # all imports must follow the setup!!
     from gherkin.compiler import GherkinToPyTestCompiler
     from ui.autocomplete import AutoCompleteMultiLine

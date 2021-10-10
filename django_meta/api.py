@@ -1,15 +1,25 @@
 import importlib
 import inspect
 
+from django.core.exceptions import ImproperlyConfigured
 from django.urls import get_resolver, get_urlconf
-from rest_framework.routers import APIRootView
 from rest_framework.serializers import ModelSerializer
-from rest_framework.views import APIView
-from rest_framework.viewsets import GenericViewSet
 
 from django_meta.base import ExistsInCode
 from django_meta.model import ExistingModelWrapper
 from nlp.generate.utils import to_function_name
+
+
+# handle cases where these module could not be imported. This can happen if the user did not provide the settings or
+# apps to Ghengo
+try:
+    from rest_framework.routers import APIRootView
+    from rest_framework.views import APIView
+    from rest_framework.viewsets import GenericViewSet
+except ImproperlyConfigured:
+    APIRootView = None
+    APIView = None
+    GenericViewSet = None
 
 
 class Methods:

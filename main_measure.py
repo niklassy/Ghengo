@@ -3,7 +3,7 @@ from django_meta.setup import setup_django
 from settings import Settings
 
 # KEEP THIS AT THE TOP OF THE FILE!!!
-Settings.measure_performance = True
+Settings.MEASURE_PERFORMANCE = True
 
 
 @measure(by=AveragePerformanceMeasurement, key=MeasureKeys.MODEL_INIT)
@@ -20,8 +20,8 @@ def _run_ghengo():
     from gherkin.compiler import GherkinToPyTestCompiler
 
     compiler = GherkinToPyTestCompiler()
-    compiler.compile_file(Settings.test_import_file)
-    compiler.export_as_file(Settings.test_export_directory)
+    compiler.compile_file(Settings.TEST_IMPORT_FILE)
+    compiler.export_as_file(Settings.TEST_EXPORT_DIRECTORY)
 
 
 @measure(by=AveragePerformanceMeasurement, key=MeasureKeys.EVERYTHING)
@@ -33,11 +33,11 @@ def _main():
 
 def main():
     """The real main method that will run multiple times and collect measurement information."""
-
-    # import this after it was defined to measure the er
+    # import this after it was defined to measure the performance
     from nlp.setup import Nlp
+
     # this need to be executed before importing the compiler!
-    setup_django(Settings.django_settings_path)
+    setup_django(Settings.DJANGO_SETTINGS_PATH, print_warning=True)
 
     for i in range(20):
         Nlp.reset_cache()

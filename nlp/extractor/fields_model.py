@@ -1,5 +1,7 @@
 import re
 
+from django.core.exceptions import ImproperlyConfigured
+
 from django_meta.model import ModelFieldWrapper, ExistingModelWrapper
 from nlp.extractor.base import FieldExtractor, ManyExtractorMixin
 from nlp.extractor.output import IntegerOutput, FloatOutput, DecimalOutput, BooleanOutput, \
@@ -100,7 +102,10 @@ class PermissionsM2MModelFieldExtractor(M2MModelFieldExtractor):
 
     @classmethod
     def fits_input(cls, field, *args, **kwargs):
-        from django.contrib.auth.models import Permission
+        try:
+            from django.contrib.auth.models import Permission
+        except ImproperlyConfigured:
+            return False
 
         return super().fits_input(field, *args, **kwargs) and field.related_model == Permission
 

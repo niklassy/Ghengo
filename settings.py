@@ -1,69 +1,15 @@
-# number of spaces for an indent in Python
-import os
-
-from dotenv import load_dotenv
-
-from core.constants import Languages
-
-PYTHON_INDENT_SPACES = 4
-GHERKIN_INDENT_SPACES = 2
+from core.constants import GenerationType
+from core.settings import SettingsBase
 
 
-# load the .env
-load_dotenv()
-
-
-class GenerationType:
-    PY_TEST = 'py_test'
-
-
-class _Settings:
-    """
-    Settings that can/ will be changed during runtime and generation of code.
-    """
-    class Defaults:
-        LANGUAGE = Languages.EN
+class _Settings(SettingsBase):
+    class Defaults(SettingsBase.Defaults):
         MEASURE_PERFORMANCE = False
         GENERATE_TEST_TYPE = GenerationType.PY_TEST
         DJANGO_SETTINGS_PATH = 'django_sample_project.apps.config.settings'
+        DJANGO_APPS_FOLDER = '/Users/niklas/HdM/Master_CSM/Masterarbeit/project/django_sample_project/apps'
         TEST_EXPORT_DIRECTORY = 'generated_tests/'
         TEST_IMPORT_FILE = 'django_sample_project/features/variable_reference.feature'
-        DJANGO_PROJECT_WRAPPER = None
-
-    # the language in gherkin
-    language = Defaults.LANGUAGE
-
-    # the tests that are generated
-    generate_test_type = Defaults.GENERATE_TEST_TYPE
-
-    # the settings path to the django project
-    django_settings_path = Defaults.DJANGO_SETTINGS_PATH
-
-    # the directory to which tests are exported to
-    test_export_directory = Defaults.TEST_EXPORT_DIRECTORY
-
-    # the gherkin file which is imported
-    test_import_file = Defaults.TEST_IMPORT_FILE
-
-    # set if Ghengo should measure its performance and print out information at the end
-    measure_performance = Defaults.MEASURE_PERFORMANCE
-
-    # Django uses this to store an instance of the django project
-    django_project_wrapper = Defaults.DJANGO_PROJECT_WRAPPER
-
-    # == values that are imported from .env and are constants ==
-    DEEPL_API_KEY = os.getenv('DEEPL_API_KEY')
-    DEEPL_USE_FREE_API = os.getenv('DEEPL_USE_FREE_API') == 'True'
-
-    def reset(self):
-        """Reset the settings to the default values."""
-        self.language = self.Defaults.LANGUAGE
-        self.generate_test_type = self.Defaults.GENERATE_TEST_TYPE
-        self.django_settings_path = self.Defaults.DJANGO_SETTINGS_PATH
-        self.test_export_directory = self.Defaults.TEST_EXPORT_DIRECTORY
-        self.test_import_file = self.Defaults.TEST_IMPORT_FILE
-        self.measure_performance = self.Defaults.MEASURE_PERFORMANCE
-        self.django_project_wrapper = self.Defaults.DJANGO_PROJECT_WRAPPER
 
 
 Settings = _Settings()
