@@ -2,8 +2,8 @@ import inspect
 import re
 from abc import ABC
 
-from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
+
+from django.core.exceptions import ImproperlyConfigured
 
 from django_meta.api import ApiFieldWrapper, ExistingApiFieldWrapper, Methods, UrlPatternWrapper, \
     ExistingUrlPatternWrapper, ApiActionWrapper
@@ -199,6 +199,12 @@ class PermissionLookout(DjangoProjectLookout):
         By default we want to filter out any permission objects that do not fit the model. If the model does not exist
         in the code, we should just go to the fallback.
         """
+        try:
+            from django.contrib.auth.models import Permission
+            from django.contrib.contenttypes.models import ContentType
+        except ImproperlyConfigured:
+            return []
+
         if not self._model_token or self.model_wrapper.exists_in_code is False:
             qs = Permission.objects.none()
         else:

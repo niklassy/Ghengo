@@ -27,8 +27,8 @@ class _Settings:
         LANGUAGE = Languages.EN
         MEASURE_PERFORMANCE = False
         GENERATE_TEST_TYPE = GenerationType.PY_TEST
-        DJANGO_SETTINGS_PATH = 'django_sample_project.apps.config.settings'
-        DJANGO_APPS_FOLDER = '/Users/niklas/HdM/Master_CSM/Masterarbeit/project/django_sample_project/apps'
+        DJANGO_SETTINGS_PATH = None
+        DJANGO_APPS_FOLDER = None
         TEST_EXPORT_DIRECTORY = 'generated_tests/'
         TEST_IMPORT_FILE = 'django_sample_project/features/variable_reference.feature'
         DJANGO_PROJECT_WRAPPER = None

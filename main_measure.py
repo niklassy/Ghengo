@@ -38,7 +38,7 @@ def main():
     from nlp.setup import Nlp
     read_arguments()
     # this need to be executed before importing the compiler!
-    setup_django(Settings.django_settings_path)
+    setup_django(Settings.django_settings_path, print_warning=True)
 
     for i in range(20):
         Nlp.reset_cache()
