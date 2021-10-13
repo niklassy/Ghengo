@@ -241,7 +241,7 @@ class DescriptionToken(TokenContainsWholeLineMixin, GherkinToken):
         return True
 
     def __str__(self):
-        return self.text
+        return self.lexeme
 
 
 class EndOfLineToken(GherkinToken):

@@ -67,13 +67,13 @@ def test_lexer_tokenize():
     tokens = lexer.tokenize(text)
     assert lexer.tokens == tokens
     assert isinstance(tokens[0], CustomToken)
-    assert tokens[0].text == 'ABCDE'
+    assert tokens[0].lexeme == 'ABCDE'
     assert isinstance(tokens[1], CustomToken2)
-    assert tokens[1].text == '12345 FOO'
+    assert tokens[1].lexeme == '12345 FOO'
     assert isinstance(tokens[2], CustomToken)
-    assert tokens[2].text == 'ABCDE '
+    assert tokens[2].lexeme == 'ABCDE '
     assert isinstance(tokens[3], CustomToken2)
-    assert tokens[3].text == '12345 778293'     # <-- TestToken2 matches till the end of the line
+    assert tokens[3].lexeme == '12345 778293'     # <-- TestToken2 matches till the end of the line
 
 
 def test_custom_lexer():

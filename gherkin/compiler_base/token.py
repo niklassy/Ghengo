@@ -17,19 +17,19 @@ class Token(object):
         text = the text inside the line that belongs to this token
         """
         self.line: Optional[Line] = line
-        self.text: Optional[str] = text
+        self.lexeme: Optional[str] = text
 
-        self.matched_keyword = self.get_matching_pattern(self.text)
+        self.matched_pattern = self.get_matching_pattern(self.lexeme)
 
-        if self.matched_keyword is not None and self.text is not None:
-            self.text_without_keyword = self.text.replace(self.matched_keyword, '', 1)
+        if self.matched_pattern is not None and self.lexeme is not None:
+            self.text_without_pattern = self.lexeme.replace(self.matched_pattern, '', 1)
         else:
-            self.text_without_keyword = self.text
+            self.text_without_pattern = self.lexeme
 
         self._non_terminal_meta = {}
 
     def copy(self):
-        return self.__class__(text=self.text, line=Line(text=self.line.text, line_index=self.line.line_index))
+        return self.__class__(text=self.lexeme, line=Line(text=self.line.text, line_index=self.line.line_index))
 
     @classmethod
     def string_matches_pattern(cls, string, pattern):
@@ -74,7 +74,7 @@ class Token(object):
 
     def __repr__(self):
         return '{}: "{}" in {} (keyword: {})'.format(
-            self.__class__.__name__, self.text, self.line, self.matched_keyword)
+            self.__class__.__name__, self.lexeme, self.line, self.matched_pattern)
 
     def __str__(self):
-        return self.text or ''
+        return self.lexeme or ''

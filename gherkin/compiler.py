@@ -106,7 +106,7 @@ class GherkinParser(Parser):
         """Add all comments to the ast."""
         comments = [token for token in self.tokens if isinstance(token, CommentToken)]
         for c in comments:
-            ast.add_comment(ASTComment(c.text))
+            ast.add_comment(ASTComment(c.lexeme))
 
         return ast
 

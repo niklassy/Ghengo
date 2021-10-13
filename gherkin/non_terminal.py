@@ -31,7 +31,7 @@ class DescriptionNonTerminal(NonTerminal):
 
     def get_convert_kwargs(self, rule_output):
         return {
-            'text': rule_output[0].token.text,
+            'text': rule_output[0].token.lexeme,
         }
 
 
@@ -95,7 +95,7 @@ class TagsNonTerminal(NonTerminal):
         rule_tree = self.get_rule_sequence_to_object(sequence, index)
 
         for tag in rule_tree[0]:
-            tags.append(self.convert_cls(tag.token.text_without_keyword))
+            tags.append(self.convert_cls(tag.token.text_without_pattern))
 
         return tags
 
@@ -152,7 +152,7 @@ class DataTableNonTerminal(NonTerminal):
                 continue
 
             # get all columns of that token
-            token_columns = self.get_datatable_values(data_table_token.text)
+            token_columns = self.get_datatable_values(data_table_token.lexeme)
 
             # first time, set the number of columns
             if nmb_columns is None:
@@ -178,12 +178,12 @@ class DataTableNonTerminal(NonTerminal):
     def get_convert_kwargs(self, rule_output):
         datatable_entries = rule_output[0]
         header_row = datatable_entries[0]
-        header_values = self.get_datatable_values(header_row[0].token.text)     # <- header_row[1] will be EndOfLine
+        header_values = self.get_datatable_values(header_row[0].token.lexeme)     # <- header_row[1] will be EndOfLine
         header = TableRow(cells=[TableCell(value=v) for v in header_values])
 
         rows = []
         for row in datatable_entries[1:]:
-            row_values = self.get_datatable_values(row[0].token.text)
+            row_values = self.get_datatable_values(row[0].token.lexeme)
             rows.append(TableRow(cells=[TableCell(value=v) for v in row_values]))
 
         return {
@@ -203,8 +203,8 @@ class AndButNonTerminalBase(NonTerminal):
         step_end_data = rule_output[1]
 
         return {
-            'text': step_end_data[0].token.text,
-            'keyword': rule_output[0].token.matched_keyword,
+            'text': step_end_data[0].token.lexeme,
+            'keyword': rule_output[0].token.matched_pattern,
             'argument': step_end_data[2],
         }
 
@@ -251,7 +251,7 @@ class ExamplesNonTerminal(TagsNonTerminalMixin, NonTerminal):
         name, description = rule_output[2]
 
         return {
-            'keyword': rule_output[1].token.matched_keyword,
+            'keyword': rule_output[1].token.matched_pattern,
             'name': name,
             'description': description,
             'datatable': rule_output[3]
@@ -263,8 +263,8 @@ class GivenWhenThenBase(NonTerminal):
         step_end_data = rule_output[1]
 
         return {
-            'keyword': rule_output[0].token.matched_keyword,
-            'text': step_end_data[0].token.text,
+            'keyword': rule_output[0].token.matched_pattern,
+            'text': step_end_data[0].token.lexeme,
             'argument': step_end_data[2]
         }
 
@@ -389,7 +389,7 @@ class ScenarioDefinitionNonTerminal(NonTerminal):
                 descriptions.append(sequence[index + i + 1])
 
         # extract all the texts
-        texts = [d.token.text_without_keyword for d in descriptions]
+        texts = [d.token.text_without_pattern for d in descriptions]
         for i, text in enumerate(texts):
             # check if there is an earlier entry with the same text; if yet, raise an error
             if texts.index(text) < i:
@@ -407,7 +407,7 @@ class ScenarioDefinitionNonTerminal(NonTerminal):
 
         return {
             'description': description,
-            'keyword': rule_output[self.description_index - 1].token.matched_keyword,
+            'keyword': rule_output[self.description_index - 1].token.matched_pattern,
             'name': name,
         }
 
@@ -522,7 +522,7 @@ class RuleNonTerminal(TagsNonTerminalMixin, NonTerminal):
 
         return {
             'description': description,
-            'keyword': rule_output[1].token.matched_keyword,
+            'keyword': rule_output[1].token.matched_pattern,
             'name': name,
             'background': rule_output[3][0],
         }
@@ -567,7 +567,7 @@ class FeatureNonTerminal(TagsNonTerminalMixin, NonTerminal):
 
         return {
             'description': description,
-            'keyword': rule_output[1].token.matched_keyword,
+            'keyword': rule_output[1].token.matched_pattern,
             'name': name,
             'language': Settings.language,
             'background': rule_output[3][0],

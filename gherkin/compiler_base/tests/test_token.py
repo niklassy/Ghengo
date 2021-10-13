@@ -11,8 +11,8 @@ class CustomToken(Token):
 def test_init():
     CustomToken(None, None)
     token = CustomToken('/// 123', Line('test', 1))
-    assert token.text == '/// 123'
-    assert token.matched_keyword == '///'
+    assert token.lexeme == '/// 123'
+    assert token.matched_pattern == '///'
 
 
 def test_string_fits():
