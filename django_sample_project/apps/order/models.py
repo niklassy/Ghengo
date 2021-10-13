@@ -22,6 +22,8 @@ class Product(models.Model):
 
 class Item(models.Model):
     quantity = models.IntegerField(default=0)
+    product_id = models.ForeignKey(Product, on_delete=models.CASCADE)
+    order_id = models.ForeignKey('Order', on_delete=models.CASCADE)
 
 
 class Order(models.Model):
