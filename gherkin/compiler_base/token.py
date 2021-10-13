@@ -8,8 +8,8 @@ class Token(object):
     A token represents a collection of characters in a text. If will be used later by the parser to check the
     validity. In our case, tokens are lines because Gherkin only has one `statement` per line.
     """
-    # does the keyword have a `:` at the end?
-    keyword_with_colon = False
+    # does the pattern have a `:` at the end?
+    pattern_with_colon = False
 
     def __init__(self, text: Optional[str], line: Optional[Line]):
         """
@@ -17,49 +17,49 @@ class Token(object):
         text = the text inside the line that belongs to this token
         """
         self.line: Optional[Line] = line
-        self.text: Optional[str] = text
+        self.lexeme: Optional[str] = text
 
-        self.matched_keyword = self.get_matching_keyword(self.text)
+        self.matched_pattern = self.get_matching_pattern(self.lexeme)
 
-        if self.matched_keyword is not None and self.text is not None:
-            self.text_without_keyword = self.text.replace(self.matched_keyword, '', 1)
+        if self.matched_pattern is not None and self.lexeme is not None:
+            self.text_without_pattern = self.lexeme.replace(self.matched_pattern, '', 1)
         else:
-            self.text_without_keyword = self.text
+            self.text_without_pattern = self.lexeme
 
         self._non_terminal_meta = {}
 
     def copy(self):
-        return self.__class__(text=self.text, line=Line(text=self.line.text, line_index=self.line.line_index))
+        return self.__class__(text=self.lexeme, line=Line(text=self.line.text, line_index=self.line.line_index))
 
     @classmethod
-    def string_matches_keyword(cls, string, keyword):
-        """Check if a given keyword that was returned by `get_keywords` matches a string."""
-        return string.startswith(keyword)
+    def string_matches_pattern(cls, string, pattern):
+        """Check if a given pattern that was returned by `get_patterns` matches a string."""
+        return string.startswith(pattern)
 
     @classmethod
-    def get_matching_keyword(cls, string: str):
-        """Returns the keyword that matches a string. If there is none, it returns None."""
+    def get_matching_pattern(cls, string: str):
+        """Returns the pattern that matches a string. If there is none, it returns None."""
         if string is None:
             return None
 
-        for keyword in cls.get_keywords():
-            if cls.string_matches_keyword(string, keyword):
-                return keyword
+        for pattern in cls.get_patterns():
+            if cls.string_matches_pattern(string, pattern):
+                return pattern
         return None
 
     @classmethod
-    def reduce_to_belonging(cls, string: str):
+    def reduce_to_lexeme(cls, string: str):
         """Given a string, this will return everything of it that belongs to this token."""
-        return cls.get_matching_keyword(string) or ''
+        return cls.get_matching_pattern(string) or ''
 
     @classmethod
-    def string_contains_token(cls, string: str):
+    def string_contains_matching_pattern(cls, string: str):
         """Checks if a given string contains this token."""
-        return bool(cls.get_matching_keyword(string))
+        return bool(cls.get_matching_pattern(string))
 
     @classmethod
-    def get_keywords(cls):
-        """Returns all the keywords that identify a token."""
+    def get_patterns(cls):
+        """Returns all the patterns that identify a token."""
         raise NotImplementedError()
 
     def get_meta_data_for_sequence(self, sequence):
@@ -73,7 +73,8 @@ class Token(object):
         self._non_terminal_meta[key] = value
 
     def __repr__(self):
-        return '{}: "{}" in {} (keyword: {})'.format(self.__class__.__name__, self.text, self.line, self.matched_keyword)
+        return '{}: "{}" in {} (pattern: {})'.format(
+            self.__class__.__name__, self.lexeme, self.line, self.matched_pattern)
 
     def __str__(self):
-        return self.text or ''
+        return self.lexeme or ''

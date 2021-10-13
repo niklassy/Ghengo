@@ -120,7 +120,7 @@ def run_ui():
 
             suggested_tokens = get_token_suggestion_after_line(tokens, int(cursor_y) - 1)
 
-            raw_autocomplete_suggestions = [keyword for token in suggested_tokens for keyword in token.get_keywords()]
+            raw_autocomplete_suggestions = [keyword for token in suggested_tokens for keyword in token.get_patterns()]
             try:
                 current_line = get_sequence_as_lines(tokens)[int(cursor_y) - 1]
             except IndexError:
