@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from django.contrib.auth.models import User
 from django.db import models
 
+
 class ToDo(models.Model):
     system = models.IntegerField()
     part = models.FloatField()
@@ -19,10 +20,16 @@ class Product(models.Model):
     name = models.CharField(max_length=255)
 
 
+class Item(models.Model):
+    quantity = models.IntegerField(default=0)
+    product_id = models.ForeignKey(Product, on_delete=models.CASCADE)
+    order_id = models.ForeignKey('Order', on_delete=models.CASCADE)
+
+
 class Order(models.Model):
     number = models.IntegerField(default=0)
     active = models.BooleanField(default=True)
-    products = models.ManyToManyField(Product)
+    products = models.ManyToManyField(Product, through=Item)
 
     # ====== above for evalutation in thesis, below for tests
     owner = models.ForeignKey(User, on_delete=models.CASCADE, null=True)

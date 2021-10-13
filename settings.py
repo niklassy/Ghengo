@@ -10,7 +10,7 @@ class _Settings(SettingsBase):
         # DJANGO_APPS_FOLDER = None     <- overwrite this if necessary; it needs to be an absolute path; like:
         #                                   /Users/name/...(project/apps
         TEST_EXPORT_DIRECTORY = 'generated_tests/'
-        TEST_IMPORT_FILE = 'django_sample_project/features/variable_reference.feature'
+        TEST_IMPORT_FILE = 'django_sample_project/features/bewertung_s5.feature'
 
 
 Settings = _Settings()

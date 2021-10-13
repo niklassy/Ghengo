@@ -1,17 +1,20 @@
 from gherkin.compiler import GherkinParser
 from gherkin.compiler_base.exception import NonTerminalInvalid, NonTerminalNotUsed
 from gherkin.compiler_base.line import Line
-from gherkin.exception import GherkinInvalid
-from gherkin.non_terminal import ExamplesNonTerminal, GivenNonTerminal, WhenNonTerminal, ThenNonTerminal, ScenarioOutlineNonTerminal, \
-    ScenarioNonTerminal, BackgroundNonTerminal, RuleNonTerminal, FeatureNonTerminal
+from gherkin.non_terminal import ExamplesNonTerminal, GivenNonTerminal, WhenNonTerminal, ThenNonTerminal, \
+    ScenarioOutlineNonTerminal, ScenarioNonTerminal, BackgroundNonTerminal, RuleNonTerminal, FeatureNonTerminal
 from gherkin.token import EndOfLineToken, EOFToken
-from settings import GHERKIN_INDENT_SPACES
 
 
 def get_sequence_as_lines(sequence):
-    sequence_by_line = []
+    """
+    Returns a list of lists. Each entry in the list represents a line and will hold a list of tokens.
 
+    :argument: sequence [Token] - a list of tokens in a document
+    """
+    sequence_by_line = []
     tokens_in_line = []
+
     for token in sequence:
         if isinstance(token, EndOfLineToken):
             sequence_by_line.append(tokens_in_line.copy())
@@ -25,6 +28,14 @@ def get_sequence_as_lines(sequence):
 
 
 def get_token_suggestion_after_line(sequence, line_index, return_full_sequence=False):
+    """
+    Returns a list of tokens that can come after a given line.
+
+    :argument: sequence [Token] - a list of tokens that are already present in the document
+    :argument: line_index int - the line after that index will be checked
+    :argument: return_full_sequence bool - returns the whole sequence that makes something valid; if false only the
+                                           first token of that sequence is returned
+    """
     sequence = [token.copy() for token in sequence]
 
     suggested_non_terminals = [
@@ -86,6 +97,14 @@ def get_token_suggestion_after_line(sequence, line_index, return_full_sequence=F
 
 
 def get_indent_level_for_next_line(tokens, line_index, filter_token):
+    """
+    Returns the indent level for the next line in Gherkin. This can be used to determine how indented the cursor
+    should be after hitting Enter in a gherkin document.
+
+    :argument: tokens [Token] - list of tokens that are already in the document
+    :argument: line_index - the index of a line in the document, this will return the indent for the line after that
+    :argument: filter_token Token - a token which this function will filter for as valid next tokens
+    """
     token_sequence_suggestions = get_token_suggestion_after_line(
         sequence=tokens,
         line_index=line_index,
@@ -107,33 +126,4 @@ def get_indent_level_for_next_line(tokens, line_index, filter_token):
         return fitting_token.non_terminal_meta.get('suggested_indent_level')
 
     return 0
-
-
-def get_intend_level_for_line(compiler, text, line_index):
-    try:
-        compiler.compile_text(text)
-        tokens = compiler.parser.tokens
-
-        for token in tokens:
-            if token.line.line_index != line_index:
-                continue
-
-            return token.non_terminal_meta.get('suggested_indent_level', 0)
-
-        return 0
-    except GherkinInvalid:
-        return -1
-
-
-def get_suggested_intend_after_line(sequence, line_index):
-    sequences_lines = get_sequence_as_lines(sequence)
-
-    line_tokens = sequences_lines[line_index]
-    intend_level = int(line_tokens[0].line.indent / GHERKIN_INDENT_SPACES)
-
-    children_more_indented = any([token.children_intended for token in line_tokens])
-    if children_more_indented:
-        intend_level += 1
-
-    return ' ' * GHERKIN_INDENT_SPACES * intend_level
 
