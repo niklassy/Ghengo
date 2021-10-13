@@ -32,33 +32,33 @@ class Token(object):
         return self.__class__(text=self.text, line=Line(text=self.line.text, line_index=self.line.line_index))
 
     @classmethod
-    def string_matches_keyword(cls, string, keyword):
-        """Check if a given keyword that was returned by `get_keywords` matches a string."""
-        return string.startswith(keyword)
+    def string_matches_pattern(cls, string, pattern):
+        """Check if a given keyword that was returned by `get_patterns` matches a string."""
+        return string.startswith(pattern)
 
     @classmethod
     def get_matching_pattern(cls, string: str):
-        """Returns the keyword that matches a string. If there is none, it returns None."""
+        """Returns the pattern that matches a string. If there is none, it returns None."""
         if string is None:
             return None
 
-        for keyword in cls.get_keywords():
-            if cls.string_matches_keyword(string, keyword):
-                return keyword
+        for pattern in cls.get_patterns():
+            if cls.string_matches_pattern(string, pattern):
+                return pattern
         return None
 
     @classmethod
-    def reduce_to_belonging(cls, string: str):
+    def reduce_to_lexeme(cls, string: str):
         """Given a string, this will return everything of it that belongs to this token."""
         return cls.get_matching_pattern(string) or ''
 
     @classmethod
-    def string_contains_token(cls, string: str):
+    def string_contains_matching_pattern(cls, string: str):
         """Checks if a given string contains this token."""
         return bool(cls.get_matching_pattern(string))
 
     @classmethod
-    def get_keywords(cls):
+    def get_patterns(cls):
         """Returns all the keywords that identify a token."""
         raise NotImplementedError()
 
@@ -73,7 +73,8 @@ class Token(object):
         self._non_terminal_meta[key] = value
 
     def __repr__(self):
-        return '{}: "{}" in {} (keyword: {})'.format(self.__class__.__name__, self.text, self.line, self.matched_keyword)
+        return '{}: "{}" in {} (keyword: {})'.format(
+            self.__class__.__name__, self.text, self.line, self.matched_keyword)
 
     def __str__(self):
         return self.text or ''

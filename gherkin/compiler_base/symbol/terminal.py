@@ -38,16 +38,16 @@ class TerminalSymbol(IndentMixin, RecursiveValidationBase):
     def get_next_pointer_index(self, child, sequence, current_index) -> int:
         return current_index + 1
 
-    def get_keywords(self) -> [str]:
+    def get_patterns(self) -> [str]:
         """
         Return a list of keywords. Used by rules to see what keywords are expected. So: what is expected to be found
         for this class? How can this token be represented as a string?
         """
-        return self.token_cls.get_keywords()
+        return self.token_cls.get_patterns()
 
     def _build_error_message(self, token_wrapper=None, message=''):
         """Builds the message for RuleNotFulfilled and SequenceEnded exceptions."""
-        keywords = self.get_keywords()
+        keywords = self.get_patterns()
 
         if len(keywords) == 1:
             message += 'Expected {}.'.format(keywords[0])

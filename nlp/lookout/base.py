@@ -89,7 +89,7 @@ class Lookout(object):
         Returns a tuple of values. Each entry will be compared by calling `get_similarity`.
 
         :argument output_object - one of the objects that are returned from `get_output_objects`
-        :argument keyword - one of the keywords that are returned from `get_keywords`
+        :argument keyword - one of the keywords that are returned from `get_patterns`
         :returns [(doc_1, doc_2)]
         """
         return []
@@ -115,7 +115,7 @@ class Lookout(object):
     def fittest_keyword(self):
         """
         Returns the fittest keyword that had the highest similarity after using `locate`. This will either be None
-        or one of the values from `get_keywords`.
+        or one of the values from `get_patterns`.
         """
         return self._fittest_keyword
 

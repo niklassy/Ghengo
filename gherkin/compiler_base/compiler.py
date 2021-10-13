@@ -21,9 +21,9 @@ class Lexer(object):
 
     def token_fits_string(self, token_cls, string):
         """A wrapper function to define how a token defines if given string fits it."""
-        return token_cls.string_contains_token(string)
+        return token_cls.string_contains_matching_pattern(string)
 
-    def get_matching_text_for_token(self, token_cls, text) -> str:
+    def get_lexeme_for_token(self, token_cls, text) -> str:
         """
         Returns the text that belongs to a token. This is only called if the token class matches
         the text somehow.
@@ -35,7 +35,7 @@ class Lexer(object):
             If a token represents an if, it would only return `if` here, since the rest would
             be represented by a different token, even though it might be on the same line.
         """
-        return token_cls.reduce_to_belonging(text)
+        return token_cls.reduce_to_lexeme(text)
 
     def get_fitting_token_cls(self, string: str):
         """Returns the first class in token_classes where token_fits_string returns true"""
@@ -80,13 +80,13 @@ class Lexer(object):
                         'every case.'.format(remaining_text, line.line_index + 1))
 
                 # get the text that the token represents and create a token with it
-                matching_text = self.get_matching_text_for_token(token_cls, remaining_text)
-                token = self.init_and_add_token(token_cls, matching_text, line)
+                lexeme = self.get_lexeme_for_token(token_cls, remaining_text)
+                token = self.init_and_add_token(token_cls, lexeme, line)
 
                 self.on_token_added(token)
 
                 # strip the text that was found and continue with the remaining one
-                remaining_text = remaining_text[len(matching_text):]
+                remaining_text = remaining_text[len(lexeme):]
 
                 # if nothing remains of the line, stop the loop
                 if not bool(remaining_text):

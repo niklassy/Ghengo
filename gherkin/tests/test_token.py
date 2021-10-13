@@ -27,15 +27,15 @@ from settings import Settings
     ]
 )
 def test_basic_token_classes(token_cls, valid_string_en, valid_string_de, invalid_string_en, invalid_string_de):
-    assert token_cls.string_contains_token('{} asdasd qwe asd yxc'.format(valid_string_en)) is True
-    assert token_cls.string_contains_token('{} qwe q asd xy'.format(invalid_string_en)) is False
-    assert token_cls.reduce_to_belonging('{} ab q a ooq'.format(valid_string_en)) == valid_string_en
-    assert token_cls.reduce_to_belonging('{} qq a xc asd qwe'.format(invalid_string_en)) == ''
+    assert token_cls.string_contains_matching_pattern('{} asdasd qwe asd yxc'.format(valid_string_en)) is True
+    assert token_cls.string_contains_matching_pattern('{} qwe q asd xy'.format(invalid_string_en)) is False
+    assert token_cls.reduce_to_lexeme('{} ab q a ooq'.format(valid_string_en)) == valid_string_en
+    assert token_cls.reduce_to_lexeme('{} qq a xc asd qwe'.format(invalid_string_en)) == ''
     Settings.language = Languages.DE
-    assert token_cls.string_contains_token('{} asdasd qwe asd yxc'.format(invalid_string_de)) is False
-    assert token_cls.reduce_to_belonging('{} ab q a ooq'.format(invalid_string_de)) == ''
-    assert token_cls.string_contains_token('{} qwe akky asde'.format(valid_string_de)) is True
-    assert token_cls.reduce_to_belonging('{} ab q a ooq'.format(valid_string_de)) == valid_string_de
+    assert token_cls.string_contains_matching_pattern('{} asdasd qwe asd yxc'.format(invalid_string_de)) is False
+    assert token_cls.reduce_to_lexeme('{} ab q a ooq'.format(invalid_string_de)) == ''
+    assert token_cls.string_contains_matching_pattern('{} qwe akky asde'.format(valid_string_de)) is True
+    assert token_cls.reduce_to_lexeme('{} ab q a ooq'.format(valid_string_de)) == valid_string_de
 
 
 @pytest.mark.parametrize(
@@ -56,13 +56,13 @@ def test_basic_token_classes(token_cls, valid_string_en, valid_string_de, invali
     ]
 )
 def test_full_line_token_classes(token_cls, valid_string_en, valid_string_de, invalid_string_en, invalid_string_de):
-    assert token_cls.string_contains_token(valid_string_en) is True
+    assert token_cls.string_contains_matching_pattern(valid_string_en) is True
     if invalid_string_en is not None:
-        assert token_cls.reduce_to_belonging(invalid_string_en) == ''
-        assert token_cls.string_contains_token(invalid_string_en) is False
-    assert token_cls.reduce_to_belonging(valid_string_en) == valid_string_en
+        assert token_cls.reduce_to_lexeme(invalid_string_en) == ''
+        assert token_cls.string_contains_matching_pattern(invalid_string_en) is False
+    assert token_cls.reduce_to_lexeme(valid_string_en) == valid_string_en
     Settings.language = Languages.DE
-    assert token_cls.string_contains_token(valid_string_de) is True
+    assert token_cls.string_contains_matching_pattern(valid_string_de) is True
     if invalid_string_de is not None:
-        assert token_cls.string_contains_token(invalid_string_de) is False
+        assert token_cls.string_contains_matching_pattern(invalid_string_de) is False
 

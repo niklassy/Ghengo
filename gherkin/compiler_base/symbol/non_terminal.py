@@ -118,7 +118,7 @@ class NonTerminal(IndentMixin, RecursiveValidationBase):
             valid_keywords = []
 
             for t in next_valid_tokens:
-                valid_keywords += t.get_keywords()
+                valid_keywords += t.get_patterns()
             try:
                 error_token = sequence[e.sequence_index]
                 message = 'Expected one of {}. Got {} instead. {}'.format(

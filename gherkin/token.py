@@ -12,7 +12,7 @@ class GherkinToken(Token):
     _json_id = None
 
     @classmethod
-    def get_keywords(cls):
+    def get_patterns(cls):
         try:
             keywords = GHERKIN_CONFIG[Settings.language][cls._json_id]
 
@@ -37,8 +37,8 @@ class GherkinToken(Token):
 
 class TokenContainsWholeLineMixin(object):
     @classmethod
-    def reduce_to_belonging(cls, string: str):
-        return string if cls.string_contains_token(string) else ''
+    def reduce_to_lexeme(cls, string: str):
+        return string if cls.string_contains_matching_pattern(string) else ''
 
 
 class FeatureToken(GherkinToken):
@@ -73,12 +73,12 @@ class ExamplesToken(GherkinToken):
 
 class DataTableToken(TokenContainsWholeLineMixin, GherkinToken):
     @classmethod
-    def get_keywords(cls):
+    def get_patterns(cls):
         return ['|']
 
     @classmethod
-    def string_contains_token(cls, string: str):
-        keyword = cls.get_keywords()[0]
+    def string_contains_matching_pattern(cls, string: str):
+        keyword = cls.get_patterns()[0]
         clean_string = string.rstrip().lstrip()
         return clean_string and clean_string[0] == keyword and clean_string[-1] == keyword
 
@@ -87,7 +87,7 @@ class DocStringToken(TokenContainsWholeLineMixin, GherkinToken):
     color = '#006400'
 
     @classmethod
-    def get_keywords(cls):
+    def get_patterns(cls):
         return ['"""', '```']
 
 
@@ -127,11 +127,11 @@ class TagToken(TokenContainsWholeLineMixin, GherkinToken):
     REG_EX = '@[a-zA-Z0-9_.-]+'
 
     @classmethod
-    def get_keywords(cls):
+    def get_patterns(cls):
         return ['@']
 
     @classmethod
-    def string_matches_keyword(cls, string, keyword):
+    def string_matches_pattern(cls, string, pattern):
         return bool(re.match('^{tag_pattern}$'.format(tag_pattern=cls.REG_EX), string))
 
 
@@ -140,7 +140,7 @@ class TagsToken(TokenContainsWholeLineMixin, GherkinToken):
         output = []
 
         for tag_element_str in line.trimmed_text.split(' '):
-            if TagToken.string_contains_token(tag_element_str):
+            if TagToken.string_contains_matching_pattern(tag_element_str):
                 token = TagToken(line=line, text=tag_element_str)
             else:
                 token = DescriptionToken(line=line, text=tag_element_str)
@@ -150,11 +150,11 @@ class TagsToken(TokenContainsWholeLineMixin, GherkinToken):
         return output
 
     @classmethod
-    def string_matches_keyword(cls, string: str, keyword):
+    def string_matches_pattern(cls, string: str, pattern):
         return bool(re.match('^{tag_pattern}( {tag_pattern})*$'.format(tag_pattern=TagToken.REG_EX), string))
 
     @classmethod
-    def get_keywords(cls):
+    def get_patterns(cls):
         return ['@']
 
 
@@ -162,7 +162,7 @@ class CommentToken(TokenContainsWholeLineMixin, GherkinToken):
     color = '#444'
 
     @classmethod
-    def get_keywords(cls):
+    def get_patterns(cls):
         return ['#']
 
 
@@ -178,13 +178,13 @@ class LanguageToken(TokenContainsWholeLineMixin, GherkinToken):
         return self.line.line_index == 0
 
     @classmethod
-    def get_keywords(cls):
+    def get_patterns(cls):
         return ['#']
 
     @classmethod
-    def string_contains_token(cls, string: str):
+    def string_contains_matching_pattern(cls, string: str):
         locale = cls.get_locale_from_line(string)
-        return super().string_contains_token(string) and bool(locale) and locale in GHERKIN_CONFIG
+        return super().string_contains_matching_pattern(string) and bool(locale) and locale in GHERKIN_CONFIG
 
     @classmethod
     def get_locale_from_line(cls, string):
@@ -205,13 +205,13 @@ class EmptyToken(TokenContainsWholeLineMixin, GherkinToken):
         return ''
 
     @classmethod
-    def string_contains_token(cls, string: str):
+    def string_contains_matching_pattern(cls, string: str):
         return not bool(string.replace(' ', ''))
 
 
 class DescriptionToken(TokenContainsWholeLineMixin, GherkinToken):
     @classmethod
-    def get_keywords(cls):
+    def get_patterns(cls):
         return ['Any string with no keywords']
 
     def get_meta_data_for_sequence(self, sequence):
@@ -237,7 +237,7 @@ class DescriptionToken(TokenContainsWholeLineMixin, GherkinToken):
         return {'color': color}
 
     @classmethod
-    def string_contains_token(cls, string: str) -> bool:
+    def string_contains_matching_pattern(cls, string: str) -> bool:
         return True
 
     def __str__(self):
@@ -249,11 +249,11 @@ class EndOfLineToken(GherkinToken):
         super().__init__(text=None, line=line)
 
     @classmethod
-    def string_contains_token(cls, string: str):
+    def string_contains_matching_pattern(cls, string: str):
         return False
 
     @classmethod
-    def get_keywords(cls):
+    def get_patterns(cls):
         return ['End of line']
 
     def __str__(self):
@@ -265,9 +265,9 @@ class EOFToken(GherkinToken):
         super().__init__(text=None, line=line)
 
     @classmethod
-    def get_keywords(cls):
+    def get_patterns(cls):
         return ['End of file']
 
     @classmethod
-    def string_contains_token(cls, string: str):
+    def string_contains_matching_pattern(cls, string: str):
         return False

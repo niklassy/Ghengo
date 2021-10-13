@@ -8,17 +8,17 @@ from test_utils import assert_callable_raises
 
 class CustomToken(Token):
     @classmethod
-    def get_keywords(cls):
+    def get_patterns(cls):
         return ['ABCDE ', 'ABCDE']
 
 
 class CustomToken2(CustomToken):
     @classmethod
-    def get_keywords(cls):
+    def get_patterns(cls):
         return ['12345']
 
     @classmethod
-    def reduce_to_belonging(cls, string: str):
+    def reduce_to_lexeme(cls, string: str):
         return string
 
 
