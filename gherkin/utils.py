@@ -5,7 +5,7 @@ from gherkin.exception import GherkinInvalid
 from gherkin.non_terminal import ExamplesNonTerminal, GivenNonTerminal, WhenNonTerminal, ThenNonTerminal, ScenarioOutlineNonTerminal, \
     ScenarioNonTerminal, BackgroundNonTerminal, RuleNonTerminal, FeatureNonTerminal
 from gherkin.token import EndOfLineToken, EOFToken
-from settings import GHERKIN_INDENT_SPACES
+from core.settings import GHERKIN_INDENT_SPACES
 
 
 def get_sequence_as_lines(sequence):
