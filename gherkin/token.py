@@ -16,7 +16,7 @@ class GherkinToken(Token):
         try:
             keywords = GHERKIN_CONFIG[Settings.language][cls._json_id]
 
-            if cls.keyword_with_colon:
+            if cls.pattern_with_colon:
                 return ['{}:'.format(k) for k in keywords]
 
             return keywords
@@ -44,31 +44,31 @@ class TokenContainsWholeLineMixin(object):
 class FeatureToken(GherkinToken):
     color = '#d35400'
     _json_id = 'feature'
-    keyword_with_colon = True
+    pattern_with_colon = True
 
 
 class RuleToken(GherkinToken):
     color = '#d35400'
     _json_id = 'rule'
-    keyword_with_colon = True
+    pattern_with_colon = True
 
 
 class ScenarioToken(GherkinToken):
     color = '#d35400'
     _json_id = 'scenario'
-    keyword_with_colon = True
+    pattern_with_colon = True
 
 
 class ScenarioOutlineToken(GherkinToken):
     color = '#d35400'
     _json_id = 'scenarioOutline'
-    keyword_with_colon = True
+    pattern_with_colon = True
 
 
 class ExamplesToken(GherkinToken):
     color = '#d35400'
     _json_id = 'examples'
-    keyword_with_colon = True
+    pattern_with_colon = True
 
 
 class DataTableToken(TokenContainsWholeLineMixin, GherkinToken):
@@ -94,7 +94,7 @@ class DocStringToken(TokenContainsWholeLineMixin, GherkinToken):
 class BackgroundToken(GherkinToken):
     color = '#d35400'
     _json_id = 'background'
-    keyword_with_colon = True
+    pattern_with_colon = True
 
 
 class GivenToken(GherkinToken):

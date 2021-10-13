@@ -8,8 +8,8 @@ class Token(object):
     A token represents a collection of characters in a text. If will be used later by the parser to check the
     validity. In our case, tokens are lines because Gherkin only has one `statement` per line.
     """
-    # does the keyword have a `:` at the end?
-    keyword_with_colon = False
+    # does the pattern have a `:` at the end?
+    pattern_with_colon = False
 
     def __init__(self, text: Optional[str], line: Optional[Line]):
         """
@@ -33,7 +33,7 @@ class Token(object):
 
     @classmethod
     def string_matches_pattern(cls, string, pattern):
-        """Check if a given keyword that was returned by `get_patterns` matches a string."""
+        """Check if a given pattern that was returned by `get_patterns` matches a string."""
         return string.startswith(pattern)
 
     @classmethod
@@ -59,7 +59,7 @@ class Token(object):
 
     @classmethod
     def get_patterns(cls):
-        """Returns all the keywords that identify a token."""
+        """Returns all the patterns that identify a token."""
         raise NotImplementedError()
 
     def get_meta_data_for_sequence(self, sequence):
@@ -73,7 +73,7 @@ class Token(object):
         self._non_terminal_meta[key] = value
 
     def __repr__(self):
-        return '{}: "{}" in {} (keyword: {})'.format(
+        return '{}: "{}" in {} (pattern: {})'.format(
             self.__class__.__name__, self.lexeme, self.line, self.matched_pattern)
 
     def __str__(self):
