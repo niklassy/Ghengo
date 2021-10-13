@@ -19,7 +19,7 @@ class Token(object):
         self.line: Optional[Line] = line
         self.text: Optional[str] = text
 
-        self.matched_keyword = self.get_matching_keyword(self.text)
+        self.matched_keyword = self.get_matching_pattern(self.text)
 
         if self.matched_keyword is not None and self.text is not None:
             self.text_without_keyword = self.text.replace(self.matched_keyword, '', 1)
@@ -37,7 +37,7 @@ class Token(object):
         return string.startswith(keyword)
 
     @classmethod
-    def get_matching_keyword(cls, string: str):
+    def get_matching_pattern(cls, string: str):
         """Returns the keyword that matches a string. If there is none, it returns None."""
         if string is None:
             return None
@@ -50,12 +50,12 @@ class Token(object):
     @classmethod
     def reduce_to_belonging(cls, string: str):
         """Given a string, this will return everything of it that belongs to this token."""
-        return cls.get_matching_keyword(string) or ''
+        return cls.get_matching_pattern(string) or ''
 
     @classmethod
     def string_contains_token(cls, string: str):
         """Checks if a given string contains this token."""
-        return bool(cls.get_matching_keyword(string))
+        return bool(cls.get_matching_pattern(string))
 
     @classmethod
     def get_keywords(cls):

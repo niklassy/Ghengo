@@ -201,7 +201,7 @@ class LanguageToken(TokenContainsWholeLineMixin, GherkinToken):
 
 class EmptyToken(TokenContainsWholeLineMixin, GherkinToken):
     @classmethod
-    def get_matching_keyword(cls, string: str):
+    def get_matching_pattern(cls, string: str):
         return ''
 
     @classmethod
