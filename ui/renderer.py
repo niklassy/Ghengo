@@ -122,9 +122,9 @@ class GherkinEditorRenderer(object):
                 indent_str = ' ' * indent
 
                 if indent_lvl >= 0:
-                    token.line.lexeme = indent_str + token.line.lexeme.lstrip()
+                    token.line.text = indent_str + token.line.text.lstrip()
                     token.line.indent = indent
-                    cursor_x = len(token.line.lexeme)
+                    cursor_x = len(token.line.text)
 
             color = token.get_meta_data_for_sequence(tokens).get('color')
             self.editor.update(token.to_string(with_indent), text_color_for_value=color, append=True)
