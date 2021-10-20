@@ -13,7 +13,9 @@ Funktionalität: Produkte und Aufträge
 
   Szenario: Produkte hinzufügen
     Gegeben sei ein Benutzer Bob
-    Und ein Auftrag 1
-    Und ein Produkt 1 mit dem Namen "Briefmarke"
-    Wenn Bob dem Produkt 1 zu Auftrag 1 hinzufügt
-    Dann sollte der Auftrag 1 die Produkte 1 haben
+    Und ein Produkt 1
+    Und ein Produkt 2
+    Und ein Auftrag 1 mit den Produkten 1 und 2
+    Und ein Produkt 3 mit dem Namen "Briefmarke"
+    Wenn Bob dem Produkt 3 zu Auftrag 1 hinzufügt
+    Dann sollte der Auftrag 1 die Produkte 1, 2 und 3 haben

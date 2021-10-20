@@ -89,10 +89,15 @@ class M2MModelFieldExtractor(ManyExtractorMixin, ForeignKeyModelFieldExtractor):
             factory_statement.generate_variable(self.test_case)
 
         for variable in values:
+            if isinstance(variable, GenerationWarning):
+                add_variable_ref = variable
+            else:
+                add_variable_ref = variable.get_reference()
+
             m2m_expression = ModelM2MAddExpression(
                 model_instance_variable_ref=factory_statement.variable.get_reference(),
                 field=self.field_name,
-                add_variable_ref=variable.get_reference(),
+                add_variable_ref=add_variable_ref,
             )
             statements.append(m2m_expression.as_statement())
 
