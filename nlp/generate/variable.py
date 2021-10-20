@@ -137,6 +137,9 @@ class VariableReference(OnAddToTestCaseListenerMixin, Replaceable):
     def __bool__(self):
         return bool(self.variable)
 
+    def __repr__(self):
+        return str(self.variable)
+
     def __str__(self):
         return str(self.variable)
 
