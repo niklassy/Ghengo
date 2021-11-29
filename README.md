@@ -1,4 +1,4 @@
-# Ghengo - Django-Gherkin Test Generator
+# Ghengo - A prototype to generate test cases using natural language in Gherkin files
 
 This software was created during a master's thesis at [Hochschule der Medien](https://www.hdm-stuttgart.de/) in
 cooperation with [Ambient](https://ambient.digital/).
