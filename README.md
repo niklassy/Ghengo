@@ -7,9 +7,6 @@ With this project you are able to generate code with natural language for a Djan
 used to create test cases. Right now this project is only able to generate pytest for Python.
 The software is fully tested for German Gherkin. Some parts work for an English file as well.
 
-The UI for this was not the main part of the project and it is somewhat wonky and
-slow. You can still use it to try some stuff.
-
 Here is an example for how the code generation can look like. The Gherkin input:
 
 ```Gherkin
@@ -127,7 +124,7 @@ Use this command and fill out everything that is needed:
 pipenv run python main.py --apps /User/.../apps/ --settings apps.config.settings --export-dir generated_tests/ --feature django_sample_project/features/variable_reference.feature
 ```
 
-The same arguments apply for the following commands.
+> !! **The same arguments apply for the following commands.** !!
 
 Also, run this for help:
 
@@ -136,9 +133,17 @@ pipenv run python main.py -h
 ```
 
 ## Open the UI
+There is a UI that can be used to explore Ghengo. 
+
+
+**Please note that the UI was not part
+of the thesis and is still somewhat slow.**
+
 ```bash
 pipenv run python main_ui.py
 ```
+
+> Remember to add options / settings that were already mentioned above.
 
 ## Start Django sample
 
@@ -157,3 +162,6 @@ Run in root of project:
 ```bash
 pipenv run python main_measure.py
 ```
+
+> Remember to add options / settings that were already mentioned above.
+
