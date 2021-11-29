@@ -1,37 +1,25 @@
 # Ghengo - Django-Gherkin Test Generator
 
-## What is this?
-With this project you are able to generate code with natural language. In this case Gherkin can be
+This software was created during a master's thesis at [Hochschule der Medien](https://www.hdm-stuttgart.de/) in
+cooperation with [Ambient](https://ambient.digital/).
+
+With this project you are able to generate code with natural language for a Django API. In this case Gherkin can be
 used to create test cases. Right now this project is only able to generate pytest for Python.
-It is fully tested for German but it also works in English. But it does not work as well in English as in German.
+The software is fully tested for German Gherkin. Some parts work for an English file as well.
 
 Here you can see it in action. The UI for this was not the main part of the project and it is somewhat wonky and
 slow. You can still use it to try some stuff.
 
-Here are some features:
+## Read about the software
 
-### Creating models and referencing each other
+If you want to read more about the code, the conceptual design or need some background information
+you can read the thesis or a short paper [here](/thesis).
 
-![Creating model entries](demo/gif/model_creation.gif)
+## Features
 
-### Creating files
-
-![Creating an uploaded file](demo/gif/file_creation.gif)
-
-### Making requests
-![Making requests](demo/gif/requests.gif)
-
-### Analyzing list responses
-![Checking list responses](demo/gif/list_response.gif)
-
-### Analyzing simple responses
-![Checking simple responses](demo/gif/single_entry_resp.gif)
-
-### Analyzing database
-![Accesing the database](demo/gif/queryset.gif)
-
-### Analyzing earlier model entries
-![Checking previous model entries](demo/gif/previous_model.gif)
+The software tries to determine different actions that are usually created in code
+when testing a Django API. You can find some examples of the translations from
+natural language to code [here](/demo).
 
 ## Setup
 You need to install Pipenv first.
@@ -111,12 +99,16 @@ pipenv run python main_ui.py
 
 ## Start Django sample
 
-Run in root of project:
+This repository contains a sample django project as an example. You can run
+the django application with this command:
+
 ```bash
 pipenv run python manage.py runserver
 ```
 
 ## Measure the performance
+
+If you want to measure the performance of Ghengo, use this command:
 
 Run in root of project:
 ```bash
