@@ -7,8 +7,51 @@ With this project you are able to generate code with natural language for a Djan
 used to create test cases. Right now this project is only able to generate pytest for Python.
 The software is fully tested for German Gherkin. Some parts work for an English file as well.
 
-Here you can see it in action. The UI for this was not the main part of the project and it is somewhat wonky and
+The UI for this was not the main part of the project and it is somewhat wonky and
 slow. You can still use it to try some stuff.
+
+Here is an example for how the code generation can look like. The Gherkin input:
+
+```Gherkin
+# language: de
+Funktionalität: Anfragen für Aufträge
+  Szenario: Auftragsliste ohne Authentifizierung
+    Wenn die Liste der Aufträge geholt wird
+    Dann sollte die Antwort keine Einträge haben
+
+  Szenario: Nutzer holt Auftragsliste
+    Gegeben sei ein Benutzer Alice mit dem Vornamen Alice
+    Und ein Auftrag mit dem Besitzer Alice und der Nummer 1
+    Wenn Alice die Liste der Aufträge holt
+    Dann sollte die Antwort einen Auftrag enthalten
+    Und der erste Eintrag sollte die Nummer 1 haben
+```
+
+Would be used to generate the following test cases for PyTest:
+
+```Python
+from rest_framework.test import APIClient
+from django.urls import reverse
+import pytest
+
+
+def test_order_list_without_authentication():
+    client = APIClient()
+    response = client.get(reverse('orders-list'))
+    assert len(response.data) == 0
+
+
+@pytest.mark.django_db
+def test_user_fetches_order_list(user_factory, order_factory):
+    alice = user_factory(first_name='Alice')
+    order_factory(owner=alice, number=1)
+    client = APIClient()
+    client.force_authenticate(alice)
+    response = client.get(reverse('orders-list'))
+    assert len(response.data) == 1
+    entry_0 = response.data[0]
+    assert entry_0.get('number') == 1
+```
 
 ## Read about the software
 
